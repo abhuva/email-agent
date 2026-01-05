@@ -1,7 +1,7 @@
 import os
 import shutil
 import pytest
-from src.prompt_loader import find_markdown_files, parse_markdown_frontmatter, markdown_to_plain_text, process_prompt_content
+from src.prompt_loader import find_markdown_files, parse_markdown_frontmatter, markdown_to_plain_text, process_prompt_content, load_prompts
 
 @pytest.fixture
 def prompt_dir_with_files(tmp_path):
@@ -55,7 +55,7 @@ ignore code block
     assert 'Title' in out
     assert 'A paragraph with bold text' in out
     assert 'Item 1' in out and 'Item 2' in out
-    assert 'ignore code block' in out or True  # code blocks just get plain text
+    assert 'ignore code block' in out or True
 
 def test_process_prompt_content_combines_metadata():
     doc = {
@@ -66,3 +66,15 @@ def test_process_prompt_content_combines_metadata():
     assert out['prompt_text'].startswith('Subhead')
     assert 'Prompt details' in out['prompt_text']
     assert out['metadata']['foo'] == 'bar'
+
+def test_load_prompts(tmp_path):
+    # Good file
+    (tmp_path / 'a.md').write_text('---\ntitle: Hi\n---\nPrompt content one.')
+    # Invalid frontmatter still loads as fallback
+    (tmp_path / 'fail.md').write_text('---\n::: BAD: :{')
+    # Non-md file is ignored
+    (tmp_path / 'skip.txt').write_text('Skip me.')
+    loaded = load_prompts(str(tmp_path))
+    assert any(x['prompt_text'].startswith('Prompt') for x in loaded)
+    assert any(x['filename'].endswith('a.md') for x in loaded)
+    assert len(loaded) >= 1

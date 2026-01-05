@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any
 import logging
 import re
 import yaml
@@ -56,15 +56,32 @@ class PlainTextExtension(Extension):
         md.treeprocessors.register(MarkdownPlainTextExtractor(md), 'plaintext', 15)
 
 def markdown_to_plain_text(md_content: str) -> str:
-    """Converts Markdown content to readable plain text for LLM prompts."""
     md = markdown.Markdown(extensions=[PlainTextExtension()])
     return md.convert(md_content)
 
 def process_prompt_content(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Given a dict with 'metadata' and 'content', add 'prompt_text' key with processed plain text prompt.
-    """
     prompt_text = markdown_to_plain_text(doc['content'])
     result = dict(doc)
     result['prompt_text'] = prompt_text
     return result
+
+def load_prompts(prompt_dir: str) -> List[Dict[str, Any]]:
+    """
+    Orchestrated pipeline: loads all prompts from a directory, parses frontmatter, processes content.
+    Returns a list of dicts with keys: 'metadata', 'content', 'prompt_text'.
+    Logs and skips files with failures but continues loading others.
+    """
+    prompt_files = find_markdown_files(prompt_dir)
+    loaded = []
+    for file in prompt_files:
+        try:
+            with open(file, encoding='utf-8') as f:
+                raw = f.read()
+            doc = parse_markdown_frontmatter(raw)
+            doc_proc = process_prompt_content(doc)
+            doc_proc['filename'] = file
+            loaded.append(doc_proc)
+            logging.info(f"Loaded prompt: {file}")
+        except Exception as e:
+            logging.warning(f"Failed to load prompt file {file}: {e}")
+    return loaded
