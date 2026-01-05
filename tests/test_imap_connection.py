@@ -1,16 +1,11 @@
 import pytest
 import os
-from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries
+from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries, search_emails_excluding_processed
 
 @pytest.fixture
 def dummy_creds():
     # These credentials should NOT work. Safe for failure by design.
-    return {
-        'host': 'imap.example.com',
-        'user': 'no-such-user',
-        'password': 'wrong-password',
-        'port': 993
-    }
+    return {'host': 'imap.example.com','user': 'no-such-user','password': 'wrong-password','port': 993}
 
 @pytest.fixture
 def config_queries_file(tmp_path):
@@ -41,3 +36,20 @@ def test_load_imap_queries_invalid(tmp_path):
     cfg.write_text('imap_queries: 123')
     with pytest.raises(ValueError):
         load_imap_queries(str(cfg))
+
+def test_search_emails_excluding_processed_mock(monkeypatch):
+    class FakeIMAP:
+        def select(self, mailbox):
+            assert mailbox == 'INBOX'
+            return ('OK', [b''])
+        def search(self, charset, query):
+            queries = ["UNSEEN NOT KEYWORD \"[AI-Processed]\"", "FROM alice@example.com NOT KEYWORD \"[AI-Processed]\""]
+            assert query in queries
+            if "UNSEEN" in query:
+                return ('OK', [b'1 2'])
+            elif "FROM" in query:
+                return ('OK', [b'3'])
+            return ('NO', [])
+    fake_imap = FakeIMAP()
+    uids = search_emails_excluding_processed(fake_imap, ['UNSEEN', 'FROM alice@example.com'])
+    assert set(uids) == {b'1', b'2', b'3'}
