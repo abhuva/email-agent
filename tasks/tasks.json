@@ -555,7 +555,7 @@
       "id": 8,
       "title": "Implement main processing loop",
       "description": "Create the main processing loop that orchestrates the email fetching, AI processing, and tagging",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3,
         5,
@@ -570,7 +570,7 @@
           "id": 1,
           "title": "Implement email fetching with AIProcessed exclusion",
           "description": "Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged with AIProcessed flag, and return a list of email objects for processing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAG AIProcessed' (FLAG is for custom flags). Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found.\n\n<info added on 2026-01-05T23:05:05.922Z>\nThe subtask has already been updated with most of the requested changes. The title now uses \"AIProcessed exclusion\" without brackets, the description uses \"AIProcessed\" without brackets, and the details already specify \"NOT FLAG AIProcessed\" as the correct IMAP search query syntax.\n\nThe only additional information to add would be:\n\n\"The fetch_emails function should use the processed_tag value from config.yaml rather than hardcoding 'AIProcessed'. This ensures consistency if the tag name changes in the future. When implementing the IMAP search query, remember that custom flags require the FLAG command, while system flags like \\Seen use FLAGGED.\"\n</info added on 2026-01-05T23:05:05.922Z>"
         },
@@ -578,7 +578,7 @@
           "id": 2,
           "title": "Implement per-email AI processing with error isolation",
           "description": "Create a function to process individual emails via AI API, handling failures gracefully without stopping the loop.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -588,7 +588,7 @@
           "id": 3,
           "title": "Implement AI response-based tagging logic",
           "description": "Add logic to parse AI responses and apply appropriate IMAP flags to processed emails.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -598,7 +598,7 @@
           "id": 4,
           "title": "Implement main loop orchestration and error handling",
           "description": "Assemble the main processing loop that fetches emails, processes each sequentially, handles overall errors, and ensures loop completion.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -610,7 +610,7 @@
           "id": 5,
           "title": "Implement analytics summary generation and logging",
           "description": "Track metrics throughout processing and generate/log a summary report at end of each run.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
