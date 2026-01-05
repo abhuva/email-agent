@@ -20,7 +20,9 @@ A robust logging system is required to ensure reliability, traceability, and aud
 4. **Analytics summary** (✅ done):
     - analytics.py generates a valid JSONL summary of the log file at run end, including count by log level and edge case handling
     - Tests are passing for analytics file structure, metrics, and edge scenarios
-5. **Configuration/integration**: Logging config section, easy integration points in main, shutdown hook for summaries, helpers
+5. **Configuration/integration** (✅ done):
+    - logger and analytics system are now integrated into CLI startup/shutdown
+    - All file/config paths are inferred from config.yaml, global logger access is established, and program shutdown triggers analytics write
 
 ## TDD Approach
 - Add, then incrementally resolve, failing tests for every new behavior.

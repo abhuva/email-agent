@@ -1,6 +1,9 @@
 import argparse
 import sys
 from src.config import ConfigManager, ConfigError
+from src.logger import LoggerFactory
+from src.analytics import generate_analytics
+import atexit
 
 def main():
     parser = argparse.ArgumentParser(
@@ -13,8 +16,16 @@ def main():
 
     try:
         config = ConfigManager(args.config, args.env)
-        print("Configuration loaded and validated successfully.")
-        # Placeholder for further CLI logic
+        logger = LoggerFactory.create_logger(
+            level=config.log_level,
+            log_file=config.log_file,
+            console=True
+        )
+        logger.info("Configuration loaded and validated successfully.")
+
+        atexit.register(lambda: generate_analytics(config.log_file, config.analytics_file))
+        logger.info("Logging system fully initialized. Ready for further operations.")
+        # Main pipeline would continue from here (IMAP, OpenRouter, etc)
     except ConfigError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
         sys.exit(1)
