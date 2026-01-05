@@ -5,9 +5,12 @@ import yaml
 from typing import List, Dict, Any
 import email
 from email.header import decode_header
+import time
 
 class IMAPConnectionError(Exception):
-    """Raised when IMAP connection fails."""
+    pass
+
+class IMAPFetchError(Exception):
     pass
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
@@ -84,7 +87,6 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
         subject = decode_mime_header(msg.get('Subject'))
         sender = decode_mime_header(msg.get('From'))
         date = decode_mime_header(msg.get('Date'))
-        # Parse body, handling multipart
         body = ''
         if msg.is_multipart():
             for part in msg.walk():
@@ -110,3 +112,44 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
         })
     logging.info(f"Parsed {len(parsed)} emails.")
     return parsed
+
+# MAIN FETCH ORCHESTRATOR
+
+def fetch_emails(
+    host: str, user: str, password: str,
+    queries: List[str],
+    processed_tag: str = '[AI-Processed]',
+    max_retries: int = 3,
+    timeout: int = 30
+) -> List[Dict[str, Any]]:
+    """High-level function to orchestrate config loading, connecting, searching, fetching, and parsing."""
+    attempt = 0
+    while attempt < max_retries:
+        attempt += 1
+        try:
+            logging.info(f"Connecting to IMAP server (attempt {attempt})...")
+            imap = connect_imap(host, user, password)
+            # Set global timeout for IMAP socket
+            imap.sock.settimeout(timeout)
+            try:
+                ids = search_emails_excluding_processed(imap, queries, processed_tag)
+                emails = fetch_and_parse_emails(imap, ids)
+                logging.info(f"Fetched and parsed {len(emails)} emails.")
+                return emails
+            finally:
+                try:
+                    imap.logout()
+                except Exception:
+                    pass
+        except IMAPConnectionError as e:
+            logging.error(f"Attempt {attempt} - IMAP connection/search failed: {e}")
+            if attempt < max_retries:
+                sleep_secs = 2 ** attempt
+                logging.info(f"Retrying in {sleep_secs}s...")
+                time.sleep(sleep_secs)
+            else:
+                logging.error(f"All retry attempts failed. Raising IMAPFetchError.")
+                raise IMAPFetchError(f"Failed after {max_retries} attempts: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error during IMAP workflow: {e}")
+            raise IMAPFetchError(f"Unexpected error during IMAP: {e}")

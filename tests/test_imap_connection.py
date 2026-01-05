@@ -1,6 +1,6 @@
 import pytest
 import os
-from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries, search_emails_excluding_processed, fetch_and_parse_emails
+from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries, search_emails_excluding_processed, fetch_and_parse_emails, fetch_emails, IMAPFetchError
 
 @pytest.fixture
 def dummy_creds():
@@ -69,3 +69,10 @@ def test_fetch_and_parse_emails_mock(monkeypatch):
     assert results[0]['subject'] == 'Test Subject'
     assert results[0]['sender'] == 'test@sender.com'
     assert 'Hello World' in results[0]['body']
+
+def test_fetch_emails_all_errors(monkeypatch):
+    # Patch connect_imap to always fail for TDD
+    from src import imap_connection
+    monkeypatch.setattr(imap_connection, 'connect_imap', lambda *a, **k: (_ for _ in ()).throw(IMAPConnectionError('fail')))
+    with pytest.raises(IMAPFetchError):
+        fetch_emails('host', 'user', 'pw', ['ANY'])
