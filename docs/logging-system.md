@@ -54,6 +54,12 @@ logger.info("Test log message")
 {"timestamp": "2025-07-01T12:34:56", "total_processed": 13, "level_counts": {"INFO": 12, "ERROR": 1}, "tags_applied": {}}
 ```
 
+### Analytics Summary Implementation
+- `generate_analytics(log_file, analytics_file)` parses the configured log file and generates a JSON summary of log events.
+- Summary includes processed count, per-level breakdown, and any additional collected data.
+- Called on shutdown in CLI to ensure every run produces a summary record.
+- The analytics file is appended for each run (JSONL format).
+
 ## 6. Integration & Usage Patterns
 - Logger and analytics system initialized in CLI startup.
 - Graceful shutdown hooks trigger analytics on exit.
