@@ -2,6 +2,7 @@ import os
 import shutil
 import pytest
 from src.prompt_loader import find_markdown_files, parse_markdown_frontmatter, markdown_to_plain_text, process_prompt_content, load_prompts
+import logging
 
 @pytest.fixture
 def prompt_dir_with_files(tmp_path):
@@ -78,3 +79,19 @@ def test_load_prompts(tmp_path):
     assert any(x['prompt_text'].startswith('Prompt') for x in loaded)
     assert any(x['filename'].endswith('a.md') for x in loaded)
     assert len(loaded) >= 1
+
+def test_load_prompts_handles_file_not_found_and_yaml_error(tmp_path, caplog):
+    # Setup a file, then remove it before load_prompts
+    md_path = tmp_path / 'gone.md'
+    md_path.write_text("---\ntitle: Vanish\n---\nPrompt content")
+    os.remove(md_path)
+    # Corrupt YAML
+    corrupt_path = tmp_path / 'bad.md'
+    corrupt_path.write_text("---\nyaml: [::bad::\n---\nrest")
+    with caplog.at_level(logging.WARNING):
+        loaded = load_prompts(str(tmp_path))
+        # Should skip both files, not error out
+        assert isinstance(loaded, list)
+        # Both files should log warnings, not crash
+        warn_msgs = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
+        assert any('Prompt file not found' in m or 'Failed YAML parsing' in m for m in warn_msgs)

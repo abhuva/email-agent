@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Implement Markdown prompt loading and parsing
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: medium
 # Description: Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter
@@ -17,25 +17,25 @@ Test parsing with various Markdown files containing different frontmatter struct
 ### Details:
 Read config to get prompt directory paths. Use filesystem APIs (fs.readFileSync or equivalent) to scan directories for .md files. Return array of file paths. Handle empty directories gracefully by returning empty array.
 
-## 2. Implement YAML frontmatter parser [pending]
+## 2. Implement YAML frontmatter parser [done]
 ### Dependencies: 4.1
 ### Description: Create a parser that extracts YAML frontmatter from Markdown content and separates metadata from body.
 ### Details:
 Detect YAML frontmatter delimited by '---'. Extract content between first and second '---'. Use YAML library (js-yaml, YamlDotNet, etc based on language) to parse metadata. Return object with {metadata, content} properties. Handle missing frontmatter by returning empty metadata object.
 
-## 3. Implement Markdown content processor for AI prompts [pending]
+## 3. Implement Markdown content processor for AI prompts [done]
 ### Dependencies: 4.1, 4.2
 ### Description: Convert parsed Markdown body content into AI prompt format.
 ### Details:
 Use Markdown parser (marked, Markdig, remark, goldmark) to convert Markdown to plain text or HTML. Strip unnecessary formatting for AI consumption. Preserve important structure like headings, lists. Combine metadata with processed content into prompt object structure.
 
-## 4. Implement complete prompt loading pipeline [pending]
+## 4. Implement complete prompt loading pipeline [done]
 ### Dependencies: 4.1, 4.2, 4.3
 ### Description: Orchestrate file loading, parsing, and processing into single loadPrompts() function.
 ### Details:
 Create main function that: 1) loads file paths, 2) reads and parses each file, 3) processes content, 4) returns array of complete prompt objects. Each prompt object should contain metadata and processed content. Cache results if needed but support reload.
 
-## 5. Implement error handling and reload functionality [pending]
+## 5. Implement error handling and reload functionality [done]
 ### Dependencies: 4.4
 ### Description: Add comprehensive error handling and automatic reload on each run.
 ### Details:

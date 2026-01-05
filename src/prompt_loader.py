@@ -65,23 +65,34 @@ def process_prompt_content(doc: Dict[str, Any]) -> Dict[str, Any]:
     result['prompt_text'] = prompt_text
     return result
 
-def load_prompts(prompt_dir: str) -> List[Dict[str, Any]]:
+def load_prompts(prompt_dir: str, reload: bool = True) -> List[Dict[str, Any]]:
     """
     Orchestrated pipeline: loads all prompts from a directory, parses frontmatter, processes content.
     Returns a list of dicts with keys: 'metadata', 'content', 'prompt_text'.
     Logs and skips files with failures but continues loading others.
+    If reload=True (default), always reloads from disk; parameter included for API clarity.
     """
-    prompt_files = find_markdown_files(prompt_dir)
+    prompt_files = find_markdown_files(prompt_dir) if reload else []
     loaded = []
     for file in prompt_files:
         try:
-            with open(file, encoding='utf-8') as f:
-                raw = f.read()
+            try:
+                with open(file, encoding='utf-8') as f:
+                    raw = f.read()
+            except FileNotFoundError as fnf:
+                logging.warning(f"Prompt file not found: {file} ({fnf})")
+                continue
+            except Exception as fe:
+                logging.error(f"Failed to open prompt file {file}: {fe}")
+                continue
             doc = parse_markdown_frontmatter(raw)
             doc_proc = process_prompt_content(doc)
             doc_proc['filename'] = file
             loaded.append(doc_proc)
             logging.info(f"Loaded prompt: {file}")
+        except yaml.YAMLError as ye:
+            logging.warning(f"Failed YAML parsing in {file}: {ye}")
         except Exception as e:
-            logging.warning(f"Failed to load prompt file {file}: {e}")
+            logging.warning(f"Failed to process prompt file {file}: {e}")
     return loaded
+

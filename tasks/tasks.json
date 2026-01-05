@@ -286,7 +286,7 @@
       "id": 4,
       "title": "Implement Markdown prompt loading and parsing",
       "description": "Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -306,7 +306,7 @@
           "id": 2,
           "title": "Implement YAML frontmatter parser",
           "description": "Create a parser that extracts YAML frontmatter from Markdown content and separates metadata from body.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -316,7 +316,7 @@
           "id": 3,
           "title": "Implement Markdown content processor for AI prompts",
           "description": "Convert parsed Markdown body content into AI prompt format.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -327,7 +327,7 @@
           "id": 4,
           "title": "Implement complete prompt loading pipeline",
           "description": "Orchestrate file loading, parsing, and processing into single loadPrompts() function.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -339,7 +339,7 @@
           "id": 5,
           "title": "Implement error handling and reload functionality",
           "description": "Add comprehensive error handling and automatic reload on each run.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -410,6 +410,15 @@
             4
           ],
           "details": "Wrap `send_prompt` with `@retry` decorator (use `tenacity` library). Configure exponential backoff: `stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=10)`. Catch specific errors: `openai.RateLimitError` (wait longer), `openai.APIConnectionError` (retry), `openai.InvalidRequestError` (raise). Log all errors with `logging.error`. Add circuit breaker pattern for repeated failures."
+        },
+        {
+          "id": 6,
+          "title": "Verify live OpenRouter API call using OpenRouterClient example",
+          "description": "Run a live API call using the OpenRouterClient example code in src/openrouter_client.py with environment credentials. Verify authentication, API responses, and error handling. This test should be performed before marking the full OpenRouter integration task as complete. Log any issues and confirm with a valid OpenAI-compatible prompt.",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 5
         }
       ]
     },
