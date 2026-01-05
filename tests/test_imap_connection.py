@@ -1,10 +1,9 @@
 import pytest
 import os
-from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries, search_emails_excluding_processed
+from src.imap_connection import connect_imap, IMAPConnectionError, load_imap_queries, search_emails_excluding_processed, fetch_and_parse_emails
 
 @pytest.fixture
 def dummy_creds():
-    # These credentials should NOT work. Safe for failure by design.
     return {'host': 'imap.example.com','user': 'no-such-user','password': 'wrong-password','port': 993}
 
 @pytest.fixture
@@ -53,3 +52,20 @@ def test_search_emails_excluding_processed_mock(monkeypatch):
     fake_imap = FakeIMAP()
     uids = search_emails_excluding_processed(fake_imap, ['UNSEEN', 'FROM alice@example.com'])
     assert set(uids) == {b'1', b'2', b'3'}
+
+def test_fetch_and_parse_emails_mock(monkeypatch):
+    class FakeIMAP:
+        def fetch(self, msg_id, _):
+            assert msg_id in [b'42']
+            from email.message import EmailMessage
+            em = EmailMessage()
+            em['Subject'] = 'Test Subject'
+            em['From'] = 'test@sender.com'
+            em['Date'] = 'Wed, 21 Jun 2023 09:00:00 +0000'
+            em.set_content("Hello World\nLine2")
+            return ('OK', [(None, em.as_bytes())])
+    fake_imap = FakeIMAP()
+    results = fetch_and_parse_emails(fake_imap, [b'42'])
+    assert results[0]['subject'] == 'Test Subject'
+    assert results[0]['sender'] == 'test@sender.com'
+    assert 'Hello World' in results[0]['body']

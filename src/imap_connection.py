@@ -2,25 +2,15 @@ import imaplib
 import os
 import logging
 import yaml
-from typing import List
+from typing import List, Dict, Any
+import email
+from email.header import decode_header
 
 class IMAPConnectionError(Exception):
     """Raised when IMAP connection fails."""
     pass
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
-    """
-    Establish a secure IMAP connection.
-    Args:
-        host (str): IMAP server hostname
-        user (str): IMAP username
-        password (str): IMAP password
-        port (int): IMAP SSL port (default: 993)
-    Returns:
-        imaplib.IMAP4_SSL: connected IMAP client
-    Raises:
-        IMAPConnectionError: if authentication or connection fails
-    """
     try:
         imap = imaplib.IMAP4_SSL(host, port)
         imap.login(user, password)
@@ -34,14 +24,12 @@ def connect_imap(host: str, user: str, password: str, port: int = 993):
         raise IMAPConnectionError(f"IMAP connection failed: {e}")
 
 def load_imap_queries(config_path: str = "config/config.yaml"):
-    """Load and validate IMAP queries from config.yaml."""
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     queries = config.get('imap_queries')
     if not queries:
-        # fallback to 'imap_query' key for backwards compatibility
         query = config.get('imap_query')
         if query:
             queries = [query]
@@ -56,23 +44,10 @@ def load_imap_queries(config_path: str = "config/config.yaml"):
     return queries
 
 def search_emails_excluding_processed(imap, queries: List[str], processed_tag: str = '[AI-Processed]') -> List[bytes]:
-    """
-    Search INBOX for emails matching queries, excluding those with [AI-Processed] tag.
-    Args:
-        imap: Connected IMAP4_SSL instance
-        queries: List of IMAP search query strings
-        processed_tag: The tag to exclude (default: '[AI-Processed]')
-    Returns:
-        List of email message UIDs as bytes
-    Raises:
-        IMAPConnectionError if search fails
-    """
     try:
         imap.select('INBOX')
         all_ids = set()
         for q in queries:
-            # Exclude processed_tag: Use NOT KEYWORD (for Gmail: X-GM-LABELS for other providers)
-            # IMAP syntax: '(%s NOT KEYWORD "%s")' % (q, processed_tag)
             status, data = imap.search(None, f'{q} NOT KEYWORD "{processed_tag}"')
             if status != 'OK':
                 logging.error(f"IMAP search failed on query: {q}")
@@ -84,3 +59,54 @@ def search_emails_excluding_processed(imap, queries: List[str], processed_tag: s
     except Exception as e:
         logging.error(f"IMAP search failed: {e}")
         raise IMAPConnectionError(f"IMAP search failed: {e}")
+
+def decode_mime_header(header) -> str:
+    if not header:
+        return ''
+    parts = decode_header(header)
+    decoded = ''
+    for part, enc in parts:
+        if isinstance(part, bytes):
+            decoded += part.decode(enc or 'utf-8', errors='replace')
+        else:
+            decoded += str(part)
+    return decoded
+
+def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
+    parsed = []
+    for msg_id in msg_ids:
+        typ, data = imap.fetch(msg_id, '(RFC822)')
+        if typ != 'OK':
+            logging.error(f'Failed to fetch msg id {msg_id}: {data}')
+            continue
+        raw_email = data[0][1]
+        msg = email.message_from_bytes(raw_email)
+        subject = decode_mime_header(msg.get('Subject'))
+        sender = decode_mime_header(msg.get('From'))
+        date = decode_mime_header(msg.get('Date'))
+        # Parse body, handling multipart
+        body = ''
+        if msg.is_multipart():
+            for part in msg.walk():
+                ctype = part.get_content_type()
+                disp = part.get('Content-Disposition')
+                if ctype == 'text/plain' and disp != 'attachment':
+                    charset = part.get_content_charset() or 'utf-8'
+                    body = part.get_payload(decode=True).decode(charset, errors='replace')
+                    break
+        else:
+            charset = msg.get_content_charset() or 'utf-8'
+            body = msg.get_payload(decode=True)
+            if isinstance(body, bytes):
+                body = body.decode(charset, errors='replace')
+            elif not isinstance(body, str):
+                body = ''
+        parsed.append({
+            'id': msg_id,
+            'subject': subject,
+            'sender': sender,
+            'body': body,
+            'date': date,
+        })
+    logging.info(f"Parsed {len(parsed)} emails.")
+    return parsed
