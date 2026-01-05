@@ -622,7 +622,7 @@
       "id": 9,
       "title": "Implement CLI interface",
       "description": "Create a command-line interface for running the agent with various options",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         8
       ],
