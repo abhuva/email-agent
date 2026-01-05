@@ -2,3 +2,4 @@ pytest
 python-dotenv
 pyyaml
 requests
+beautifulsoup4
