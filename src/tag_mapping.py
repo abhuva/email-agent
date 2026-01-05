@@ -9,9 +9,28 @@ ALLOWED_KEYWORDS = {"urgent", "neutral", "spam"}
 
 def extract_keyword(ai_response: str) -> str:
     """
-    Extract the single allowed keyword ('urgent', 'neutral', 'spam') from AI response.
-    - Accepts only exact matches (case-insensitive, whitespace trimmed, stripping non-alpha chars from first token)
-    - If not recognized, returns 'neutral' (safe fallback)
+    Extract the single allowed keyword from AI response.
+    
+    Extracts one of the allowed keywords ('urgent', 'neutral', 'spam') from the AI's
+    response string. Performs case-insensitive matching and strips non-alphabetic
+    characters from the first token. Always returns a valid keyword, defaulting to
+    'neutral' if no match is found (safe fallback).
+    
+    Args:
+        ai_response: Raw response string from AI (may contain extra text)
+        
+    Returns:
+        One of: 'urgent', 'neutral', or 'spam' (always 'neutral' if no match)
+        
+    Example:
+        >>> extract_keyword("urgent")
+        'urgent'
+        >>> extract_keyword("Urgent!!!")
+        'urgent'
+        >>> extract_keyword("This is spam")
+        'spam'
+        >>> extract_keyword("unknown response")
+        'neutral'
     """
     if not ai_response:
         return "neutral"
@@ -28,9 +47,27 @@ def extract_keyword(ai_response: str) -> str:
 
 def map_keyword_to_tags(keyword: str, tag_mapping: Dict[str, str]) -> List[str]:
     """
-    Map the extracted keyword to IMAP tag(s) using the config-provided mapping (case-insensitive)
-    - Always returns a list (for eventual [AI-Processed] append)
-    - Defaults to neutral tag if not found
+    Map extracted keyword to IMAP tag names using configuration mapping.
+    
+    Maps a keyword ('urgent', 'neutral', 'spam') to the corresponding IMAP tag name
+    from the configuration. Performs case-insensitive lookup. If the keyword is not
+    found in the mapping, falls back to the 'neutral' tag. Always returns a list
+    (even if empty) for consistency with tagging operations.
+    
+    Args:
+        keyword: Extracted keyword ('urgent', 'neutral', or 'spam')
+        tag_mapping: Dictionary mapping keywords to IMAP tag names
+                    (e.g., {'urgent': 'Urgent', 'neutral': 'Neutral', 'spam': 'Spam'})
+        
+    Returns:
+        List containing the IMAP tag name, or empty list if mapping fails
+        
+    Example:
+        >>> mapping = {'urgent': 'Urgent', 'neutral': 'Neutral', 'spam': 'Spam'}
+        >>> map_keyword_to_tags('urgent', mapping)
+        ['Urgent']
+        >>> map_keyword_to_tags('unknown', mapping)
+        ['Neutral']  # Falls back to neutral
     """
     key = keyword.lower()
     mapped = tag_mapping.get(key)
