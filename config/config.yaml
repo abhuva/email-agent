@@ -4,6 +4,11 @@ imap:
   port: 143
   username: 'marc.bielert@nica.network'
   password_env: 'IMAP_PASSWORD'
+# IMAP search queries (list of IMAP search criteria)
+# Default: ['UNSEEN'] - fetches unread emails
+# The processed_tag exclusion is automatically added
+imap_queries:
+  - 'UNSEEN'
 prompt_file: 'config/prompt.md'
 tag_mapping:
   urgent: 'Urgent'

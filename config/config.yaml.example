@@ -7,6 +7,16 @@ imap:
   username: 'your-email@example.com'   # Your email address
   password_env: 'IMAP_PASSWORD'        # Environment variable name for password
 
+# IMAP search queries (list of IMAP search criteria)
+# Examples:
+#   - 'UNSEEN'           # Unread emails (default)
+#   - 'ALL'              # All emails
+#   - 'FROM "sender@example.com"'  # From specific sender
+#   - 'SUBJECT "important"'        # With specific subject
+# The processed_tag exclusion (AIProcessed) is automatically added to exclude already processed emails
+imap_queries:
+  - 'UNSEEN'
+
 # Path to the Markdown prompt file used for AI classification
 prompt_file: 'config/prompt.md'
 
