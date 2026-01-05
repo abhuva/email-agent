@@ -19,12 +19,26 @@ The system modularizes logging code into `logger.py` (core factory), `analytics.
 - Output capture helpers are used for console log collection.
 - TDD: Every core behavior (log to console/file, structure, analytics) covered by initial failing and then passing tests.
 
+### Example Test Fixture Usage
+```python
+from tests.test_logging import temp_logfile
+
+def test_log_output():
+    with temp_logfile() as logfile:
+        # ... test with that log file
+        pass
+```
+
+### Isolation Principle
+- Tests must not produce or consume real logs in production locations.
+- Each test run is clean and does not overlap outputs.
+
 ## 4. Core Implementation
 - `LoggerFactory` creates and configures loggers with file/console handlers, formats.
 - Each log message includes timestamp (ISO 8601), unique message ID.
 - Log levels (INFO, DEBUG, etc.) are enforced; filtering verified by tests.
-- Examples (to be filled after API usage):
 
+### Usage Example
 ```python
 from src.logger import LoggerFactory
 logger = LoggerFactory.create_logger(level='INFO', log_file='out.log')
