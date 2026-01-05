@@ -8,6 +8,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from config import ConfigManager
 
 class OpenRouterAPIError(Exception):
+    """
+    Raised when OpenRouter API calls fail.
+    
+    This exception is raised for:
+    - HTTP errors (4xx, 5xx status codes)
+    - Invalid JSON responses
+    - Network/connection errors
+    - Rate limiting (429 status code)
+    """
     pass
 
 def get_openrouter_headers(api_key: str) -> Dict[str, str]:

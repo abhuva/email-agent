@@ -1,0 +1,42 @@
+# Example configuration for email-agent
+# Copy this file to config.yaml and customize for your setup
+
+imap:
+  server: 'imap.example.com'          # Your IMAP server hostname
+  port: 993                            # IMAP port (993 for SSL, 143 for STARTTLS)
+  username: 'your-email@example.com'   # Your email address
+  password_env: 'IMAP_PASSWORD'        # Environment variable name for password
+
+# Path to the Markdown prompt file used for AI classification
+prompt_file: 'config/prompt.md'
+
+# Mapping from AI response keywords to IMAP tag names
+tag_mapping:
+  urgent: 'Urgent'    # Tag for urgent/important emails
+  neutral: 'Neutral'  # Default/fallback tag
+  spam: 'Spam'        # Tag for spam emails
+
+# Tag name for emails that have been processed by the AI
+processed_tag: 'AIProcessed'
+
+# Maximum characters to send to AI (truncates longer emails)
+max_body_chars: 4000
+
+# Maximum number of emails to process per run
+max_emails_per_run: 15
+
+# Logging configuration
+log_file: 'logs/agent.log'            # Path to log file
+log_level: 'INFO'                     # Log level: DEBUG, INFO, WARNING, ERROR
+analytics_file: 'logs/analytics.jsonl' # Path to analytics JSONL file
+
+# OpenRouter API configuration
+openrouter:
+  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name for API key
+  api_url: 'https://openrouter.ai/api/v1'
+  # Model to use (optional, defaults to openai/gpt-3.5-turbo if not specified)
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  # Alternative models you can use:
+  # model: 'openai/gpt-3.5-turbo'
+  # model: 'openai/gpt-4o-mini'
+  # model: 'anthropic/claude-3-haiku'

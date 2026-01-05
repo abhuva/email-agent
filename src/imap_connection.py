@@ -9,13 +9,37 @@ import time
 from contextlib import contextmanager
 
 class IMAPConnectionError(Exception):
+    """
+    Raised when IMAP connection or authentication fails.
+    
+    This exception is raised for:
+    - Connection failures (network, SSL/TLS errors)
+    - Authentication failures (invalid credentials)
+    - Mailbox selection failures
+    """
     pass
+
 
 class IMAPFetchError(Exception):
+    """
+    Raised when IMAP email fetching or operations fail.
+    
+    This exception is raised for:
+    - Search query failures
+    - Email fetch failures
+    - Flag/tagging operation failures
+    - Retry exhaustion after multiple attempts
+    """
     pass
 
+
 class IMAPKeywordsNotSupportedError(Exception):
-    """Raised when IMAP server doesn't support KEYWORDS capability"""
+    """
+    Raised when IMAP server doesn't support KEYWORDS capability.
+    
+    Note: This exception is deprecated as the codebase now uses FLAGS
+    instead of KEYWORDS for better compatibility.
+    """
     pass
 
 # ... existing functions (connect_imap, load_imap_queries, etc.) ...
