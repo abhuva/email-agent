@@ -491,7 +491,7 @@
       "id": 7,
       "title": "Implement email body truncation",
       "description": "Create functionality to truncate email bodies to a configurable maximum length",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3
       ],
@@ -543,7 +543,7 @@
           "id": 5,
           "title": "Add truncation indicator, AI-safety validation, and integration tests",
           "description": "Finalize with comprehensive testing ensuring safe truncation for AI processing and proper indicator display.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],

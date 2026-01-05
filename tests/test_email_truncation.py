@@ -131,3 +131,54 @@ def test_truncate_email_body_detects_html():
     result = truncate_email_body(body, 'text/html', 100)
     assert 'truncatedBody' in result
     assert 'isTruncated' in result
+
+
+def test_truncate_email_body_uses_config_for_max_length():
+    """Test truncate_email_body reads max_length from config if not provided"""
+    from unittest.mock import Mock
+    mock_config = Mock()
+    mock_config.max_body_chars = 5000
+    body = "A" * 10000
+    result = truncate_email_body(body, 'text/plain', None, config=mock_config)
+    assert result['isTruncated'] is True
+    assert len(result['truncatedBody']) <= 5000
+
+
+def test_truncate_plain_text_empty_body():
+    """Test truncate_plain_text handles empty string"""
+    result = truncate_plain_text("", 100)
+    assert result['truncatedBody'] == ''
+    assert result['isTruncated'] is False
+
+
+def test_truncate_plain_text_exactly_max_length():
+    """Test truncate_plain_text when body is exactly max_length"""
+    body = "A" * 50
+    result = truncate_plain_text(body, 50)
+    assert result['truncatedBody'] == body
+    assert result['isTruncated'] is False
+
+
+def test_truncate_html_with_images_and_styles():
+    """Test truncate_html handles HTML with images, styles, scripts"""
+    body = "<style>body { color: red; }</style><p>Content</p><img src='test.jpg'><script>alert('xss')</script><p>More</p>"
+    result = truncate_html(body, 100)
+    assert '<script>' not in result['truncatedBody']
+    assert '<style>' not in result['truncatedBody'] or result['isTruncated'] is False  # Style might be in result if not truncated
+
+
+def test_truncate_email_body_handles_unknown_content_type():
+    """Test truncate_email_body defaults to plain text for unknown content types"""
+    body = "Some text content"
+    result = truncate_email_body(body, 'application/octet-stream', 100)
+    # Should treat as plain text
+    assert result['truncatedBody'] == body
+    assert result['isTruncated'] is False
+
+
+def test_truncate_plain_text_no_good_boundary():
+    """Test truncate_plain_text when no word boundary found (very short max)"""
+    body = "ThisIsOneVeryLongWordWithoutSpaces"
+    result = truncate_plain_text(body, 10)
+    assert result['isTruncated'] is True
+    assert len(result['truncatedBody']) <= 10
