@@ -83,7 +83,7 @@
       "id": 2,
       "title": "Implement logging system",
       "description": "Create a comprehensive logging system with console and file outputs, supporting info and debug modes",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -220,7 +220,7 @@
       "id": 3,
       "title": "Implement IMAP connection and email fetching",
       "description": "Create functionality to connect to an IMAP server and fetch emails based on configurable query",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1,
         2
@@ -233,7 +233,7 @@
           "id": 1,
           "title": "Implement IMAP connection with .env credentials",
           "description": "Create a function to establish secure IMAP connection using credentials loaded from .env file with proper error handling and logging.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use `python-dotenv` to load `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD` from .env. Implement `connect_imap()` function using `imaplib.IMAP4_SSL(host, port=993)`. Add `login(username, password)` call. Wrap in try-except for `imaplib.IMAP4.error` and socket errors. Use `logging` module to log connection success/failure. Ensure `logout()` and `close()` in finally block. Test with Gmail (`imap.gmail.com:993`)[1][2][4]."
         },
@@ -241,7 +241,7 @@
           "id": 2,
           "title": "Load and parse configurable IMAP queries from config.yaml",
           "description": "Implement YAML configuration loading and query parsing logic for IMAP search criteria.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use `PyYAML` to load `config.yaml` containing `imap_queries: [query1, query2]` structure. Create `load_imap_queries()` function returning list of query strings. Validate queries are valid IMAP search criteria (e.g., 'UNSEEN', 'FROM \"sender\"'). Add logging for loaded queries. Ensure queries can be modified without code changes."
         },
@@ -249,7 +249,7 @@
           "id": 3,
           "title": "Implement IMAP search excluding [AI-Processed] tagged emails",
           "description": "Create search function that selects INBOX and executes configurable queries while filtering out emails with [AI-Processed] flag.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -260,7 +260,7 @@
           "id": 4,
           "title": "Implement email fetching and parsing functionality",
           "description": "Fetch raw email messages and parse to extract subject, sender, body, date, and flags using email.parser.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             3
@@ -271,7 +271,7 @@
           "id": 5,
           "title": "Create main orchestrator with comprehensive error handling",
           "description": "Implement high-level `fetch_emails()` function integrating all components with retry logic and full error recovery.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -298,7 +298,7 @@
           "id": 1,
           "title": "Implement Markdown file loader from config paths",
           "description": "Create a function to read Markdown files from directory paths specified in the application config.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Read config to get prompt directory paths. Use filesystem APIs (fs.readFileSync or equivalent) to scan directories for .md files. Return array of file paths. Handle empty directories gracefully by returning empty array."
         },

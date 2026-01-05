@@ -1,15 +1,10 @@
 import os
-from typing import List
+from typing import List, Tuple, Dict, Any
 import logging
+import re
+import yaml
 
 def find_markdown_files(prompt_dir: str) -> List[str]:
-    """
-    Find all .md files in directory and return a list of absolute file paths.
-    Args:
-        prompt_dir (str): Directory path to search for markdown prompt files.
-    Returns:
-        List[str]: List of prompt markdown file paths (absolute).
-    """
     if not os.path.isdir(prompt_dir):
         logging.warning(f"Prompt directory not found: {prompt_dir}")
         return []
@@ -20,3 +15,24 @@ def find_markdown_files(prompt_dir: str) -> List[str]:
     ]
     logging.info(f"Found {len(files)} prompt markdown files in {prompt_dir}")
     return files
+
+FRONTMATTER_REGEX = re.compile(r'^---\s*\n(.*?)\n---\s*\n(.*)$', re.DOTALL)
+
+def parse_markdown_frontmatter(md: str) -> Dict[str, Any]:
+    """
+    Extract YAML frontmatter (as dict) and main content (as string) from Markdown string.
+    Returns a dict with 'metadata' and 'content'.
+    If no frontmatter detected, 'metadata' is empty and all content is in 'content'.
+    """
+    m = FRONTMATTER_REGEX.match(md)
+    if m:
+        front = m.group(1)
+        content = m.group(2)
+        try:
+            metadata = yaml.safe_load(front) or {}
+        except Exception as e:
+            logging.warning(f"Error parsing frontmatter: {e}")
+            metadata = {}
+        return {'metadata': metadata, 'content': content}
+    else:
+        return {'metadata': {}, 'content': md}

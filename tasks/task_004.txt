@@ -11,7 +11,7 @@ Implement functions to read Markdown files from paths specified in config. Parse
 Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files.
 
 # Subtasks:
-## 1. Implement Markdown file loader from config paths [pending]
+## 1. Implement Markdown file loader from config paths [done]
 ### Dependencies: None
 ### Description: Create a function to read Markdown files from directory paths specified in the application config.
 ### Details:
