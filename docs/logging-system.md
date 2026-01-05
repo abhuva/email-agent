@@ -60,11 +60,26 @@ logger.info("Test log message")
 - Called on shutdown in CLI to ensure every run produces a summary record.
 - The analytics file is appended for each run (JSONL format).
 
-## 6. Integration & Usage Patterns
-- Logger and analytics system initialized in CLI startup.
-- Graceful shutdown hooks trigger analytics on exit.
-- One true logger instance is shared across process for reliability.
-- Integration code in `src/cli.py`, examples provided above.
+## 6. Configuration and Integration Details
+- The YAML config (`config.yaml`) is the single source for logger and analytics file locations (keys: `log_file`, `log_level`, `analytics_file`).
+- CLI (`src/cli.py`) loads config and global logger instance at startup. Exit hook triggers analytics summary.
+- Example:
+```yaml
+log_file: "logs/agent.log"
+log_level: "INFO"
+analytics_file: "logs/analytics.jsonl"
+```
+
+### CLI/App Integration Code
+```python
+# src/cli.py
+logger = LoggerFactory.create_logger(...)
+logger.info("Started application")
+# At exit
+generate_analytics(config.log_file, config.analytics_file)
+```
+- Helper functions support common patterns (`LoggerFactory.create_logger`, `generate_analytics`).
+- Global logger access ensures traceability across all modules.
 
 ---
 
