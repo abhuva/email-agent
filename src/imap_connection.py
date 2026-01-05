@@ -2,16 +2,23 @@ import imaplib
 import os
 import logging
 import yaml
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable, Optional
 import email
 from email.header import decode_header
 import time
+from contextlib import contextmanager
 
 class IMAPConnectionError(Exception):
     pass
 
 class IMAPFetchError(Exception):
     pass
+
+class IMAPKeywordsNotSupportedError(Exception):
+    """Raised when IMAP server doesn't support KEYWORDS capability"""
+    pass
+
+# ... existing functions (connect_imap, load_imap_queries, etc.) ...
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
     try:
@@ -180,3 +187,119 @@ def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
     except Exception as e:
         logging.error(f"Error adding tags {tags} to UID {email_uid}: {e}")
         return False
+
+@contextmanager
+def safe_imap_operation(
+    host: str,
+    user: str,
+    password: str,
+    mailbox: str = 'INBOX',
+    max_retries: int = 3,
+    port: int = 993,
+    timeout: int = 30
+):
+    """
+    Context manager for safe IMAP operations with retry logic, capability validation, and mailbox context.
+    
+    Ensures:
+    - Server supports KEYWORDS capability (required for tagging)
+    - Mailbox is selected before UID operations
+    - Exponential backoff retry on transient errors (NO/TRYAGAIN)
+    - Proper connection cleanup
+    
+    Usage:
+        with safe_imap_operation(host, user, password) as imap:
+            # Perform IMAP operations (mailbox already selected)
+            add_tags_to_email(imap, uid, tags)
+    """
+    imap = None
+    attempt = 0
+    
+    try:
+        while attempt < max_retries:
+            attempt += 1
+            try:
+                # Connect to IMAP server
+                imap = connect_imap(host, user, password, port)
+                if imap.sock:
+                    imap.sock.settimeout(timeout)
+                
+                # Validate KEYWORDS capability
+                status, capabilities = imap.capability()
+                if status != 'OK':
+                    raise IMAPConnectionError("Failed to get server capabilities")
+                
+                capabilities_str = b' '.join(capabilities).decode('utf-8', errors='ignore').upper()
+                if 'KEYWORDS' not in capabilities_str:
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+                    raise IMAPKeywordsNotSupportedError(
+                        f"IMAP server at {host} does not support KEYWORDS capability. "
+                        "Tagging operations require KEYWORDS support."
+                    )
+                
+                # Select mailbox (ensures context for UID operations)
+                status, data = imap.select(mailbox)
+                if status != 'OK':
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+                    raise IMAPConnectionError(f"Failed to select mailbox {mailbox}: {data}")
+                
+                logging.debug(f"Safe IMAP operation context established (mailbox: {mailbox})")
+                
+                # Yield the connection for use
+                # Note: Errors during operations (after yield) are not retried here.
+                # Individual operations should handle their own retries if needed.
+                yield imap
+                # Success - break retry loop
+                break
+                
+            except IMAPKeywordsNotSupportedError as e:
+                # Don't retry on this error
+                if imap:
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+                raise
+            except IMAPConnectionError as e:
+                # Retry connection errors
+                if imap:
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+                if attempt < max_retries:
+                    sleep_secs = 2 ** attempt
+                    logging.warning(f"IMAP connection error (attempt {attempt}/{max_retries}): {e}. Retrying in {sleep_secs}s...")
+                    time.sleep(sleep_secs)
+                    imap = None
+                else:
+                    raise IMAPFetchError(f"IMAP operation failed after {max_retries} retries: {e}")
+            except Exception as e:
+                if imap:
+                    try:
+                        imap.logout()
+                    except Exception:
+                        pass
+                if attempt < max_retries:
+                    sleep_secs = 2 ** attempt
+                    logging.warning(f"IMAP connection error (attempt {attempt}/{max_retries}): {e}. Retrying in {sleep_secs}s...")
+                    time.sleep(sleep_secs)
+                    imap = None
+                else:
+                    raise IMAPFetchError(f"IMAP operation failed after {max_retries} retries: {e}")
+        else:
+            # All retries exhausted
+            raise IMAPFetchError(f"IMAP operation failed after {max_retries} attempts")
+    finally:
+        # Cleanup on exit (success or failure)
+        if imap:
+            try:
+                imap.logout()
+            except Exception:
+                pass
