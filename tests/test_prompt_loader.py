@@ -94,4 +94,6 @@ def test_load_prompts_handles_file_not_found_and_yaml_error(tmp_path, caplog):
         assert isinstance(loaded, list)
         # Both files should log warnings, not crash
         warn_msgs = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
-        assert any('Prompt file not found' in m or 'Failed YAML parsing' in m for m in warn_msgs)
+        # Check for actual warning messages: "Error parsing frontmatter" for YAML errors
+        # Note: removed file won't be in the list from find_markdown_files, so no warning for that
+        assert any('Error parsing frontmatter' in m or 'Failed to process' in m for m in warn_msgs)

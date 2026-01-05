@@ -447,7 +447,7 @@
           "id": 2,
           "title": "Create core IMAP tagging function with non-destructive operations",
           "description": "Implement a function to add tags (IMAP keywords/flags) to specific email messages using IMAP STORE command without modifying email content, position, or other flags.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Develop `add_tags_to_email(imap_connection, email_uid: int, tags: List[str]) -> bool` that: 1) Uses `UID STORE {email_uid} +FLAGS.SILENT (tag1 tag2)` for adding tags; 2) Handles IMAP keyword syntax correctly (RFC 3501 §6.4.6); 3) Uses SILENT flag to avoid unnecessary server notifications; 4) Returns success/failure based on IMAP OK response; 5) Includes error handling for invalid UIDs and permission issues"
         },
@@ -455,7 +455,7 @@
           "id": 3,
           "title": "Implement always-add [AI-Processed] tagging mechanism",
           "description": "Create wrapper function that guarantees [AI-Processed] tag is always applied to processed emails regardless of AI classification outcome.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2

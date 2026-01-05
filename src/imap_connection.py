@@ -113,8 +113,6 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
     logging.info(f"Parsed {len(parsed)} emails.")
     return parsed
 
-# MAIN FETCH ORCHESTRATOR
-
 def fetch_emails(
     host: str, user: str, password: str,
     queries: List[str],
@@ -153,3 +151,32 @@ def fetch_emails(
         except Exception as e:
             logging.error(f"Unexpected error during IMAP workflow: {e}")
             raise IMAPFetchError(f"Unexpected error during IMAP: {e}")
+
+def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
+    """
+    Add tags (IMAP keywords/flags) to a specific email message.
+    Uses UID STORE (RFC 3501 §6.4.6) with +FLAGS.SILENT to add tags non-destructively.
+    Returns True on OK, False on error.
+    Email UIDs are bytes or string.
+    Tags should be IMAP-compliant (escaped if needed).
+    """
+    try:
+        # Accept bytes or int, ensure string UID
+        if isinstance(email_uid, bytes):
+            uid_str = email_uid.decode()
+        elif isinstance(email_uid, int):
+            uid_str = str(email_uid)
+        else:
+            uid_str = str(email_uid)
+        # IMAP expects tags as a space-separated string, in parens
+        tagset = "(" + " ".join(tags) + ")"
+        result, data = imap.uid('STORE', uid_str, '+FLAGS.SILENT', tagset)
+        if result == 'OK':
+            logging.info(f"Added tags {tags} to email UID {uid_str}.")
+            return True
+        else:
+            logging.error(f"Failed to add tags {tags} to UID {uid_str}: {result} {data}")
+            return False
+    except Exception as e:
+        logging.error(f"Error adding tags {tags} to UID {email_uid}: {e}")
+        return False

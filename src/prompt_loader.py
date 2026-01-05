@@ -4,10 +4,7 @@ import logging
 import re
 import yaml
 import markdown
-from markdown.treeprocessors import Treeprocessor
-from markdown.extensions import Extension
-from io import StringIO
-
+from html import unescape
 
 def find_markdown_files(prompt_dir: str) -> List[str]:
     if not os.path.isdir(prompt_dir):
@@ -37,27 +34,20 @@ def parse_markdown_frontmatter(md: str) -> Dict[str, Any]:
     else:
         return {'metadata': {}, 'content': md}
 
-class MarkdownPlainTextExtractor(Treeprocessor):
-    def run(self, root):
-        text = StringIO()
-        self._extract_text(root, text)
-        return text.getvalue()
-
-    def _extract_text(self, node, text):
-        if node.text:
-            text.write(node.text)
-        for child in node:
-            self._extract_text(child, text)
-            if child.tail:
-                text.write(child.tail)
-
-class PlainTextExtension(Extension):
-    def extendMarkdown(self, md):
-        md.treeprocessors.register(MarkdownPlainTextExtractor(md), 'plaintext', 15)
-
 def markdown_to_plain_text(md_content: str) -> str:
-    md = markdown.Markdown(extensions=[PlainTextExtension()])
-    return md.convert(md_content)
+    """
+    Convert Markdown to plain text by converting to HTML first, then stripping HTML tags.
+    This preserves structure (headings, lists) while removing formatting.
+    """
+    # Convert markdown to HTML
+    html_content = markdown.markdown(md_content)
+    # Strip HTML tags, keeping text content
+    text = re.sub(r'<[^>]+>', '', html_content)
+    # Decode HTML entities
+    text = unescape(text)
+    # Normalize whitespace (multiple spaces/newlines to single space)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
 
 def process_prompt_content(doc: Dict[str, Any]) -> Dict[str, Any]:
     prompt_text = markdown_to_plain_text(doc['content'])
@@ -95,4 +85,3 @@ def load_prompts(prompt_dir: str, reload: bool = True) -> List[Dict[str, Any]]:
         except Exception as e:
             logging.warning(f"Failed to process prompt file {file}: {e}")
     return loaded
-
