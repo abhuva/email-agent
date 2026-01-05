@@ -72,6 +72,23 @@ def connect_imap(host: str, user: str, password: str, port: int = 993):
         raise IMAPConnectionError(f"IMAP connection failed: {e}")
 
 def load_imap_queries(config_path: str = "config/config.yaml"):
+    """
+    Load IMAP search queries from configuration file.
+    
+    Args:
+        config_path: Path to the YAML configuration file
+        
+    Returns:
+        List of IMAP search query strings
+        
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        ValueError: If queries are invalid (but not if missing - defaults to ['UNSEEN'])
+        
+    Note:
+        Defaults to ['UNSEEN'] if neither 'imap_queries' nor 'imap_query' is found.
+        This fetches unread emails, which is the most common use case.
+    """
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
     with open(config_path, 'r') as f:
@@ -82,7 +99,9 @@ def load_imap_queries(config_path: str = "config/config.yaml"):
         if query:
             queries = [query]
         else:
-            raise ValueError("No 'imap_queries' or 'imap_query' found in config.")
+            # Default to UNSEEN (unread emails) if not specified
+            logging.info("No 'imap_queries' or 'imap_query' found in config. Using default: ['UNSEEN']")
+            queries = ['UNSEEN']
     if not isinstance(queries, list):
         raise ValueError("'imap_queries' must be a list of IMAP search strings.")
     for q in queries:
