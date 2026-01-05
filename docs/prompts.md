@@ -3,6 +3,8 @@
 ## Overview
 Handles discovering, reading, parsing, and converting prompt Markdown files (with YAML frontmatter) for customizable and dynamic AI prompting.
 
+*Return to main doc: [README.md](../README.md) for context and documentation overview.*
+
 ## Components
 - **find_markdown_files**: Finds all *.md files in a directory specified by config.
 - **parse_markdown_frontmatter**: Splits prompt file content into YAML frontmatter as metadata (dict) and Markdown body (string). Handles invalid or missing frontmatter gracefully.

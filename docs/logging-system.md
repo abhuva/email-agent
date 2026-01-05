@@ -3,6 +3,8 @@
 ## Overview
 This document describes the architecture, design rationale, and implementation details of the logging system for email-agent. The logging system provides robust, configurable logging to file and console, including analytics summary, throughout the agent lifecycle.
 
+*Return to main doc: [README.md](../README.md) for project overview and navigation.*
+
 ---
 
 ## 1. Architecture

@@ -6,7 +6,6 @@ from typing import Any, Dict
 class ConfigError(Exception):
     pass
 
-
 def load_yaml_config(path: str) -> Dict[str, Any]:
     if not os.path.exists(path):
         raise ConfigError(f"Config file not found: {path}")
@@ -16,7 +15,6 @@ def load_yaml_config(path: str) -> Dict[str, Any]:
         except yaml.YAMLError as e:
             raise ConfigError(f"YAML parse error: {e}")
     return config
-
 
 def validate_yaml_config(config: Dict[str, Any]) -> bool:
     required_top = ['imap', 'prompt_file', 'tag_mapping', 'processed_tag', 'max_body_chars', 'max_emails_per_run', 'log_file', 'log_level', 'analytics_file', 'openrouter']
@@ -33,12 +31,10 @@ def validate_yaml_config(config: Dict[str, Any]) -> bool:
         raise ConfigError("Missing openrouter configuration keys")
     return True
 
-
 def load_env_vars(env_path: str) -> None:
     if not os.path.exists(env_path):
         raise ConfigError(f"Env file not found: {env_path}")
     load_dotenv(env_path)
-
 
 def validate_env_vars(config: Dict[str, Any]) -> bool:
     imap_pw_var = config['imap']['password_env']
@@ -50,7 +46,6 @@ def validate_env_vars(config: Dict[str, Any]) -> bool:
     if missing:
         raise ConfigError(f"Missing required env vars: {missing}")
     return True
-
 
 class ConfigManager:
     """
@@ -81,8 +76,9 @@ class ConfigManager:
         self.imap_password = os.environ[self.imap['password_env']]
         self.openrouter_api_key = os.environ[self.openrouter['api_key_env']]
         self.openrouter_api_url = self.openrouter['api_url']
+        # Model extraction: config, then fallback to gpt-3.5-turbo
+        self.openrouter_model = self.openrouter.get('model') or 'openai/gpt-3.5-turbo'
 
-    # Optionally, add methods to get connection tuples etc.
     def imap_connection_params(self):
         return {
             'host': self.imap['server'],
@@ -95,4 +91,5 @@ class ConfigManager:
         return {
             'api_key': self.openrouter_api_key,
             'api_url': self.openrouter_api_url,
+            'model': self.openrouter_model,
         }

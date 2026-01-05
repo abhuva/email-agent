@@ -17,4 +17,6 @@ log_level: 'INFO'
 analytics_file: 'logs/analytics.jsonl'
 openrouter:
   api_key_env: 'OPENROUTER_API_KEY'
-  api_url: 'https://openrouter.ai/api/v1/ai-task'
+  api_url: 'https://openrouter.ai/api/v1'
+  # model: 'openai/gpt-3.5-turbo'  # default fallback
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'

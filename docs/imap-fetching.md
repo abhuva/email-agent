@@ -3,6 +3,8 @@
 ## Overview
 This module handles connecting to an IMAP server, searching and fetching emails according to user configuration, excluding already processed emails, and parsing their content for downstream AI processing.
 
+*Return to main doc: [README.md](../README.md) for project summary, guidance, and orientation.*
+
 ## Components
 - **connect_imap**: Securely connects with credentials (from .env/config) using SSL; robust error and logging.
 - **load_imap_queries**: Loads list or single-string IMAP search queries from config.yaml.
