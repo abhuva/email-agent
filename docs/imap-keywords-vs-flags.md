@@ -11,12 +11,13 @@ IMAP servers support two mechanisms for tagging/labeling emails:
 **What they are:**
 - Standard IMAP feature, supported by ALL IMAP servers
 - System flags: `\Seen`, `\Flagged`, `\Deleted`, `\Draft`, `\Answered`
-- Custom flags: Any flag name WITHOUT a leading backslash (e.g., `Urgent`, `Spam`, `[AI-Processed]`)
+- Custom flags: Any flag name WITHOUT a leading backslash (e.g., `Urgent`, `Spam`, `AIProcessed`)
+  - **Important:** No brackets or special characters - use `AIProcessed` not `[AI-Processed]`
 
 **Syntax:**
 ```python
 # Add custom flags
-imap.uid('STORE', uid, '+FLAGS', '(Urgent Spam [AI-Processed])')
+imap.uid('STORE', uid, '+FLAGS', '(Urgent Spam AIProcessed)')
 
 # Search by flags
 imap.uid('SEARCH', None, 'FLAGGED')  # System flag
@@ -91,7 +92,7 @@ Since your server doesn't support KEYWORDS extension, we should:
 We need to verify:
 1. Can we add custom flags? (`+FLAGS (Urgent)`)
 2. Can we search by custom flags? (`KEYWORD Urgent`)
-3. Can we exclude by custom flags? (`NOT KEYWORD "[AI-Processed]"`)
+3. Can we exclude by custom flags? (`NOT KEYWORD "AIProcessed"`)
 4. Do flags persist after reconnection?
 5. Are flags visible in email clients?
 
