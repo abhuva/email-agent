@@ -87,10 +87,32 @@ def test_truncate_plain_text_respects_max_length():
 
 def test_truncate_html_preserves_structure():
     """Test truncate_html preserves valid HTML structure"""
-    # For now, HTML truncation falls back to plain text
-    # This test will be updated when HTML parsing is implemented
-    body = "<p>Some HTML content</p>"
-    result = truncate_html(body, 10)
+    body = "<p>First paragraph</p><p>Second paragraph</p><p>Third paragraph</p>"
+    result = truncate_html(body, 50)
+    assert 'truncatedBody' in result
+    assert 'isTruncated' in result
+    # Should contain valid HTML tags
+    assert '<p>' in result['truncatedBody'] or result['isTruncated'] is False
+
+
+def test_truncate_html_removes_scripts():
+    """Test truncate_html removes script and style tags"""
+    body = "<p>Content</p><script>alert('xss')</script><p>More content</p>"
+    result = truncate_html(body, 100)
+    assert '<script>' not in result['truncatedBody']
+
+
+def test_truncate_html_handles_empty_body():
+    """Test truncate_html handles empty HTML body"""
+    result = truncate_html("", 100)
+    assert result['truncatedBody'] == ''
+    assert result['isTruncated'] is False
+
+
+def test_truncate_html_handles_invalid_html():
+    """Test truncate_html handles malformed HTML gracefully"""
+    body = "<p>Unclosed tag<div>Broken<html>"
+    result = truncate_html(body, 50)
     assert 'truncatedBody' in result
     assert 'isTruncated' in result
 

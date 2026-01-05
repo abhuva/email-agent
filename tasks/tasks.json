@@ -521,7 +521,7 @@
           "id": 3,
           "title": "Develop HTML email body truncation function",
           "description": "Implement truncation for HTML email bodies that preserves valid HTML structure.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -532,7 +532,7 @@
           "id": 4,
           "title": "Create email format detection and unified truncation dispatcher",
           "description": "Build a main truncation function that detects email format and delegates to appropriate handlers.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3

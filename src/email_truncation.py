@@ -9,6 +9,16 @@ from src.config import ConfigManager
 
 logger = logging.getLogger(__name__)
 
+try:
+    from bs4 import BeautifulSoup
+    HAS_BS4 = True
+except ImportError:
+    HAS_BS4 = False
+    logger = logging.getLogger(__name__)
+    logger.warning("BeautifulSoup4 not available. HTML truncation will use plain text fallback.")
+
+logger = logging.getLogger(__name__)
+
 # Default truncation length if not specified in config
 DEFAULT_MAX_BODY_CHARS = 10000
 
@@ -106,6 +116,9 @@ def truncate_html(body: str, max_length: int) -> Dict[str, any]:
     """
     Truncate HTML email body while preserving valid HTML structure.
     
+    Uses BeautifulSoup to parse HTML, traverse text nodes, and truncate at logical
+    break points (end of paragraphs/divs) while maintaining valid HTML structure.
+    
     Args:
         body: HTML email body
         max_length: Maximum character count (must be positive)
@@ -115,17 +128,117 @@ def truncate_html(body: str, max_length: int) -> Dict[str, any]:
             - truncatedBody: str - Truncated HTML body
             - isTruncated: bool - Whether truncation occurred
     """
-    # Placeholder - will implement with HTML parser
-    # For now, fall back to plain text truncation
-    logger.warning("HTML truncation not yet implemented, using plain text fallback")
-    result = truncate_plain_text(body, max_length)
-    # Replace plain text indicator with HTML indicator
-    if result['isTruncated']:
-        result['truncatedBody'] = result['truncatedBody'].replace(
-            TRUNCATION_INDICATOR,
-            '<p><em>[Content truncated]</em></p>'
-        )
-    return result
+    if not body:
+        return {'truncatedBody': '', 'isTruncated': False}
+    
+    if max_length <= 0:
+        logger.warning(f"Invalid max_length: {max_length}. Returning empty string.")
+        return {'truncatedBody': '', 'isTruncated': False}
+    
+    if not HAS_BS4:
+        # Fallback to plain text truncation if BeautifulSoup not available
+        logger.warning("BeautifulSoup4 not available, using plain text fallback for HTML")
+        result = truncate_plain_text(body, max_length)
+        if result['isTruncated']:
+            result['truncatedBody'] = result['truncatedBody'].replace(
+                TRUNCATION_INDICATOR,
+                '<p><em>[Content truncated]</em></p>'
+            )
+        return result
+    
+    # Reserve space for HTML truncation indicator
+    indicator_html = '<p><em>[Content truncated]</em></p>'
+    indicator_len = len(indicator_html)
+    available_length = max_length - indicator_len
+    
+    if available_length <= 0:
+        # Max length too small
+        return {'truncatedBody': indicator_html[:max_length], 'isTruncated': True}
+    
+    try:
+        # Always parse HTML to remove scripts/styles, even if no truncation needed
+        soup = BeautifulSoup(body, 'html.parser')
+        
+        # Remove script and style tags (don't count toward text length for AI processing)
+        # These should always be removed for security and to focus on content
+        for tag in soup(['script', 'style', 'noscript']):
+            tag.decompose()
+        
+        # Check if truncation is needed (after cleaning)
+        if len(body) <= max_length:
+            # Return cleaned HTML even if no truncation needed
+            return {'truncatedBody': str(soup), 'isTruncated': False}
+        
+        # Get plain text content for length calculation
+        text_content = soup.get_text(separator=' ', strip=True)
+        
+        # If plain text representation is short enough, no truncation needed
+        # But still return cleaned HTML (without scripts/styles)
+        if len(text_content) <= available_length:
+            return {'truncatedBody': str(soup), 'isTruncated': False}
+        
+        # Strategy: Traverse elements and remove from end until we're under limit
+        # Start with a copy for manipulation
+        truncated_soup = BeautifulSoup(str(soup), 'html.parser')
+        
+        # Remove script/style from copy too
+        for tag in truncated_soup(['script', 'style', 'noscript']):
+            tag.decompose()
+        
+        # Find all block-level elements (p, div, li, etc.) that we can remove
+        block_elements = truncated_soup.find_all(['p', 'div', 'li', 'section', 'article', 'aside'])
+        
+        # Remove from end until we're under the limit
+        current_text = truncated_soup.get_text(separator=' ', strip=True)
+        while len(current_text) > available_length and block_elements:
+            # Remove last block element
+            block_elements[-1].decompose()
+            block_elements.pop()
+            current_text = truncated_soup.get_text(separator=' ', strip=True)
+        
+        # If still too long, use more aggressive approach: keep only first N characters of text
+        if len(current_text) > available_length:
+            # Extract and truncate text, then rebuild minimal HTML
+            plain_result = truncate_plain_text(text_content, available_length)
+            truncated_text = plain_result['truncatedBody'].replace(TRUNCATION_INDICATOR, '').strip()
+            # Wrap in a simple paragraph
+            result_html = f"<p>{truncated_text}</p>{indicator_html}"
+        else:
+            # Add truncation indicator to the truncated HTML
+            if truncated_soup.body:
+                truncated_soup.body.append(BeautifulSoup(indicator_html, 'html.parser'))
+            elif truncated_soup.html:
+                if truncated_soup.html.body:
+                    truncated_soup.html.body.append(BeautifulSoup(indicator_html, 'html.parser'))
+                else:
+                    truncated_soup.html.append(BeautifulSoup(indicator_html, 'html.parser'))
+            else:
+                # No body/html tags, append to root
+                truncated_soup.append(BeautifulSoup(indicator_html, 'html.parser'))
+            
+            result_html = str(truncated_soup)
+        
+        # Final safety check
+        if len(result_html) > max_length:
+            # Last resort: very basic HTML
+            plain_result = truncate_plain_text(text_content, available_length)
+            truncated_text = plain_result['truncatedBody'].replace(TRUNCATION_INDICATOR, '').strip()
+            result_html = f"<p>{truncated_text}</p>{indicator_html}"
+            if len(result_html) > max_length:
+                result_html = result_html[:max_length]
+        
+        return {'truncatedBody': result_html, 'isTruncated': True}
+        
+    except Exception as e:
+        logger.error(f"Error truncating HTML: {e}. Falling back to plain text truncation.")
+        # Fallback to plain text
+        result = truncate_plain_text(body, max_length)
+        if result['isTruncated']:
+            result['truncatedBody'] = result['truncatedBody'].replace(
+                TRUNCATION_INDICATOR,
+                '<p><em>[Content truncated]</em></p>'
+            )
+        return result
 
 
 def truncate_email_body(
