@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Implement IMAP connection and email fetching
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Create functionality to connect to an IMAP server and fetch emails based on configurable query
+# Details:
+Use Python's imaplib to establish connection to IMAP server using credentials from .env. Implement a function to execute configurable IMAP queries from config.yaml. Ensure the query excludes emails with the [AI-Processed] tag. Handle connection errors gracefully with appropriate logging. Implement email parsing to extract relevant information (subject, body, sender, etc.).
+
+# Test Strategy:
+Test IMAP connection with valid and invalid credentials. Verify query execution and email fetching. Test error handling for connection issues.

@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Implement email body truncation
+# Status: pending
+# Dependencies: 3
+# Priority: medium
+# Description: Create functionality to truncate email bodies to a configurable maximum length
+# Details:
+Implement a function to truncate email bodies to the maximum character count specified in config. Handle different email formats (plain text, HTML) appropriately. Ensure truncation doesn't break the email structure or content in a way that would affect AI processing. Add an indicator when content has been truncated.
+
+# Test Strategy:
+Test truncation with various email formats and lengths. Verify the truncated content is still valid for processing.

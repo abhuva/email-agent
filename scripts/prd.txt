@@ -1,0 +1,40 @@
+# Product Design Document: Headless AI Email Agent (V1)
+
+## 1. Overview & Strategy
+This project aims to create a headless AI agent that reads emails via IMAP, triages and tags them using customizable prompts, and provides workflow automation. Key motivations are risk mitigation, reduced manual sorting, and future integration with project management tools.
+
+## 2. Target Users & Success Criteria
+- *Primary User*: Admin/technical lead responsible for configuration and operation.
+- *Secondary User*: Team members benefiting from improved tagging and clarity.
+- *Key metrics*: 90% triage accuracy, <1% critical error rate, time savings, and minimized manual corrections.
+
+## 3. Scope
+**In scope:**
+- Python CLI script for single IMAP account
+- Configurable IMAP query
+- Uses OpenRouter API/prompts in Markdown
+- Adds tags per AI response, non-destructive (no moving/deleting)
+- [AI-Processed] tag to ensure idempotency
+- YAML config, .env for secrets, logging (console and file)
+**Out of scope:**
+- GUI, Obsidian integration, multi-account, destructive actions, attachment processing
+
+## 4. User Stories (abbreviated)
+1. Agent reads config and secrets from .env and config.yaml; runs from CLI.
+2. Prompts editable in Markdown, path supplied in config. Markdown and YAML frontmatter parsed each run.
+3. AI returns a tag keyword ("urgent", "neutral", "spam"); config maps these to IMAP tags; fallback to "neutral". Max email body chars and [AI-Processed] tag enforced.
+4. Agent processes each email only once (excludes processed_tag in IMAP query).
+5. Detailed logging, with timestamps and message-IDs, info and debug modes; full trace for debug. Analytics summary written to file each run.
+
+## 5. Non-Functional Specs
+- Modular Python with future expansion planned.
+- All secrets in .env; fails fast on missing keys.
+- Handles API rate limits, logs errors gracefully.
+
+## 6. Go-Live, Roadmap, and Safety Features
+- Phase 1: Deploy agent on personal account; Phase 2: Roll out to shared team inboxes.
+- Urgent/Neutral/Spam fallback model.
+- Excludes attachments, truncates email bodies for predictability.
+
+---
+See pdd.md for more details. This PRD distills the actionable implementation requirements from the full document.

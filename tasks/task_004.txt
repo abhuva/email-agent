@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Implement Markdown prompt loading and parsing
+# Status: pending
+# Dependencies: 1
+# Priority: medium
+# Description: Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter
+# Details:
+Implement functions to read Markdown files from paths specified in config. Parse YAML frontmatter to extract metadata. Convert Markdown content to appropriate format for AI prompts. Reload prompts on each run to allow for easy editing. Handle file not found and parsing errors gracefully.
+
+# Test Strategy:
+Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files.

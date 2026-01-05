@@ -1,0 +1,212 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Set up project structure and configuration handling",
+      "description": "Create the basic project structure, implement configuration loading from YAML and environment variables",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create directory structure for the project. Implement functions to load and validate configuration from config.yaml and secrets from .env file. Configuration should include IMAP settings, OpenRouter API details, and tag mappings. Implement validation to ensure all required configuration is present. Fail fast if required environment variables are missing.",
+      "testStrategy": "Write unit tests to verify config loading with various valid and invalid inputs. Test environment variable validation with missing keys.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up project directory structure and package layout",
+          "description": "Create the basic directory structure for the Python CLI project, including package directories, test directories, and configuration files.",
+          "dependencies": [],
+          "details": "1. Create the main project directory\n2. Set up Python package structure with `__init__.py` files\n3. Create directories for: src/, tests/, config/\n4. Create empty placeholder files: setup.py, requirements.txt, README.md\n5. Set up .gitignore with standard Python patterns\n6. Create empty config.yaml and .env.example files in the config directory\n7. Verify the structure is correct and follows Python package conventions",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 2,
+          "title": "Set up testing framework and write initial config tests",
+          "description": "Set up pytest as the testing framework and write initial failing tests for configuration loading and validation.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Add pytest and related packages to requirements.txt\n2. Create a conftest.py file in the tests directory\n3. Create test fixtures for sample config files (valid and invalid)\n4. Write test_config.py with failing tests for:\n   - Loading config from YAML file\n   - Validating required YAML config fields\n   - Loading environment variables\n   - Validating required environment variables\n   - Handling missing files gracefully\n5. Run tests to verify they fail as expected (TDD approach)",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 3,
+          "title": "Implement YAML configuration loading and validation",
+          "description": "Create the module for loading and validating configuration from YAML files.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Create a config module in the src directory\n2. Implement a function to load YAML configuration files\n3. Define the expected configuration schema (IMAP settings, OpenRouter API details, tag mappings)\n4. Implement validation logic to check for required fields\n5. Add proper error handling for missing files or invalid YAML\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 4,
+          "title": "Implement environment variables loading and validation",
+          "description": "Create functionality to load and validate environment variables from .env files.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Add python-dotenv to requirements.txt\n2. Implement a function to load environment variables from .env file\n3. Define which environment variables are required (secrets, API keys)\n4. Implement validation to ensure required variables are present\n5. Add proper error handling for missing .env file or missing variables\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 5,
+          "title": "Create unified configuration manager",
+          "description": "Implement a configuration manager class that combines YAML and environment variable configuration.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Create a ConfigManager class that handles both YAML and environment variables\n2. Implement methods to access configuration values with proper typing\n3. Add validation that runs on initialization to ensure all required config is present\n4. Implement 'fail fast' behavior for missing critical configuration\n5. Add helper methods for common configuration access patterns\n6. Update tests to verify the unified configuration manager works correctly\n7. Ensure proper error messages are provided for configuration issues",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 6,
+          "title": "Create CLI entry point with configuration validation",
+          "description": "Implement the main CLI entry point that loads and validates configuration before proceeding.",
+          "dependencies": [
+            5
+          ],
+          "details": "1. Create main.py or cli.py as the entry point\n2. Implement argument parsing for configuration file paths\n3. Add initialization code that loads and validates configuration\n4. Implement proper error handling and user-friendly error messages\n5. Add logging configuration based on settings\n6. Create a simple --version and --help command line interface\n7. Write tests for the CLI entry point\n8. Verify all tests pass for the complete configuration handling system",
+          "status": "done",
+          "parentTaskId": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Implement logging system",
+      "description": "Create a comprehensive logging system with console and file outputs, supporting info and debug modes",
+      "status": "pending",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Set up Python's logging module to write to both console and file. Include timestamps, message IDs, and appropriate log levels. Implement debug mode with full trace logging. Create a function to generate analytics summaries at the end of each run. Store logs in a configurable location specified in config.yaml.",
+      "testStrategy": "Verify log output format in both console and file. Test different log levels and ensure appropriate information is captured. Validate analytics summary generation."
+    },
+    {
+      "id": 3,
+      "title": "Implement IMAP connection and email fetching",
+      "description": "Create functionality to connect to an IMAP server and fetch emails based on configurable query",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2
+      ],
+      "priority": "high",
+      "details": "Use Python's imaplib to establish connection to IMAP server using credentials from .env. Implement a function to execute configurable IMAP queries from config.yaml. Ensure the query excludes emails with the [AI-Processed] tag. Handle connection errors gracefully with appropriate logging. Implement email parsing to extract relevant information (subject, body, sender, etc.).",
+      "testStrategy": "Test IMAP connection with valid and invalid credentials. Verify query execution and email fetching. Test error handling for connection issues."
+    },
+    {
+      "id": 4,
+      "title": "Implement Markdown prompt loading and parsing",
+      "description": "Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter",
+      "status": "pending",
+      "dependencies": [
+        1
+      ],
+      "priority": "medium",
+      "details": "Implement functions to read Markdown files from paths specified in config. Parse YAML frontmatter to extract metadata. Convert Markdown content to appropriate format for AI prompts. Reload prompts on each run to allow for easy editing. Handle file not found and parsing errors gracefully.",
+      "testStrategy": "Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files."
+    },
+    {
+      "id": 5,
+      "title": "Implement OpenRouter API integration",
+      "description": "Create functionality to send prompts to OpenRouter API and process responses",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2,
+        4
+      ],
+      "priority": "high",
+      "details": "Implement functions to communicate with OpenRouter API using credentials from .env. Create prompt templates that include email content (truncated to max chars from config). Process API responses to extract tag keywords. Implement error handling for API failures, rate limits, and unexpected responses. Add retry logic with exponential backoff for transient errors.",
+      "testStrategy": "Test API integration with mock responses. Verify proper handling of rate limits and errors. Test prompt formatting with various email contents."
+    },
+    {
+      "id": 6,
+      "title": "Implement email tagging functionality",
+      "description": "Create functionality to add tags to emails based on AI responses",
+      "status": "pending",
+      "dependencies": [
+        3,
+        5
+      ],
+      "priority": "high",
+      "details": "Implement functions to add tags to emails via IMAP. Map AI response keywords to actual IMAP tags based on config. Always add [AI-Processed] tag to processed emails. Implement fallback to 'neutral' tag if AI response doesn't match expected format. Ensure tagging operations are non-destructive (no moving or deleting emails).",
+      "testStrategy": "Test tagging with various AI responses. Verify fallback behavior. Ensure [AI-Processed] tag is always added. Verify idempotency by attempting to process already-tagged emails."
+    },
+    {
+      "id": 7,
+      "title": "Implement email body truncation",
+      "description": "Create functionality to truncate email bodies to a configurable maximum length",
+      "status": "pending",
+      "dependencies": [
+        3
+      ],
+      "priority": "medium",
+      "details": "Implement a function to truncate email bodies to the maximum character count specified in config. Handle different email formats (plain text, HTML) appropriately. Ensure truncation doesn't break the email structure or content in a way that would affect AI processing. Add an indicator when content has been truncated.",
+      "testStrategy": "Test truncation with various email formats and lengths. Verify the truncated content is still valid for processing."
+    },
+    {
+      "id": 8,
+      "title": "Implement main processing loop",
+      "description": "Create the main processing loop that orchestrates the email fetching, AI processing, and tagging",
+      "status": "pending",
+      "dependencies": [
+        3,
+        5,
+        6,
+        7
+      ],
+      "priority": "high",
+      "details": "Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the [AI-Processed] tag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.",
+      "testStrategy": "Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate."
+    },
+    {
+      "id": 9,
+      "title": "Implement CLI interface",
+      "description": "Create a command-line interface for running the agent with various options",
+      "status": "pending",
+      "dependencies": [
+        8
+      ],
+      "priority": "medium",
+      "details": "Implement a CLI interface using argparse or click. Support options for specifying config file path, enabling debug mode, and other relevant parameters. Provide helpful usage information and error messages. Ensure the CLI returns appropriate exit codes based on execution success or failure.",
+      "testStrategy": "Test CLI with various valid and invalid arguments. Verify help text and error messages are clear and helpful."
+    },
+    {
+      "id": 10,
+      "title": "Implement comprehensive error handling and documentation",
+      "description": "Add comprehensive error handling throughout the codebase and create documentation",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "priority": "medium",
+      "details": "Review and enhance error handling throughout the codebase. Ensure all functions have appropriate docstrings and type hints. Create a README.md with installation and usage instructions. Include example configuration files and prompts. Document the expected format for AI responses and tag mappings. Create a troubleshooting guide for common issues.",
+      "testStrategy": "Review documentation for clarity and completeness. Verify error handling by intentionally triggering various error conditions."
+    }
+  ],
+  "metadata": {
+    "projectName": "Headless AI Email Agent Implementation",
+    "totalTasks": 10,
+    "sourceFile": "C:\\Users\\Marc Bielert\\Github\\email-agent\\scripts\\prd.txt",
+    "generatedAt": "2023-11-12"
+  }
+}

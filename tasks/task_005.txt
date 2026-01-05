@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Implement OpenRouter API integration
+# Status: pending
+# Dependencies: 1, 2, 4
+# Priority: high
+# Description: Create functionality to send prompts to OpenRouter API and process responses
+# Details:
+Implement functions to communicate with OpenRouter API using credentials from .env. Create prompt templates that include email content (truncated to max chars from config). Process API responses to extract tag keywords. Implement error handling for API failures, rate limits, and unexpected responses. Add retry logic with exponential backoff for transient errors.
+
+# Test Strategy:
+Test API integration with mock responses. Verify proper handling of rate limits and errors. Test prompt formatting with various email contents.

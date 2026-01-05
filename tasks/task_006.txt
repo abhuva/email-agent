@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Implement email tagging functionality
+# Status: pending
+# Dependencies: 3, 5
+# Priority: high
+# Description: Create functionality to add tags to emails based on AI responses
+# Details:
+Implement functions to add tags to emails via IMAP. Map AI response keywords to actual IMAP tags based on config. Always add [AI-Processed] tag to processed emails. Implement fallback to 'neutral' tag if AI response doesn't match expected format. Ensure tagging operations are non-destructive (no moving or deleting emails).
+
+# Test Strategy:
+Test tagging with various AI responses. Verify fallback behavior. Ensure [AI-Processed] tag is always added. Verify idempotency by attempting to process already-tagged emails.

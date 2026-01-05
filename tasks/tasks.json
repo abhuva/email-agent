@@ -1,0 +1,337 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Set up project structure and configuration handling",
+      "description": "Create the basic project structure, implement configuration loading from YAML and environment variables",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create directory structure for the project. Implement functions to load and validate configuration from config.yaml and secrets from .env file. Configuration should include IMAP settings, OpenRouter API details, and tag mappings. Implement validation to ensure all required configuration is present. Fail fast if required environment variables are missing.",
+      "testStrategy": "Write unit tests to verify config loading with various valid and invalid inputs. Test environment variable validation with missing keys.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up project directory structure and package layout",
+          "description": "Create the basic directory structure for the Python CLI project, including package directories, test directories, and configuration files.",
+          "dependencies": [],
+          "details": "1. Create the main project directory\n2. Set up Python package structure with `__init__.py` files\n3. Create directories for: src/, tests/, config/\n4. Create empty placeholder files: setup.py, requirements.txt, README.md\n5. Set up .gitignore with standard Python patterns\n6. Create empty config.yaml and .env.example files in the config directory\n7. Verify the structure is correct and follows Python package conventions",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 2,
+          "title": "Set up testing framework and write initial config tests",
+          "description": "Set up pytest as the testing framework and write initial failing tests for configuration loading and validation.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Add pytest and related packages to requirements.txt\n2. Create a conftest.py file in the tests directory\n3. Create test fixtures for sample config files (valid and invalid)\n4. Write test_config.py with failing tests for:\n   - Loading config from YAML file\n   - Validating required YAML config fields\n   - Loading environment variables\n   - Validating required environment variables\n   - Handling missing files gracefully\n5. Run tests to verify they fail as expected (TDD approach)",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 3,
+          "title": "Implement YAML configuration loading and validation",
+          "description": "Create the module for loading and validating configuration from YAML files.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Create a config module in the src directory\n2. Implement a function to load YAML configuration files\n3. Define the expected configuration schema (IMAP settings, OpenRouter API details, tag mappings)\n4. Implement validation logic to check for required fields\n5. Add proper error handling for missing files or invalid YAML\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 4,
+          "title": "Implement environment variables loading and validation",
+          "description": "Create functionality to load and validate environment variables from .env files.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Add python-dotenv to requirements.txt\n2. Implement a function to load environment variables from .env file\n3. Define which environment variables are required (secrets, API keys)\n4. Implement validation to ensure required variables are present\n5. Add proper error handling for missing .env file or missing variables\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 5,
+          "title": "Create unified configuration manager",
+          "description": "Implement a configuration manager class that combines YAML and environment variable configuration.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Create a ConfigManager class that handles both YAML and environment variables\n2. Implement methods to access configuration values with proper typing\n3. Add validation that runs on initialization to ensure all required config is present\n4. Implement 'fail fast' behavior for missing critical configuration\n5. Add helper methods for common configuration access patterns\n6. Update tests to verify the unified configuration manager works correctly\n7. Ensure proper error messages are provided for configuration issues",
+          "status": "done",
+          "parentTaskId": 1
+        },
+        {
+          "id": 6,
+          "title": "Create CLI entry point with configuration validation",
+          "description": "Implement the main CLI entry point that loads and validates configuration before proceeding.",
+          "dependencies": [
+            5
+          ],
+          "details": "1. Create main.py or cli.py as the entry point\n2. Implement argument parsing for configuration file paths\n3. Add initialization code that loads and validates configuration\n4. Implement proper error handling and user-friendly error messages\n5. Add logging configuration based on settings\n6. Create a simple --version and --help command line interface\n7. Write tests for the CLI entry point\n8. Verify all tests pass for the complete configuration handling system",
+          "status": "done",
+          "parentTaskId": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Implement logging system",
+      "description": "Create a comprehensive logging system with console and file outputs, supporting info and debug modes",
+      "status": "pending",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Set up Python's logging module to write to both console and file. Include timestamps, message IDs, and appropriate log levels. Implement debug mode with full trace logging. Create a function to generate analytics summaries at the end of each run. Store logs in a configurable location specified in config.yaml. Maintain continuous documentation in docs/logging-system.md, updating it after every major design or implementation step.",
+      "testStrategy": "Verify log output format in both console and file. Test different log levels and ensure appropriate information is captured. Validate analytics summary generation. Ensure documentation is kept up-to-date with implementation.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up test scaffolding for logging system",
+          "description": "Create test fixtures and scaffolding to support TDD approach for the logging system",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Create a test directory structure with test_logging.py\n2. Set up pytest fixtures for temporary log files and directory\n3. Create mock configuration for testing\n4. Implement helper functions to capture console output\n5. Set up test environment isolation to prevent test logs from affecting real logs\n\nTesting approach:\n- Verify test fixtures work correctly\n- Ensure test environment is properly isolated\n- Confirm temporary log directories are created and cleaned up",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 2,
+          "title": "Write failing tests for basic logging functionality",
+          "description": "Create comprehensive test cases for core logging features including console and file output with different log levels",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Write tests for logger initialization with different configurations\n2. Create tests for INFO level logging to console\n3. Create tests for DEBUG level logging to console\n4. Write tests for file output at different log levels\n5. Test log message structure (timestamps, IDs, formatting)\n6. Test log level filtering behavior\n\nTesting approach:\n- All tests should initially fail (TDD approach)\n- Tests should verify both content and structure of log messages\n- Include edge cases like empty messages, special characters",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 3,
+          "title": "Implement core logging functionality",
+          "description": "Create the main logging module with support for console and file outputs at different log levels",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation steps:\n1. Create a logger.py module\n2. Implement a LoggerFactory class to create and configure loggers\n3. Set up console handler with proper formatting\n4. Set up file handler with configurable output location\n5. Implement log level configuration (INFO/DEBUG)\n6. Add message ID generation for log entries\n7. Create proper timestamp formatting\n\nTesting approach:\n- Run previously created tests to verify implementation\n- Manually verify log output format matches requirements\n- Check that both console and file outputs work correctly",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 4,
+          "title": "Write failing tests for analytics summary functionality",
+          "description": "Create test cases for the analytics summary generation feature",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation steps:\n1. Write tests for analytics summary generation at end of run\n2. Create tests for different analytics metrics (counts by level, timing info)\n3. Test analytics file output format and location\n4. Test edge cases (no logs, very large number of logs)\n5. Test analytics with different log levels\n\nTesting approach:\n- All tests should initially fail (TDD approach)\n- Tests should verify analytics data accuracy\n- Verify analytics file structure and content",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 5,
+          "title": "Implement analytics summary functionality",
+          "description": "Create the analytics summary generation system that produces reports at the end of each run",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implementation steps:\n1. Create an analytics.py module\n2. Implement log message counting by level\n3. Add timing information collection\n4. Create analytics report generation function\n5. Implement analytics file output with configurable location\n6. Add function to trigger analytics at program end\n\nTesting approach:\n- Run previously created tests to verify implementation\n- Manually verify analytics output format\n- Check that analytics accurately reflect actual logging activity",
+          "status": "done",
+          "parentTaskId": 2
+        },
+        {
+          "id": 6,
+          "title": "Implement configuration and integration",
+          "description": "Create configuration loading from config.yaml and integrate the logging system with the main application",
+          "dependencies": [
+            3,
+            5
+          ],
+          "details": "Implementation steps:\n1. Implement configuration loading from config.yaml\n2. Add logging configuration section to config schema\n3. Create initialization function for application startup\n4. Add shutdown hook for analytics generation\n5. Document usage with examples\n6. Create helper functions for common logging patterns\n7. Implement global access to logger instance\n\nTesting approach:\n- Test configuration loading from different file locations\n- Verify integration with application startup/shutdown\n- Test with various configuration settings\n- End-to-end test of full logging system",
+          "status": "pending",
+          "parentTaskId": 2
+        },
+        {
+          "id": 7,
+          "title": "Create initial logging system documentation",
+          "description": "Set up the docs/logging-system.md file with initial structure and design documentation",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Create docs directory if it doesn't exist\n2. Create logging-system.md file with proper markdown structure\n3. Document the overall logging system architecture and design\n4. Include sections for configuration options, usage examples, and API reference\n5. Document the test strategy and approach\n6. Add placeholders for sections to be completed during implementation\n\nTesting approach:\n- Verify markdown renders correctly\n- Ensure documentation accurately reflects the planned implementation\n- Review with team members for clarity and completeness",
+          "status": "pending",
+          "parentTaskId": 2
+        },
+        {
+          "id": 8,
+          "title": "Update documentation with test scaffolding details",
+          "description": "Document the test scaffolding approach and implementation in docs/logging-system.md",
+          "dependencies": [
+            1,
+            7
+          ],
+          "details": "Implementation steps:\n1. Document the test fixtures and their purpose\n2. Explain the test isolation approach\n3. Add examples of how to use the test scaffolding\n4. Update the test strategy section with actual implementation details\n\nTesting approach:\n- Verify documentation accurately reflects the implemented test scaffolding\n- Ensure examples are correct and runnable\n- Check for clarity and completeness",
+          "status": "pending",
+          "parentTaskId": 2
+        },
+        {
+          "id": 9,
+          "title": "Update documentation with core logging functionality",
+          "description": "Document the core logging functionality implementation in docs/logging-system.md",
+          "dependencies": [
+            3,
+            7
+          ],
+          "details": "Implementation steps:\n1. Document the LoggerFactory class and its configuration options\n2. Explain the log level system and when to use each level\n3. Document the message ID generation system\n4. Add examples of basic logging usage\n5. Update API reference with implemented functions and classes\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and runnable\n- Check for clarity and completeness",
+          "status": "pending",
+          "parentTaskId": 2
+        },
+        {
+          "id": 10,
+          "title": "Update documentation with analytics summary functionality",
+          "description": "Document the analytics summary generation feature in docs/logging-system.md",
+          "dependencies": [
+            5,
+            7
+          ],
+          "details": "Implementation steps:\n1. Document the analytics generation process\n2. Explain the metrics collected and their meaning\n3. Document the analytics file format and location configuration\n4. Add examples of how to interpret analytics reports\n5. Update API reference with analytics-related functions\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and helpful\n- Check for clarity and completeness",
+          "status": "pending",
+          "parentTaskId": 2
+        },
+        {
+          "id": 11,
+          "title": "Update documentation with configuration and integration details",
+          "description": "Document the configuration system and application integration in docs/logging-system.md",
+          "dependencies": [
+            6,
+            7
+          ],
+          "details": "Implementation steps:\n1. Document the configuration schema for logging in config.yaml\n2. Explain the initialization and shutdown processes\n3. Add complete examples of application integration\n4. Document the helper functions and global access patterns\n5. Finalize the API reference with all implemented components\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and comprehensive\n- Check for clarity and completeness\n- Verify all configuration options are documented",
+          "status": "pending",
+          "parentTaskId": 2
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Implement IMAP connection and email fetching",
+      "description": "Create functionality to connect to an IMAP server and fetch emails based on configurable query",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2
+      ],
+      "priority": "high",
+      "details": "Use Python's imaplib to establish connection to IMAP server using credentials from .env. Implement a function to execute configurable IMAP queries from config.yaml. Ensure the query excludes emails with the [AI-Processed] tag. Handle connection errors gracefully with appropriate logging. Implement email parsing to extract relevant information (subject, body, sender, etc.).",
+      "testStrategy": "Test IMAP connection with valid and invalid credentials. Verify query execution and email fetching. Test error handling for connection issues."
+    },
+    {
+      "id": 4,
+      "title": "Implement Markdown prompt loading and parsing",
+      "description": "Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter",
+      "status": "pending",
+      "dependencies": [
+        1
+      ],
+      "priority": "medium",
+      "details": "Implement functions to read Markdown files from paths specified in config. Parse YAML frontmatter to extract metadata. Convert Markdown content to appropriate format for AI prompts. Reload prompts on each run to allow for easy editing. Handle file not found and parsing errors gracefully.",
+      "testStrategy": "Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files."
+    },
+    {
+      "id": 5,
+      "title": "Implement OpenRouter API integration",
+      "description": "Create functionality to send prompts to OpenRouter API and process responses",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2,
+        4
+      ],
+      "priority": "high",
+      "details": "Implement functions to communicate with OpenRouter API using credentials from .env. Create prompt templates that include email content (truncated to max chars from config). Process API responses to extract tag keywords. Implement error handling for API failures, rate limits, and unexpected responses. Add retry logic with exponential backoff for transient errors.",
+      "testStrategy": "Test API integration with mock responses. Verify proper handling of rate limits and errors. Test prompt formatting with various email contents."
+    },
+    {
+      "id": 6,
+      "title": "Implement email tagging functionality",
+      "description": "Create functionality to add tags to emails based on AI responses",
+      "status": "pending",
+      "dependencies": [
+        3,
+        5
+      ],
+      "priority": "high",
+      "details": "Implement functions to add tags to emails via IMAP. Map AI response keywords to actual IMAP tags based on config. Always add [AI-Processed] tag to processed emails. Implement fallback to 'neutral' tag if AI response doesn't match expected format. Ensure tagging operations are non-destructive (no moving or deleting emails).",
+      "testStrategy": "Test tagging with various AI responses. Verify fallback behavior. Ensure [AI-Processed] tag is always added. Verify idempotency by attempting to process already-tagged emails."
+    },
+    {
+      "id": 7,
+      "title": "Implement email body truncation",
+      "description": "Create functionality to truncate email bodies to a configurable maximum length",
+      "status": "pending",
+      "dependencies": [
+        3
+      ],
+      "priority": "medium",
+      "details": "Implement a function to truncate email bodies to the maximum character count specified in config. Handle different email formats (plain text, HTML) appropriately. Ensure truncation doesn't break the email structure or content in a way that would affect AI processing. Add an indicator when content has been truncated.",
+      "testStrategy": "Test truncation with various email formats and lengths. Verify the truncated content is still valid for processing."
+    },
+    {
+      "id": 8,
+      "title": "Implement main processing loop",
+      "description": "Create the main processing loop that orchestrates the email fetching, AI processing, and tagging",
+      "status": "pending",
+      "dependencies": [
+        3,
+        5,
+        6,
+        7
+      ],
+      "priority": "high",
+      "details": "Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the [AI-Processed] tag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.",
+      "testStrategy": "Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate."
+    },
+    {
+      "id": 9,
+      "title": "Implement CLI interface",
+      "description": "Create a command-line interface for running the agent with various options",
+      "status": "pending",
+      "dependencies": [
+        8
+      ],
+      "priority": "medium",
+      "details": "Implement a CLI interface using argparse or click. Support options for specifying config file path, enabling debug mode, and other relevant parameters. Provide helpful usage information and error messages. Ensure the CLI returns appropriate exit codes based on execution success or failure.",
+      "testStrategy": "Test CLI with various valid and invalid arguments. Verify help text and error messages are clear and helpful."
+    },
+    {
+      "id": 10,
+      "title": "Implement comprehensive error handling and documentation",
+      "description": "Add comprehensive error handling throughout the codebase and create documentation",
+      "status": "pending",
+      "dependencies": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "priority": "medium",
+      "details": "Review and enhance error handling throughout the codebase. Ensure all functions have appropriate docstrings and type hints. Create a README.md with installation and usage instructions. Include example configuration files and prompts. Document the expected format for AI responses and tag mappings. Create a troubleshooting guide for common issues.",
+      "testStrategy": "Review documentation for clarity and completeness. Verify error handling by intentionally triggering various error conditions."
+    }
+  ],
+  "metadata": {
+    "projectName": "Headless AI Email Agent Implementation",
+    "totalTasks": 10,
+    "sourceFile": "C:\\Users\\Marc Bielert\\Github\\email-agent\\scripts\\prd.txt",
+    "generatedAt": "2023-11-12"
+  }
+}

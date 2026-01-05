@@ -1,0 +1,20 @@
+# Example configuration for email-agent
+imap:
+  server: ''
+  port: 993
+  username: ''
+  password_env: 'IMAP_PASSWORD'
+prompt_file: 'config/prompt.md'
+tag_mapping:
+  urgent: 'Urgent'
+  neutral: 'Neutral'
+  spam: 'Spam'
+processed_tag: '[AI-Processed]'
+max_body_chars: 4000
+max_emails_per_run: 15
+log_file: 'logs/agent.log'
+log_level: 'INFO'
+analytics_file: 'logs/analytics.jsonl'
+openrouter:
+  api_key_env: 'OPENROUTER_API_KEY'
+  api_url: 'https://openrouter.ai/api/v1/ai-task'

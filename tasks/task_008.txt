@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Implement main processing loop
+# Status: pending
+# Dependencies: 3, 5, 6, 7
+# Priority: high
+# Description: Create the main processing loop that orchestrates the email fetching, AI processing, and tagging
+# Details:
+Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the [AI-Processed] tag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.
+
+# Test Strategy:
+Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate.
