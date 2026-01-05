@@ -426,7 +426,7 @@
       "id": 6,
       "title": "Implement email tagging functionality",
       "description": "Create functionality to add tags to emails based on AI responses",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3,
         5
