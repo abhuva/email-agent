@@ -503,7 +503,7 @@
           "id": 1,
           "title": "Implement configuration loading for maximum truncation length",
           "description": "Create a function to read and validate the maximum character count from the application configuration.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Access the config using the application's config system (e.g., environment variable or config file). Parse the value as an integer with a default fallback (e.g., 10000 characters). Add validation to ensure it's positive. Return the value for use in later subtasks. Test with valid, invalid, and missing config values."
         },
@@ -511,7 +511,7 @@
           "id": 2,
           "title": "Develop plain text email body truncation function",
           "description": "Implement a truncation function specifically for plain text email bodies using the configured max length.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
