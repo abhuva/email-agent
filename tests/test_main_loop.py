@@ -189,7 +189,9 @@ def test_run_email_processing_loop_respects_max_emails(mock_config):
         
         result = run_email_processing_loop(mock_config, single_run=True, max_emails=10)
         assert mock_process.call_count == 10
-        assert result['total_fetched'] == 20  # Fetched all, but processed only 10
+        assert result['total_fetched'] == 10  # Processed 10 (limited)
+        assert result.get('total_available', result['total_fetched']) == 20  # But 20 were available
+        assert result.get('remaining_unprocessed', 0) == 10  # 10 remain unprocessed
 
 
 def test_generate_analytics_summary_counts_emails():
@@ -228,6 +230,44 @@ def test_generate_analytics_summary_tracks_tags():
     assert summary['tags']['urgent'] == 3
     assert summary['tags']['neutral'] == 4
     assert summary['tags']['spam'] == 1
+
+
+def test_run_email_processing_loop_respects_limit_across_batches(mock_config):
+    """Test main loop respects max_emails limit across multiple batches in continuous mode"""
+    # First batch: 8 emails, second batch: 5 emails, but limit is 10 total
+    batch1 = [
+        {'id': bytes(str(i), 'utf-8'), 'subject': f'Test {i}', 'body': f'Body {i}', 'sender': 'test@example.com'}
+        for i in range(8)
+    ]
+    batch2 = [
+        {'id': bytes(str(i+8), 'utf-8'), 'subject': f'Test {i+8}', 'body': f'Body {i+8}', 'sender': 'test@example.com'}
+        for i in range(5)
+    ]
+    
+    fetch_call_count = 0
+    def mock_fetch(*args, **kwargs):
+        nonlocal fetch_call_count
+        fetch_call_count += 1
+        if fetch_call_count == 1:
+            return batch1
+        elif fetch_call_count == 2:
+            return batch2
+        else:
+            return []  # No more emails
+    
+    with patch('src.main_loop.fetch_emails', side_effect=mock_fetch), \
+         patch('src.main_loop.OpenRouterClient'), \
+         patch('src.imap_connection.load_imap_queries', return_value=['UNSEEN']), \
+         patch('src.main_loop.process_email_with_ai', return_value='urgent') as mock_process, \
+         patch('src.main_loop.safe_imap_operation'), \
+         patch('src.main_loop.process_email_with_ai_tags', return_value={'success': True, 'keyword': 'urgent'}):
+        
+        result = run_email_processing_loop(mock_config, single_run=False, max_emails=10)
+        # Should process 8 from first batch + 2 from second batch = 10 total
+        assert mock_process.call_count == 10
+        assert result['total_fetched'] == 10
+        assert result['total_available'] == 13  # 8 + 5
+        assert result['remaining_unprocessed'] == 3  # 5 - 2 = 3 remaining in second batch
 
 
 def test_generate_analytics_summary_calculates_success_rate():

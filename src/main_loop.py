@@ -126,6 +126,7 @@ def run_email_processing_loop(
     analytics = {
         'run_id': datetime.now().isoformat(),
         'total_fetched': 0,
+        'total_available': 0,  # Total emails available (before limit)
         'successfully_processed': 0,
         'failed': 0,
         'tag_breakdown': {},
@@ -152,8 +153,16 @@ def run_email_processing_loop(
         
         logger.info(f"Starting email processing loop (max_emails={max_emails_to_process}, single_run={single_run})")
         
+        # Track total processed across all batches
+        total_processed_this_run = 0
+        
         while True:
             try:
+                # Check if we've hit the limit
+                if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                    logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping.")
+                    break
+                
                 # Fetch unprocessed emails
                 logger.info("Fetching unprocessed emails...")
                 emails = fetch_emails(
@@ -164,8 +173,10 @@ def run_email_processing_loop(
                     processed_tag=config.processed_tag
                 )
                 
-                analytics['total_fetched'] += len(emails)
-                logger.info(f"Fetched {len(emails)} unprocessed emails")
+                # Track total available (before limiting)
+                total_available_in_batch = len(emails)
+                analytics['total_available'] += total_available_in_batch
+                logger.info(f"Fetched {total_available_in_batch} unprocessed emails")
                 
                 if not emails:
                     logger.info("No unprocessed emails found")
@@ -176,10 +187,18 @@ def run_email_processing_loop(
                         time.sleep(30)
                         continue
                 
-                # Limit to max_emails_per_run
-                if max_emails_to_process and len(emails) > max_emails_to_process:
-                    emails = emails[:max_emails_to_process]
-                    logger.info(f"Limited to {max_emails_to_process} emails for this run")
+                # Limit to remaining quota (max_emails_to_process - total_processed_this_run)
+                remaining_quota = None
+                if max_emails_to_process:
+                    remaining_quota = max_emails_to_process - total_processed_this_run
+                    if remaining_quota <= 0:
+                        logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping.")
+                        break
+                    if len(emails) > remaining_quota:
+                        emails = emails[:remaining_quota]
+                        logger.info(f"Limited to {remaining_quota} emails (remaining quota of {max_emails_to_process} total)")
+                
+                analytics['total_fetched'] += len(emails)
                 
                 # Process each email
                 for email in emails:
@@ -217,18 +236,31 @@ def run_email_processing_loop(
                                 
                                 if result['success']:
                                     analytics['successfully_processed'] += 1
+                                    total_processed_this_run += 1
                                     # Track tag breakdown
                                     keyword = result.get('keyword', 'unknown')
                                     if keyword not in analytics['tag_breakdown']:
                                         analytics['tag_breakdown'][keyword] = 0
                                     analytics['tag_breakdown'][keyword] += 1
-                                    logger.info(f"Successfully processed and tagged email UID {email_uid}")
+                                    logger.info(f"Successfully processed and tagged email UID {email_uid} ({total_processed_this_run}/{max_emails_to_process if max_emails_to_process else '∞'})")
+                                    
+                                    # Check if we've hit the limit after this email
+                                    if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                                        logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
+                                        break
                                 else:
                                     analytics['failed'] += 1
+                                    total_processed_this_run += 1  # Count failed attempts too
                                     logger.error(f"Failed to tag email UID {email_uid}")
+                                    
+                                    # Check if we've hit the limit after this email
+                                    if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                                        logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
+                                        break
                         else:
                             # AI processing failed - mark with failure flag
                             analytics['failed'] += 1
+                            total_processed_this_run += 1  # Count failed attempts too
                             logger.warning(f"AI processing failed for UID {email_uid}, marking with {AI_PROCESSING_FAILED_FLAG}")
                             
                             # Mark email with failure flag
@@ -241,13 +273,29 @@ def run_email_processing_loop(
                                 from src.imap_connection import add_tags_to_email
                                 add_tags_to_email(imap, email_uid, [AI_PROCESSING_FAILED_FLAG, config.processed_tag])
                             
+                            # Check if we've hit the limit after this email
+                            if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                                logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
+                                break
+                            
                     except Exception as e:
                         # Isolate per-email errors - don't stop the loop
                         analytics['failed'] += 1
+                        total_processed_this_run += 1  # Count errors too
                         error_msg = f"Error processing email UID {email_uid}: {e}"
                         analytics['errors'].append(error_msg)
                         logger.error(error_msg, exc_info=True)
+                        
+                        # Check if we've hit the limit after this error
+                        if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                            logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
+                            break
                         continue
+                
+                # Check if we've hit the limit after processing batch
+                if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
+                    logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping.")
+                    break
                 
                 # If single run, exit after processing batch
                 if single_run:
@@ -284,6 +332,11 @@ def run_email_processing_loop(
     analytics_summary = generate_analytics_summary(analytics)
     logger.info(f"Processing complete. Summary: {analytics_summary}")
     
+    # Return analytics with summary merged in
+    analytics['summary'] = analytics_summary
+    # Also add summary fields directly to analytics for backward compatibility
+    analytics.update(analytics_summary)
+    
     return analytics
 
 
@@ -298,12 +351,18 @@ def generate_analytics_summary(analytics: Dict[str, Any]) -> Dict[str, Any]:
         Dict with computed percentages and formatted summary
     """
     total = analytics['total_fetched']
+    total_available = analytics.get('total_available', total)  # Total available before limit
     successful = analytics['successfully_processed']
     failed = analytics['failed']
+    
+    # Calculate remaining unprocessed (PDD AC 7)
+    remaining_unprocessed = max(0, total_available - total)
     
     summary = {
         'run_id': analytics['run_id'],
         'total': total,
+        'total_available': total_available,
+        'remaining_unprocessed': remaining_unprocessed,
         'successfully_processed': successful,
         'failed': failed,
         'success_rate': round((successful / total * 100) if total > 0 else 0, 2),
