@@ -1,38 +1,21 @@
-# Logging System Design (email-agent)
+# Logging System Design: email-agent
 
-## Motivation
-A robust logging system is required to ensure reliability, traceability, and auditability of agent operations. This system will support both console and file outputs, INFO/DEBUG log levels, clear timestamping, unique Message-IDs, and analytics summaries. The system is developed test-first (TDD) and tightly coupled to the overall configuration strategy.
-
-## Implementation/Subtasks Checklist
-
-1. **Test scaffolding** (✅ done):
-    - Dedicated pytest module (`test_logging.py`)
-    - Fixtures provide temp files and capture for isolated file/console outputs
-    - Confirmed helpers prevent test pollution
-2. **Tests for core features** (✅ done):
-    - Tests for INFO/DEBUG, console/file, strict output structure, log-level filtering (all currently failing as expected)
-    - Every requirement has a concrete failing test for TDD
-3. **Logger implementation** (✅ done):
-    - logger.py provides LoggerFactory
-    - Handlers for console and file
-    - Strict FORMAT with timestamp and UUID message IDs
-    - Filters ensure every message has required metadata
-4. **Analytics summary** (✅ done):
-    - analytics.py generates a valid JSONL summary of the log file at run end, including count by log level and edge case handling
-    - Tests are passing for analytics file structure, metrics, and edge scenarios
-5. **Configuration/integration** (✅ done):
-    - logger and analytics system are now integrated into CLI startup/shutdown
-    - All file/config paths are inferred from config.yaml, global logger access is established, and program shutdown triggers analytics write
-
-## TDD Approach
-- Add, then incrementally resolve, failing tests for every new behavior.
-- Use temporary files and redirected stdout to prevent polluting real logs or user output.
-- Optimize for developer experience: failures are clear and fast.
-
-## Design Principles
-- Log output structure is strict and consistent to enable searching and analytics.
-- No side effects in tests; all output is isolated and cleaned.
-- All log locations, levels, and analytics output paths are derived from config.yaml.
+## Overview
+This document describes the architecture, design rationale, and implementation details of the logging system for email-agent. The logging system provides robust, configurable logging to file and console, including analytics summary, throughout the agent lifecycle.
 
 ---
-This file is to be updated at every step as the logging system evolves, so information and design decisions are always current and complete.
+
+## Sections (To Be Filled)
+1. **Architecture**: Overall structure, goals
+2. **Configuration**: YAML/config options, schema, log file locations
+3. **Test Strategy**: TDD, scaffolding, isolation
+4. **Core Implementation**: Factories, handlers, levels, message IDs
+5. **Analytics Summary**: Metrics, output location, JSONL format
+6. **Integration**: How/where to initialize, shutdown hooks, global use
+
+## Usage Examples & API Reference
+(To be completed as implementation proceeds)
+
+---
+
+*This file is updated in real time as the logging system is developed and integrated, to keep documentation in step with code.*
