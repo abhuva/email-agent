@@ -1,11 +1,17 @@
-print('[DEBUG] Top-level print from openrouter_client.py -- should always show!')
+"""
+OpenRouter API client for email classification.
+Provides OpenAI-compatible interface to OpenRouter API.
+"""
+
 import sys
 import os
 import requests
 from typing import Dict, Any, List
 from dotenv import load_dotenv
+
+# Fix import path for when running as script
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import ConfigManager
+from src.config import ConfigManager
 
 class OpenRouterAPIError(Exception):
     """
@@ -124,31 +130,40 @@ def extract_keywords_from_openrouter_response(response: Dict[str, Any]) -> List[
             pass
     return [k.strip() for k in content.split(",") if k.strip()]
 
-# Direct integration demo for dev/test (runs on every python execution)
-print("[DEBUG] __name__ value is:", __name__)
-print("[DEBUG] Loading .env/config ...")
-
-conf = ConfigManager('config/config.yaml', '.env')
-params = conf.openrouter_params()
-print("[DEBUG] config.openrouter_params():", params)
-api_key = params['api_key']
-api_url = params['api_url']
-model = params.get('model', 'openai/gpt-3.5-turbo')
-print("[DEBUG] OPENROUTER_API_KEY:", repr(api_key))
-print("[DEBUG] OPENROUTER_API_URL:", repr(api_url))
-print("[DEBUG] MODEL:", repr(model))
-if not api_key:
-    print("Set OPENROUTER_API_KEY in your environment.")
-    exit(1)
-client = OpenRouterClient(api_key, api_url)
-email_content = "This is a message about travel, invoices, and urgent delivery."
-prompt = create_prompt(email_content, 100)
-print("[DEBUG] Prompt:\n", prompt)
-try:
-    print("[DEBUG] Sending prompt with model:", model)
-    api_result = send_email_prompt_for_keywords(email_content, client, 100, model=model)
-    print("[DEBUG] API result:\n", api_result)
-    keywords = extract_keywords_from_openrouter_response(api_result)
-    print("[DEBUG] Extracted keywords:", keywords)
-except Exception as e:
-    print("[DEBUG] Error:", e)
+# Test/demo code - only runs when script is executed directly
+if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    
+    print("OpenRouter Client Test/Demo")
+    print("=" * 60)
+    
+    try:
+        conf = ConfigManager('config/config.yaml', '.env')
+        params = conf.openrouter_params()
+        api_key = params['api_key']
+        api_url = params['api_url']
+        model = params.get('model', 'openai/gpt-3.5-turbo')
+        
+        if not api_key:
+            print("ERROR: Set OPENROUTER_API_KEY in your environment.")
+            sys.exit(1)
+        
+        client = OpenRouterClient(api_key, api_url)
+        email_content = "This is a message about travel, invoices, and urgent delivery."
+        
+        print(f"Model: {model}")
+        print(f"Email content: {email_content}")
+        print("\nSending to OpenRouter API...")
+        
+        api_result = send_email_prompt_for_keywords(email_content, client, 100, model=model)
+        keywords = extract_keywords_from_openrouter_response(api_result)
+        
+        print(f"✓ Extracted keywords: {keywords}")
+        print("=" * 60)
+        
+    except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
