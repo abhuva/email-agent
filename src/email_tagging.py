@@ -1,6 +1,6 @@
 """
 Email tagging workflow: integrates AI response parsing, tag mapping, and IMAP tagging.
-Always ensures [AI-Processed] tag is applied for idempotency.
+Always ensures AIProcessed tag is applied for idempotency.
 """
 
 import logging
@@ -16,17 +16,17 @@ def tag_email_safely(
     email_uid,
     ai_response: str,
     tag_mapping: Dict[str, str],
-    processed_tag: str = '[AI-Processed]'
+    processed_tag: str = 'AIProcessed'
 ) -> bool:
     """
-    Safely tag an email based on AI response, always appending [AI-Processed] tag.
+    Safely tag an email based on AI response, always appending AIProcessed tag.
     
     Args:
         imap: Active IMAP connection
         email_uid: Email UID (bytes, int, or str)
         ai_response: Raw AI response string (should contain 'urgent', 'neutral', or 'spam')
         tag_mapping: Dict mapping keywords to IMAP tag names (e.g., {'urgent': 'Urgent', 'neutral': 'Neutral'})
-        processed_tag: Tag to always append (default: '[AI-Processed]')
+        processed_tag: Tag to always append (default: 'AIProcessed')
     
     Returns:
         True if tagging succeeded, False otherwise
@@ -43,7 +43,7 @@ def tag_email_safely(
             tags = [tag_mapping.get('neutral', 'Neutral')]
             logging.warning(f"Tag mapping failed for keyword '{keyword}', using neutral fallback")
         
-        # Always append [AI-Processed] tag
+        # Always append AIProcessed tag
         tags.append(processed_tag)
         
         logging.info(f"Tagging email UID {email_uid} with tags: {tags}")
@@ -139,7 +139,7 @@ def process_email_with_ai_tags(
         return result
     
     tag_mapping = config.get('tag_mapping', {})
-    processed_tag = config.get('processed_tag', '[AI-Processed]')
+    processed_tag = config.get('processed_tag', 'AIProcessed')
     
     # Log start of processing
     metadata_str = ""
@@ -174,9 +174,9 @@ def process_email_with_ai_tags(
             result['after_tags'] = after_flags
             logging.debug(f"Email UID {email_uid} flags after: {after_flags}")
             
-            # Verify [AI-Processed] was applied
+            # Verify AIProcessed tag was applied
             if processed_tag not in after_flags:
-                logging.warning(f"[AI-Processed] tag not found in flags after tagging for UID {email_uid}")
+                logging.warning(f"AIProcessed tag not found in flags after tagging for UID {email_uid}")
             
             logging.info(
                 f"Email UID {email_uid} tagged successfully. "

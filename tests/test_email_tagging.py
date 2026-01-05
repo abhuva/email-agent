@@ -27,43 +27,43 @@ def tag_mapping():
     }
 
 def test_tag_email_safely_urgent(mock_imap, tag_mapping):
-    """Test that 'urgent' AI response maps to 'Urgent' tag + [AI-Processed]"""
+    """Test that 'urgent' AI response maps to 'Urgent' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, b'42', 'urgent', tag_mapping)
     assert result is True
     assert len(mock_imap.calls) == 1
     call = mock_imap.calls[0]
     assert call[0] == 'STORE'
     assert 'Urgent' in call[3]
-    assert '[AI-Processed]' in call[3]
+    assert 'AIProcessed' in call[3]
 
 def test_tag_email_safely_neutral(mock_imap, tag_mapping):
-    """Test that 'neutral' AI response maps to 'Neutral' tag + [AI-Processed]"""
+    """Test that 'neutral' AI response maps to 'Neutral' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, '99', 'neutral', tag_mapping)
     assert result is True
     assert 'Neutral' in mock_imap.calls[0][3]
-    assert '[AI-Processed]' in mock_imap.calls[0][3]
+    assert 'AIProcessed' in mock_imap.calls[0][3]
 
 def test_tag_email_safely_spam(mock_imap, tag_mapping):
-    """Test that 'spam' AI response maps to 'Spam' tag + [AI-Processed]"""
+    """Test that 'spam' AI response maps to 'Spam' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, 123, 'spam', tag_mapping)
     assert result is True
     assert 'Spam' in mock_imap.calls[0][3]
-    assert '[AI-Processed]' in mock_imap.calls[0][3]
+    assert 'AIProcessed' in mock_imap.calls[0][3]
 
 def test_tag_email_safely_always_adds_processed_tag(mock_imap, tag_mapping):
-    """Test that [AI-Processed] is always added regardless of AI response"""
+    """Test that AIProcessed is always added regardless of AI response"""
     for ai_resp in ['urgent', 'neutral', 'spam', 'invalid', '', None]:
         mock_imap.calls = []
         tag_email_safely(mock_imap, '1', ai_resp, tag_mapping)
         assert len(mock_imap.calls) == 1
-        assert '[AI-Processed]' in mock_imap.calls[0][3]
+        assert 'AIProcessed' in mock_imap.calls[0][3]
 
 def test_tag_email_safely_fallback_to_neutral(mock_imap, tag_mapping):
-    """Test that invalid AI response falls back to Neutral + [AI-Processed]"""
+    """Test that invalid AI response falls back to Neutral + AIProcessed"""
     result = tag_email_safely(mock_imap, '1', 'gibberish response', tag_mapping)
     assert result is True
     assert 'Neutral' in mock_imap.calls[0][3]
-    assert '[AI-Processed]' in mock_imap.calls[0][3]
+    assert 'AIProcessed' in mock_imap.calls[0][3]
 
 def test_tag_email_safely_handles_imap_failure(mock_imap, tag_mapping):
     """Test that IMAP failures are handled gracefully"""

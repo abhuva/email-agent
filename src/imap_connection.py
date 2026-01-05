@@ -21,10 +21,24 @@ class IMAPKeywordsNotSupportedError(Exception):
 # ... existing functions (connect_imap, load_imap_queries, etc.) ...
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
+    """
+    Connect to IMAP server with SSL (port 993) or STARTTLS (port 143).
+    Automatically detects connection type based on port.
+    """
     try:
-        imap = imaplib.IMAP4_SSL(host, port)
+        if port == 993:
+            # Use SSL from the start (IMAPS)
+            imap = imaplib.IMAP4_SSL(host, port)
+        elif port == 143:
+            # Use STARTTLS (upgrade plain connection to TLS)
+            imap = imaplib.IMAP4(host, port)
+            imap.starttls()
+        else:
+            # Default to SSL for other ports (assume SSL)
+            imap = imaplib.IMAP4_SSL(host, port)
+        
         imap.login(user, password)
-        logging.info(f"IMAP connection established with {host} as {user}.")
+        logging.info(f"IMAP connection established with {host}:{port} as {user}.")
         return imap
     except imaplib.IMAP4.error as e:
         logging.error(f"IMAP login failed: {e}")
@@ -53,11 +67,14 @@ def load_imap_queries(config_path: str = "config/config.yaml"):
     logging.info(f"Loaded IMAP queries: {queries}")
     return queries
 
-def search_emails_excluding_processed(imap, queries: List[str], processed_tag: str = '[AI-Processed]') -> List[bytes]:
+def search_emails_excluding_processed(imap, queries: List[str], processed_tag: str = 'AIProcessed') -> List[bytes]:
     try:
         imap.select('INBOX')
         all_ids = set()
         for q in queries:
+            # Note: IMAP uses "KEYWORD" keyword in SEARCH to search FLAGS
+            # This is confusing naming in the IMAP spec, but it's correct
+            # We're searching for custom FLAGS, not the KEYWORDS extension
             status, data = imap.search(None, f'{q} NOT KEYWORD "{processed_tag}"')
             if status != 'OK':
                 logging.error(f"IMAP search failed on query: {q}")
@@ -123,7 +140,7 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
 def fetch_emails(
     host: str, user: str, password: str,
     queries: List[str],
-    processed_tag: str = '[AI-Processed]',
+    processed_tag: str = 'AIProcessed',
     max_retries: int = 3,
     timeout: int = 30
 ) -> List[Dict[str, Any]]:
@@ -199,13 +216,13 @@ def safe_imap_operation(
     timeout: int = 30
 ):
     """
-    Context manager for safe IMAP operations with retry logic, capability validation, and mailbox context.
+    Context manager for safe IMAP operations with retry logic and mailbox context.
     
     Ensures:
-    - Server supports KEYWORDS capability (required for tagging)
     - Mailbox is selected before UID operations
     - Exponential backoff retry on transient errors (NO/TRYAGAIN)
     - Proper connection cleanup
+    - Uses FLAGS (not KEYWORDS extension) for tagging - supported by all IMAP servers
     
     Usage:
         with safe_imap_operation(host, user, password) as imap:
@@ -224,21 +241,8 @@ def safe_imap_operation(
                 if imap.sock:
                     imap.sock.settimeout(timeout)
                 
-                # Validate KEYWORDS capability
-                status, capabilities = imap.capability()
-                if status != 'OK':
-                    raise IMAPConnectionError("Failed to get server capabilities")
-                
-                capabilities_str = b' '.join(capabilities).decode('utf-8', errors='ignore').upper()
-                if 'KEYWORDS' not in capabilities_str:
-                    try:
-                        imap.logout()
-                    except Exception:
-                        pass
-                    raise IMAPKeywordsNotSupportedError(
-                        f"IMAP server at {host} does not support KEYWORDS capability. "
-                        "Tagging operations require KEYWORDS support."
-                    )
+                # Note: We use FLAGS (not KEYWORDS extension) for tagging.
+                # FLAGS are supported by all IMAP servers, so no capability check needed.
                 
                 # Select mailbox (ensures context for UID operations)
                 status, data = imap.select(mailbox)
@@ -258,14 +262,6 @@ def safe_imap_operation(
                 # Success - break retry loop
                 break
                 
-            except IMAPKeywordsNotSupportedError as e:
-                # Don't retry on this error
-                if imap:
-                    try:
-                        imap.logout()
-                    except Exception:
-                        pass
-                raise
             except IMAPConnectionError as e:
                 # Retry connection errors
                 if imap:

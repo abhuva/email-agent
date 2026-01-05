@@ -1,6 +1,6 @@
 # Task ID: 5
 # Title: Implement OpenRouter API integration
-# Status: pending
+# Status: done
 # Dependencies: 1, 2, 4
 # Priority: high
 # Description: Create functionality to send prompts to OpenRouter API and process responses
@@ -11,37 +11,37 @@ Implement functions to communicate with OpenRouter API using credentials from .e
 Test API integration with mock responses. Verify proper handling of rate limits and errors. Test prompt formatting with various email contents.
 
 # Subtasks:
-## 1. Set up OpenRouter client with .env credentials [pending]
+## 1. Set up OpenRouter client with .env credentials [done]
 ### Dependencies: None
 ### Description: Create client initialization function that loads credentials from .env and configures OpenAI SDK for OpenRouter API
 ### Details:
 Use `python-dotenv` to load `OPENROUTER_API_KEY` from .env file. Initialize `OpenAI` client with `base_url='https://openrouter.ai/api/v1'` and `api_key=os.getenv('OPENROUTER_API_KEY')`. Add a test function to verify connection with simple chat completion using model like 'openai/gpt-3.5-turbo'. Create `openrouter_client.py` module exporting the client function.
 
-## 2. Implement prompt template generation [pending]
+## 2. Implement prompt template generation [done]
 ### Dependencies: 5.1
 ### Description: Create function to build standardized prompt templates that include truncated email content and extraction instructions
 ### Details:
 Define function `create_prompt(email_content: str, max_chars: int = 4000) -> str` that truncates email_content to max_chars from config. Use f-string template: 'Analyze this email and extract the 3 most relevant tag keywords: {truncated_email}'. Import config for max_chars limit. Add validation to ensure prompt length stays under model context limits (e.g., 4096 tokens).
 
-## 3. Build core API communication function [pending]
+## 3. Build core API communication function [done]
 ### Dependencies: 5.1, 5.2
 ### Description: Create main function to send prompts to OpenRouter and return raw responses
 ### Details:
 Implement `send_prompt(prompt: str, model: str = 'openai/gpt-4o-mini') -> dict` using client.chat.completions.create(). Use messages=[{'role': 'system', 'content': 'You are a precise email tag extractor.'}, {'role': 'user', 'content': prompt}]. Return full response object. Log request parameters and response metadata for debugging.
 
-## 4. Add response processing and keyword extraction [pending]
+## 4. Add response processing and keyword extraction [done]
 ### Dependencies: 5.3
 ### Description: Implement function to parse API responses and extract structured tag keywords
 ### Details:
 Create `extract_keywords(response: dict) -> list[str]` that safely accesses `response.choices[0].message.content`. Parse response for comma-separated keywords or JSON if instructed in prompt. Handle empty/malformed responses by returning empty list. Add regex fallback: `re.findall(r'\b[a-zA-Z]{3,}\b', content)` for keyword extraction. Validate keywords (3-15 chars, no special chars).
 
-## 5. Implement comprehensive error handling and retry logic [pending]
+## 5. Implement comprehensive error handling and retry logic [done]
 ### Dependencies: 5.3, 5.4
 ### Description: Add robust error handling, rate limiting detection, and exponential backoff retries across all API functions
 ### Details:
 Wrap `send_prompt` with `@retry` decorator (use `tenacity` library). Configure exponential backoff: `stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=10)`. Catch specific errors: `openai.RateLimitError` (wait longer), `openai.APIConnectionError` (retry), `openai.InvalidRequestError` (raise). Log all errors with `logging.error`. Add circuit breaker pattern for repeated failures.
 
-## 6. Verify live OpenRouter API call using OpenRouterClient example [pending]
+## 6. Verify live OpenRouter API call using OpenRouterClient example [done]
 ### Dependencies: None
 ### Description: Run a live API call using the OpenRouterClient example code in src/openrouter_client.py with environment credentials. Verify authentication, API responses, and error handling. This test should be performed before marking the full OpenRouter integration task as complete. Log any issues and confirm with a valid OpenAI-compatible prompt.
 ### Details:

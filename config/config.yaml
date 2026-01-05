@@ -1,15 +1,15 @@
 # Example configuration for email-agent
 imap:
-  server: ''
-  port: 993
-  username: ''
+  server: 'nica-network.netcup-mail.de'
+  port: 143
+  username: 'marc.bielert@nica.network'
   password_env: 'IMAP_PASSWORD'
 prompt_file: 'config/prompt.md'
 tag_mapping:
   urgent: 'Urgent'
   neutral: 'Neutral'
   spam: 'Spam'
-processed_tag: '[AI-Processed]'
+processed_tag: 'AIProcessed'
 max_body_chars: 4000
 max_emails_per_run: 15
 log_file: 'logs/agent.log'

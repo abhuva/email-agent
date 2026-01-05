@@ -11,7 +11,7 @@ class MockIMAPConnection:
     """Mock IMAP connection for testing"""
     def __init__(self, before_flags=None, after_flags=None):
         self.before_flags = before_flags or ['\\Seen']
-        self.after_flags = after_flags or ['\\Seen', 'Urgent', '[AI-Processed]']
+        self.after_flags = after_flags or ['\\Seen', 'Urgent', 'AIProcessed']
         self.uid_calls = []
     
     def uid(self, operation, uid, *args):
@@ -72,7 +72,7 @@ def test_process_email_with_ai_tags_verifies_after_tags():
     """Test that process_email_with_ai_tags verifies tags were applied by fetching after"""
     imap = MockIMAPConnection(
         before_flags=['\\Seen'],
-        after_flags=['\\Seen', 'Urgent', '[AI-Processed]']
+        after_flags=['\\Seen', 'Urgent', 'AIProcessed']
     )
     config = {'tag_mapping': {'urgent': 'Urgent', 'neutral': 'Neutral'}}
     
@@ -81,7 +81,7 @@ def test_process_email_with_ai_tags_verifies_after_tags():
     # Should have called UID FETCH twice (before and after)
     fetch_calls = [call for call in imap.uid_calls if call[0] == 'FETCH']
     assert len(fetch_calls) >= 2
-    assert '[AI-Processed]' in result['after_tags']
+    assert 'AIProcessed' in result['after_tags']
 
 
 def test_process_email_with_ai_tags_returns_complete_dict():
@@ -129,7 +129,7 @@ def test_process_email_with_ai_tags_handles_neutral_fallback():
     result = process_email_with_ai_tags(imap, 123, "neutral", config)
     assert result['keyword'] == 'neutral'
     assert 'Neutral' in result['applied_tags']
-    assert '[AI-Processed]' in result['applied_tags']
+    assert 'AIProcessed' in result['applied_tags']
 
 
 def test_process_email_with_ai_tags_handles_missing_config():

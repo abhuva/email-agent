@@ -10,7 +10,6 @@ from src.imap_connection import (
     safe_imap_operation,
     IMAPConnectionError,
     IMAPFetchError,
-    IMAPKeywordsNotSupportedError,
     add_tags_to_email
 )
 
@@ -26,9 +25,9 @@ class MockIMAPConnection:
         self.sock.settimeout = Mock()
     
     def capability(self):
+        # No longer needed - we don't check KEYWORDS capability
+        # But keep for backward compatibility if other code uses it
         self.calls.append('CAPABILITY')
-        if self.simulate_capability:
-            return ('OK', [b'IMAP4rev1 AUTH=PLAIN KEYWORDS'])
         return ('OK', [b'IMAP4rev1 AUTH=PLAIN'])
     
     def select(self, mailbox):
@@ -52,18 +51,6 @@ class MockIMAPConnection:
     def logout(self):
         self.calls.append('LOGOUT')
         return ('OK', [b'Bye'])
-
-@patch('src.imap_connection.imaplib.IMAP4_SSL')
-def test_safe_imap_operation_validates_keywords_support(mock_imap_ssl):
-    """Test that safe_imap_operation checks for KEYWORDS capability before tagging"""
-    mock_imap = MockIMAPConnection(simulate_capability=False)  # No KEYWORDS support
-    mock_imap_ssl.return_value = mock_imap
-    
-    with pytest.raises(IMAPKeywordsNotSupportedError):
-        with safe_imap_operation('host', 'user', 'pass'):
-            pass
-    
-    assert 'CAPABILITY' in mock_imap.calls
 
 @patch('src.imap_connection.imaplib.IMAP4_SSL')
 def test_safe_imap_operation_ensures_mailbox_context(mock_imap_ssl):
@@ -114,18 +101,6 @@ def test_safe_imap_operation_handles_connection_failures(mock_imap_ssl):
                 pass
 
 @patch('src.imap_connection.imaplib.IMAP4_SSL')
-def test_safe_imap_operation_raises_on_no_keywords_support(mock_imap_ssl):
-    """Test that safe_imap_operation raises error if server doesn't support KEYWORDS"""
-    mock_imap = MockIMAPConnection(simulate_capability=False)
-    mock_imap_ssl.return_value = mock_imap
-    
-    with pytest.raises(IMAPKeywordsNotSupportedError) as exc_info:
-        with safe_imap_operation('host', 'user', 'pass'):
-            pass
-    
-    assert 'KEYWORDS' in str(exc_info.value)
-
-@patch('src.imap_connection.imaplib.IMAP4_SSL')
 def test_safe_imap_operation_successful_operation(mock_imap_ssl):
     """Test successful safe_imap_operation with all validations passing"""
     mock_imap = MockIMAPConnection()
@@ -135,5 +110,5 @@ def test_safe_imap_operation_successful_operation(mock_imap_ssl):
         assert imap == mock_imap
         assert mock_imap.selected_mailbox == 'INBOX'
         # Can perform operations
-        result = add_tags_to_email(imap, '42', ['Test', '[AI-Processed]'])
+        result = add_tags_to_email(imap, '42', ['Test', 'AIProcessed'])
         assert result is True

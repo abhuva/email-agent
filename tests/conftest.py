@@ -15,7 +15,7 @@ tag_mapping:
   urgent: 'Urgent'
   neutral: 'Neutral'
   spam: 'Spam'
-processed_tag: '[AI-Processed]'
+processed_tag: 'AIProcessed'
 max_body_chars: 4000
 max_emails_per_run: 15
 log_file: 'logs/agent.log'
