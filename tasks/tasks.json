@@ -563,16 +563,16 @@
         7
       ],
       "priority": "high",
-      "details": "Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the [AI-Processed] tag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.",
+      "details": "Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the AIProcessed flag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.",
       "testStrategy": "Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Implement email fetching with [AI-Processed] exclusion",
-          "description": "Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged [AI-Processed], and return a list of email objects for processing.",
+          "title": "Implement email fetching with AIProcessed exclusion",
+          "description": "Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged with AIProcessed flag, and return a list of email objects for processing.",
           "status": "pending",
           "dependencies": [],
-          "details": "Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAGGED [AI-Processed]' or equivalent. Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found."
+          "details": "Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAG AIProcessed' (FLAG is for custom flags). Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found.\n\n<info added on 2026-01-05T23:05:05.922Z>\nThe subtask has already been updated with most of the requested changes. The title now uses \"AIProcessed exclusion\" without brackets, the description uses \"AIProcessed\" without brackets, and the details already specify \"NOT FLAG AIProcessed\" as the correct IMAP search query syntax.\n\nThe only additional information to add would be:\n\n\"The fetch_emails function should use the processed_tag value from config.yaml rather than hardcoding 'AIProcessed'. This ensures consistency if the tag name changes in the future. When implementing the IMAP search query, remember that custom flags require the FLAG command, while system flags like \\Seen use FLAGGED.\"\n</info added on 2026-01-05T23:05:05.922Z>"
         },
         {
           "id": 2,
@@ -582,17 +582,17 @@
           "dependencies": [
             1
           ],
-          "details": "For each email from fetch results, send body/content to AI service (e.g., OpenAI/Groq) with prompt for analysis. Capture AI response (JSON with categories/intent). Wrap in try-catch: log error, mark as 'AI-Processing-Failed' tag, continue to next email. Use async/await for non-blocking. Rate limit API calls (e.g., 10/min)."
+          "details": "For each email from fetch results, send body/content to AI service (e.g., OpenAI/Groq) with prompt for analysis. Capture AI response (JSON with categories/intent). Wrap in try-catch: log error, mark as 'AIProcessingFailed' flag, continue to next email. Use async/await for non-blocking. Rate limit API calls (e.g., 10/min)."
         },
         {
           "id": 3,
           "title": "Implement AI response-based tagging logic",
-          "description": "Add logic to parse AI responses and apply appropriate IMAP tags to processed emails.",
+          "description": "Add logic to parse AI responses and apply appropriate IMAP flags to processed emails.",
           "status": "pending",
           "dependencies": [
             2
           ],
-          "details": "Parse AI JSON response for tags like 'spam', 'urgent', 'customer-support'. Use IMAP STORE command to add tags (e.g., STORE UID +FLAGS (\\[AI-Processed\\] \\[spam\\])). If processing failed, add only [AI-Processing-Failed]. Commit changes with UID STORE. Log applied tags per email."
+          "details": "Parse AI JSON response for tags like 'Spam', 'Urgent', 'Neutral' (from config). Use IMAP STORE command to add flags (e.g., STORE UID +FLAGS (AIProcessed Spam)). If processing failed, add only AIProcessingFailed flag. Commit changes with UID STORE. Note that we use FLAGS as the server doesn't support KEYWORDS extension. Log applied flags per email.\n\n<info added on 2026-01-05T23:05:12.304Z>\nThe tagging implementation uses FLAGS.SILENT to avoid server notifications, improving efficiency. The actual flag format is without brackets (e.g., \"AIProcessed\", \"Spam\") as most IMAP servers don't support special characters in flags. \n\nThe tag_email_safely() function handles all tagging operations and automatically adds the \"AIProcessed\" flag to every processed email, while additional tags come from the AI response mapping: urgent→Urgent, neutral→Neutral, spam→Spam.\n\nWhen applying flags, the implementation uses:\n```python\nconn.uid('STORE', uid, '+FLAGS.SILENT', '({})'.format(' '.join(flags)))\n```\n\nThis approach ensures atomic flag operations and proper error handling. If the AI processing fails, only the \"AIProcessingFailed\" flag is applied (not bracketed). The function also implements retries with exponential backoff for transient IMAP connection issues.\n\nThe tag mapping is loaded from configuration, allowing customization without code changes. Each mapping is validated at startup to ensure it contains only valid IMAP flag characters.\n</info added on 2026-01-05T23:05:12.304Z>"
         },
         {
           "id": 4,
@@ -614,7 +614,7 @@
           "dependencies": [
             4
           ],
-          "details": "Use counters: total_fetched, successfully_processed, failed, tag_breakdown dict. Update in process/tag functions. At loop end: compute percentages, print/log JSON: {'run_id': timestamp, 'total': N, 'success_rate': 95%, 'tags': {'spam': 10, ...}}. Log to file and console. Schedule via cron/loop interval."
+          "details": "Use counters: total_fetched, successfully_processed, failed, tag_breakdown dict. Update in process/tag functions. At loop end: compute percentages, print/log JSON: {'run_id': timestamp, 'total': N, 'success_rate': 95%, 'tags': {'Spam': 10, ...}}. Log to file and console. Schedule via cron/loop interval."
         }
       ]
     },
