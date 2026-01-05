@@ -9,3 +9,35 @@ Implement the main function that orchestrates the entire process: fetch emails, 
 
 # Test Strategy:
 Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate.
+
+# Subtasks:
+## 1. Implement email fetching with [AI-Processed] exclusion [pending]
+### Dependencies: None
+### Description: Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged [AI-Processed], and return a list of email objects for processing.
+### Details:
+Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAGGED [AI-Processed]' or equivalent. Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found.
+
+## 2. Implement per-email AI processing with error isolation [pending]
+### Dependencies: 8.1
+### Description: Create a function to process individual emails via AI API, handling failures gracefully without stopping the loop.
+### Details:
+For each email from fetch results, send body/content to AI service (e.g., OpenAI/Groq) with prompt for analysis. Capture AI response (JSON with categories/intent). Wrap in try-catch: log error, mark as 'AI-Processing-Failed' tag, continue to next email. Use async/await for non-blocking. Rate limit API calls (e.g., 10/min).
+
+## 3. Implement AI response-based tagging logic [pending]
+### Dependencies: 8.2
+### Description: Add logic to parse AI responses and apply appropriate IMAP tags to processed emails.
+### Details:
+Parse AI JSON response for tags like 'spam', 'urgent', 'customer-support'. Use IMAP STORE command to add tags (e.g., STORE UID +FLAGS (\[AI-Processed\] \[spam\])). If processing failed, add only [AI-Processing-Failed]. Commit changes with UID STORE. Log applied tags per email.
+
+## 4. Implement main loop orchestration and error handling [pending]
+### Dependencies: 8.1, 8.2, 8.3
+### Description: Assemble the main processing loop that fetches emails, processes each sequentially, handles overall errors, and ensures loop completion.
+### Details:
+In main(): while True or single-run mode: fetch emails → for each: process_AI → tag → log. Outer try-catch for connection/IMAP failures (retry 3x). Inner per-email error handling to skip failures. Sleep 30s between batches if multi-batch. Graceful exit on KeyboardInterrupt. Use logging module with timestamps.
+
+## 5. Implement analytics summary generation and logging [pending]
+### Dependencies: 8.4
+### Description: Track metrics throughout processing and generate/log a summary report at end of each run.
+### Details:
+Use counters: total_fetched, successfully_processed, failed, tag_breakdown dict. Update in process/tag functions. At loop end: compute percentages, print/log JSON: {'run_id': timestamp, 'total': N, 'success_rate': 95%, 'tags': {'spam': 10, ...}}. Log to file and console. Schedule via cron/loop interval.
+

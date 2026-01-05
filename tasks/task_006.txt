@@ -9,3 +9,35 @@ Implement functions to add tags to emails via IMAP. Map AI response keywords to 
 
 # Test Strategy:
 Test tagging with various AI responses. Verify fallback behavior. Ensure [AI-Processed] tag is always added. Verify idempotency by attempting to process already-tagged emails.
+
+# Subtasks:
+## 1. Implement AI response keyword extraction and config-based tag mapping [pending]
+### Dependencies: None
+### Description: Create a function to parse AI responses, extract keywords, and map them to IMAP tags using a configuration mapping. Implement fallback logic to assign 'neutral' tag when AI response doesn't match expected format.
+### Details:
+Develop `map_ai_response_to_tags(ai_response: str, config: dict) -> List[str]` that: 1) Parses AI response for keywords using regex or NLP (e.g., match patterns like 'priority: high', 'spam: yes'); 2) Looks up keywords in config dict like `{'high': 'URGENT', 'spam': 'SPAM'}`; 3) Returns empty list if no matches, triggering fallback; 4) Test with sample responses: 'This is spam' → ['SPAM'], 'Priority high' → ['URGENT'], malformed → []
+
+## 2. Create core IMAP tagging function with non-destructive operations [pending]
+### Dependencies: None
+### Description: Implement a function to add tags (IMAP keywords/flags) to specific email messages using IMAP STORE command without modifying email content, position, or other flags.
+### Details:
+Develop `add_tags_to_email(imap_connection, email_uid: int, tags: List[str]) -> bool` that: 1) Uses `UID STORE {email_uid} +FLAGS.SILENT (tag1 tag2)` for adding tags; 2) Handles IMAP keyword syntax correctly (RFC 3501 §6.4.6); 3) Uses SILENT flag to avoid unnecessary server notifications; 4) Returns success/failure based on IMAP OK response; 5) Includes error handling for invalid UIDs and permission issues
+
+## 3. Implement always-add [AI-Processed] tagging mechanism [pending]
+### Dependencies: 6.1, 6.2
+### Description: Create wrapper function that guarantees [AI-Processed] tag is always applied to processed emails regardless of AI classification outcome.
+### Details:
+Develop `tag_email_safely(imap_connection, email_uid: int, ai_response: str, config: dict) -> bool` that: 1) Calls subtask 1 to get mapped tags; 2) Always appends '[AI-Processed]' to result list; 3) Calls subtask 2 `add_tags_to_email()` with final tag list; 4) Logs applied tags for audit trail; 5) Example: neutral AI → ['neutral', '[AI-Processed]'], spam AI → ['SPAM', '[AI-Processed]']
+
+## 4. Add comprehensive error handling and connection management [pending]
+### Dependencies: 6.2, 6.3
+### Description: Enhance IMAP operations with proper connection pooling, retry logic, and transaction safety to ensure reliable non-destructive tagging.
+### Details:
+Implement `safe_imap_operation(operation_func, max_retries: int = 3)` context manager that: 1) Uses `imaplib.IMAP4_SSL()` with proper SSL context; 2) Implements exponential backoff retry for transient errors (NO/TRYAGAIN); 3) Ensures SELECT/UID operations use same mailbox context; 4) Rolls back on failure (though IMAP STORE is atomic); 5) Validates server capabilities for KEYWORDS support via `CAPABILITY` command before tagging
+
+## 5. Create complete email tagging workflow with validation and logging [pending]
+### Dependencies: 6.1, 6.3, 6.4
+### Description: Integrate all components into production-ready workflow with input validation, comprehensive logging, and verification of tagging success.
+### Details:
+Develop main `process_email_with_ai_tags(imap_connection, email_uid: int, ai_response: str, config: dict) -> Dict[str, Any]` that: 1) Validates inputs (non-empty UID, valid AI response); 2) Uses subtask 4 wrapper around subtask 3; 3) Verifies success by fetching flags post-operation (`UID FETCH uid FLAGS`); 4) Returns dict with `{'success': bool, 'applied_tags': List[str], 'before_tags': List[str], 'after_tags': List[str]}`; 5) Logs full audit trail including timestamps and email metadata
+
