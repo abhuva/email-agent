@@ -439,7 +439,7 @@
           "id": 1,
           "title": "Implement AI response keyword extraction and config-based tag mapping",
           "description": "Create a function to parse AI responses, extract keywords, and map them to IMAP tags using a configuration mapping. Implement fallback logic to assign 'neutral' tag when AI response doesn't match expected format.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Develop `map_ai_response_to_tags(ai_response: str, config: dict) -> List[str]` that: 1) Parses AI response for keywords using regex or NLP (e.g., match patterns like 'priority: high', 'spam: yes'); 2) Looks up keywords in config dict like `{'high': 'URGENT', 'spam': 'SPAM'}`; 3) Returns empty list if no matches, triggering fallback; 4) Test with sample responses: 'This is spam' → ['SPAM'], 'Priority high' → ['URGENT'], malformed → []"
         },
