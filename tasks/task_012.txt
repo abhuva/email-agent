@@ -9,3 +9,35 @@ Enhance the CLI interface to show progress during note creation and summarizatio
 
 # Test Strategy:
 Test the CLI with various processing scenarios including successful and failed operations. Verify the progress indicators and summary report accurately reflect the processing results.
+
+# Subtasks:
+## 1. Implement progress bars for note creation and summarization [pending]
+### Dependencies: None
+### Description: Add visual progress indicators during note creation and summarization operations using a terminal-friendly library.
+### Details:
+Install and use the **rich** library (pip install rich) for modern progress bars. Wrap note creation loops with `rich.progress.Progress()` context manager, adding tasks like `p.add_task('Creating notes...', total=note_count)`. Update progress with `p.update(task_id, advance=1)` after each note. Repeat for summarization process. Use `BarColumn()`, `TextColumn()`, and `TimeElapsedColumn()` for clear UX. Test with sample data to ensure bars display correctly in terminal.[1][3][5]
+
+## 2. Add metrics tracking counters [pending]
+### Dependencies: None
+### Description: Implement counters to track Notes Created, Summaries Generated, and Note Creation Failures throughout CLI operations.
+### Details:
+Create a metrics dictionary or class with keys: `notes_created=0`, `summaries_generated=0`, `note_creation_failures=0`. Increment `notes_created` after successful note creation, `summaries_generated` after successful summarization, and `note_creation_failures` in exception handlers during note creation. Use these counters in both progress bar updates and final reporting. Ensure thread-safe incrementing if operations are parallelized.
+
+## 3. Update final summary report with new metrics [pending]
+### Dependencies: 12.1, 12.2
+### Description: Modify the existing summary report to display the three new metrics at operation completion.
+### Details:
+After all operations complete, use **rich** `Table` or styled text to display: 'Notes Created: {metrics['notes_created']}', 'Summaries Generated: {metrics['summaries_generated']}', 'Note Creation Failures: {metrics['note_creation_failures']}'. Add success rate calculation: `success_rate = (notes_created / (notes_created + note_creation_failures)) * 100 if (notes_created + note_creation_failures) > 0 else 0`. Position report after progress bars complete.
+
+## 4. Implement context-specific error messaging [pending]
+### Dependencies: 12.2
+### Description: Replace generic error messages with detailed, actionable error information for note creation failures.
+### Details:
+In note creation exception handlers, capture specific error details: file I/O errors ('Failed to write note to {path}'), API errors ('Note service unavailable'), validation errors ('Invalid note content length'). Format messages as: 'Note creation failed for item {index}: {specific_error}. Skipping...'. Log full traceback to debug file. Increment failure counter and continue processing other notes. Display summary of failure types in final report.
+
+## 5. Integrate all components and test end-to-end workflow [pending]
+### Dependencies: 12.1, 12.2, 12.3, 12.4
+### Description: Combine progress bars, metrics, reporting, and error handling into cohesive CLI experience with comprehensive testing.
+### Details:
+Create test scenarios: normal operation (100 notes, 0 failures), partial failures (20% failure rate), edge cases (0 notes, all failures). Verify progress bars update smoothly, metrics are accurate, error messages are informative, and final report displays correctly. Test terminal resizing, interruption handling (Ctrl+C), and color support across terminals. Add progress bar cleanup in exception handlers using `progress.update(task_id, completed=True)`.
+

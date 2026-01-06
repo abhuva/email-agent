@@ -1,6 +1,6 @@
 # Task ID: 1
 # Title: Set up configuration file structure
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Create and implement the enhanced configuration file structure with new parameters for Obsidian integration
@@ -9,3 +9,35 @@ Extend the existing config.yaml to include new parameters: obsidian_vault_path, 
 
 # Test Strategy:
 Verify configuration loads correctly with valid inputs. Test error handling with missing or invalid paths. Ensure backward compatibility with V1 configuration parameters.
+
+# Subtasks:
+## 1. Extend config.yaml schema with new Obsidian parameters [done]
+### Dependencies: None
+### Description: Add the five new configuration parameters to the existing config.yaml structure following YAML best practices.
+### Details:
+Update the config.yaml file to include: `obsidian_vault_path` (string path), `summarization_tags` (list of strings), `summarization_prompt_path` (string path), `changelog_path` (string path), and `imap_query` (string). Use 2-space indentation consistently, add descriptive comments for each parameter, and ensure proper YAML structure with quotes around string values that may contain spaces or special characters[1][4].
+
+## 2. Implement configuration loading function [done]
+### Dependencies: 1.1
+### Description: Create or update the function that loads and parses the extended config.yaml file.
+### Details:
+Modify the existing config loader to use a YAML parser library (PyYAML recommended). Add support for the new fields by defining a config model/data class with all parameters including the new ones. Implement safe loading with error handling for malformed YAML syntax[1]. Return a structured config object.
+
+## 3. Add parameter format validation logic [done]
+### Dependencies: 1.2
+### Description: Implement validation to ensure new parameters have correct data types and formats.
+### Details:
+In the config loader, validate: `obsidian_vault_path`, `summarization_prompt_path`, `changelog_path` are non-empty strings; `summarization_tags` is a list of non-empty strings; `imap_query` is a non-empty string matching IMAP search syntax pattern if applicable. Raise specific `ValidationError` with parameter name and issue description for each failure.
+
+## 4. Implement critical path existence validation [done]
+### Dependencies: 1.2
+### Description: Add file/directory existence checks for all required path parameters.
+### Details:
+Using `os.path.exists()` and `os.path.isdir()`/`os.path.isfile()`, validate that `obsidian_vault_path` is an existing directory, and `summarization_prompt_path` and `changelog_path` are existing files. Check all three paths before proceeding. Collect all path errors into a single validation report.
+
+## 5. Implement early failure with clear error messaging [done]
+### Dependencies: 1.3, 1.4
+### Description: Create comprehensive error handling that fails fast with user-friendly error messages.
+### Details:
+Wrap config loading and validation in a try-catch block. If format validation fails, raise `ConfigFormatError` listing invalid parameters. If paths don't exist, raise `ConfigPathError` with bullet-point list of missing paths and their expected types (file/dir). Log full error details for debugging. Exit application with status code 1 on config failure.
+

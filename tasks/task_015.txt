@@ -9,3 +9,35 @@ Prepare detailed documentation covering: 1) Installation and setup, 2) Configura
 
 # Test Strategy:
 Review documentation for accuracy and completeness. Have a team member follow the instructions to verify they are clear and complete. Test configuration examples to ensure they work as described.
+
+# Subtasks:
+## 1. Draft Installation and Setup Documentation [pending]
+### Dependencies: None
+### Description: Create the first section of documentation detailing how users can install and initially set up the software, including prerequisites, step-by-step instructions, and verification steps.
+### Details:
+Structure as a markdown file with headings for prerequisites (e.g., system requirements, dependencies), numbered installation steps (e.g., download, extract, run installer), initial configuration commands, and a verification checklist. Include code snippets for common platforms (Windows, macOS, Linux) and screenshots if applicable. Ensure steps are testable and reference any required tools like Node.js or Git.
+
+## 2. Document Configuration Options with Examples [pending]
+### Dependencies: 15.1
+### Description: Develop the configuration section explaining all available options, their purposes, default values, and practical examples for common use cases.
+### Details:
+Use a table format to list options (parameter name, type, default, description), followed by YAML/JSON example configs for basic, advanced, and Obsidian-specific setups. Include validation steps and common pitfalls. Reference setup from subtask 1 for initial config file location. Test examples by applying them locally.
+
+## 3. Write Usage Instructions and Note Format Explanation [pending]
+### Dependencies: 15.1, 15.2
+### Description: Prepare usage guide covering core workflows, command-line/API usage, and specific instructions for the note format integration with Obsidian including syntax examples and plugins.
+### Details:
+Organize into subsections: quick start, daily usage, advanced features, and Obsidian section with note format spec (e.g., frontmatter, tags, Markdown extensions), embedding examples, and vault setup. Include copy-paste code blocks and workflow diagrams. Build on prior sections by cross-referencing installation and config.
+
+## 4. Create Troubleshooting Guide [pending]
+### Dependencies: 15.1, 15.2, 15.3
+### Description: Compile a comprehensive troubleshooting section addressing common errors, diagnostic steps, log analysis, and solutions for installation, config, usage, and Obsidian issues.
+### Details:
+Categorize by error type (e.g., installation failures, config parsing errors, runtime issues, Obsidian sync problems) with symptoms, causes, step-by-step fixes, and prevention tips. Include log file locations from config docs and testing commands. Validate by simulating errors from previous subtasks.
+
+## 5. Incorporate Phased Rollout Plan and Finalize Documentation [pending]
+### Dependencies: 15.1, 15.2, 15.3, 15.4
+### Description: Add a dedicated section explaining the phased rollout plan from the PRD with timelines, milestones, and user guidance, then compile all sections into a cohesive document with deployment instructions.
+### Details:
+Extract PRD rollout details into phases (e.g., internal testing, beta, full release) with objectives, milestones, responsibilities, feedback mechanisms, and user participation instructions per phase. Use tables/Gantt-style timelines. Add deployment section (e.g., hosting, CI/CD if applicable). Review entire doc for consistency, add index/table of contents, and export to PDF/HTML. Reference rollout templates for structure like phases, checkpoints, and metrics.
+

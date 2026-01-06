@@ -9,3 +9,43 @@ Implement functionality to create and update a Markdown changelog file at the co
 
 # Test Strategy:
 Test with new and existing changelog files. Verify the table format is maintained correctly when appending new entries. Check that all required information is included and properly formatted.
+
+# Subtasks:
+## 1. Create Markdown table header and file initialization function [pending]
+### Dependencies: None
+### Description: Implement a function that creates the changelog file with proper Markdown table header if it doesn't exist, or reads existing file safely.
+### Details:
+Create `initialize_changelog(path)` function that: 1) Checks if file exists at configured path using `os.path.exists()` 2) If not exists, writes Markdown header `# Email Processing Changelog` followed by table header `| Timestamp | Email Account | Subject | From | Filename |` and separator `|---|` 3) If exists, reads file content safely with UTF-8 encoding handling. Use `pathlib.Path` for cross-platform path handling. Return file content as string.
+
+## 2. Implement email run data collection and formatting [pending]
+### Dependencies: None
+### Description: Create function to collect processed email data and format it as Markdown table row with current timestamp.
+### Details:
+Create `format_email_row(email_data)` function that takes dict with keys `email_account`, `subject`, `from_addr`, `filename` and: 1) Gets current UTC timestamp using `datetime.datetime.now(datetime.timezone.utc).isoformat()` 2) Escapes Markdown special characters (`|`, `\`) in fields using `str.replace()` 3) Returns pipe-formatted row string like `| 2026-01-06T23:00:00Z | account@example.com | Subject | sender@domain.com | file.eml |`. Handle None/empty values as empty cells.
+
+## 3. Develop visual run separator generation [pending]
+### Dependencies: 10.1, 10.2
+### Description: Create function to generate visual separator between execution runs using Markdown horizontal rule and run metadata.
+### Details:
+Create `generate_run_separator(run_count, run_timestamp)` function that returns Markdown string like:
+```
+
+---
+
+**Run #{run_count} - {timestamp}**
+
+```
+Use timestamp format `YYYY-MM-DD HH:MM UTC`. `run_count` increments per execution (track via file parsing or external counter). Place separator before new table rows to visually separate runs.
+
+## 4. Build core changelog update function [pending]
+### Dependencies: 10.1, 10.2, 10.3
+### Description: Implement main function to append new email rows with proper separators to existing changelog.
+### Details:
+Create `update_changelog(path, email_list, run_count)` function that: 1) Calls `initialize_changelog(path)` 2) Generates run separator via `generate_run_separator(run_count)` 3) Formats each email as row via `format_email_row()` 4) Appends `separator + '\n'.join(rows) + '\n'` to file content 5) Writes back using `with open(path, 'w', encoding='utf-8') as f:`. Ensure atomic writes using temporary file or `os.rename()`.
+
+## 5. Integrate changelog functionality into main execution workflow [pending]
+### Dependencies: 10.4
+### Description: Add changelog update calls to main email processing pipeline with configuration and error handling.
+### Details:
+1) Add `changelog_path` to config (default `./changelog.md`) 2) In main execution loop, collect `processed_emails = []` list 3) After processing batch, call `update_changelog(config.changelog_path, processed_emails, get_run_count())` 4) Implement `get_run_count()` by counting `**Run #` occurrences in file or use simple incrementing counter 5) Add try/except with logging for file I/O errors, continue execution if changelog fails. Test file locking/concurrency if multi-process.
+

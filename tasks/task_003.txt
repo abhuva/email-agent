@@ -1,6 +1,6 @@
 # Task ID: 3
 # Title: Create file system utilities for Obsidian integration
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Develop utility functions for file path handling, sanitization, and I/O operations
@@ -9,3 +9,35 @@ Create a module with functions for: 1) Sanitizing email subjects for filenames (
 
 # Test Strategy:
 Test filename generation with various email subjects including special characters. Verify file writing works with proper permissions and fails gracefully with insufficient permissions.
+
+# Subtasks:
+## 1. Implement email subject sanitization function [done]
+### Dependencies: None
+### Description: Create a utility function to sanitize email subjects by removing invalid filename characters and handling special cases for Obsidian compatibility.
+### Details:
+Develop `sanitizeFilename(subject: string): string` function that: 1) Removes or replaces invalid filename characters (/, \, :, *, ?, ", <, >, |), 2) Trims whitespace, 3) Replaces multiple spaces with single hyphen, 4) Converts to lowercase or keeps original case based on Obsidian conventions, 5) Limits length to prevent filesystem issues (e.g., 200 chars), 6) Add comprehensive JSDoc with examples. Test with edge cases: subjects with emojis, long subjects, subjects with only invalid chars.
+
+## 2. Implement timestamped unique filename generator [done]
+### Dependencies: 3.1
+### Description: Create function to generate Obsidian-compatible filenames in 'YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md' format using the sanitizer from subtask 1.
+### Details:
+Develop `generateUniqueFilename(subject: string, basePath?: string): string` using: 1) `new Date()` for precise UTC timestamp formatting, 2) Call `sanitizeFilename()` from subtask 1, 3) Format as `YYYY-MM-DD-HHMMSS - ${sanitizedSubject}.md`, 4) If `basePath` provided, use `normalizePath()` from Obsidian API for cross-platform compatibility[1], 5) Return full path if basePath provided. Include JSDoc showing timestamp precision and path normalization.
+
+## 3. Implement file existence and path validation utilities [done]
+### Dependencies: 3.2
+### Description: Create functions to check file existence, validate paths, and ensure write permissions using Obsidian Vault API.
+### Details:
+Implement: 1) `fileExists(path: string): Promise<boolean>` using `app.vault.adapter.exists(path)`[1], 2) `isValidPath(path: string): boolean` using `normalizePath()` and regex validation, 3) `getUniquePath(basePath: string): Promise<string>` that appends numbers if file exists (e.g., 'note (1).md'), 4) `hasWritePermission(path: string): Promise<boolean>` checking parent directory existence. Use async/await consistently with proper error typing.
+
+## 4. Implement safe file writing with error handling [done]
+### Dependencies: 3.1, 3.2, 3.3
+### Description: Create robust file writing function that integrates filename generation, existence checking, and path validation with comprehensive error handling.
+### Details:
+Develop `safeWriteFile(pathOrSubject: string, content: string, options?: {basePath?: string, overwrite?: boolean}): Promise<string>` that: 1) Determines if input is subject or path, 2) Calls `generateUniqueFilename()` or validates path, 3) Uses `fileExists()` and `getUniquePath()` to avoid conflicts, 4) Writes using `app.vault.adapter.write()`[1] with try-catch, 5) Returns actual written path, 6) Throws custom typed errors (InvalidPathError, WritePermissionError, etc.) with user-friendly messages.
+
+## 5. Create module with exports, types, and comprehensive tests [done]
+### Dependencies: 3.1, 3.2, 3.3, 3.4
+### Description: Package all functions into a cohesive module with TypeScript interfaces, error types, and integration tests.
+### Details:
+1) Create `index.ts` exporting all functions with named exports, 2) Define `FileSystemError` union type and specific error classes, 3) Create `types.ts` with interfaces for options objects, 4) Add barrel export, 5) Write integration tests covering: sanitization edge cases, timestamp uniqueness, file existence scenarios, write failures, path normalization[1], 6) Include usage example in JSDoc for main `safeWriteFile()` function showing complete workflow.
+

@@ -9,3 +9,35 @@ Develop logic that checks if an email has any tags matching those in the summari
 
 # Test Strategy:
 Test with emails having various tag combinations, including those that should and shouldn't trigger summarization. Verify the system correctly identifies emails for summarization based on configuration.
+
+# Subtasks:
+## 1. Implement tag matching configuration access [pending]
+### Dependencies: None
+### Description: Create a function to safely access the summarization_tags configuration and validate its structure.
+### Details:
+Read the summarization_tags from the configuration file/system. Add validation to ensure it's a non-empty list of strings. Return empty list if config is missing or invalid. Log warning message for invalid config but do not raise exceptions.
+
+## 2. Implement email tag checking logic [pending]
+### Dependencies: 6.1
+### Description: Create a function that checks if an email's tags intersect with summarization_tags.
+### Details:
+Accept email object with tags array and summarization_tags list. Use set intersection (e.g., `set(email_tags) & set(summarization_tags)`) to check for matches. Return boolean `should_summarize`. Handle cases where email has no tags (return false).
+
+## 3. Implement prompt file loading with error handling [pending]
+### Dependencies: None
+### Description: Create a function to load the summarization prompt from the configured file path with comprehensive error handling.
+### Details:
+Read prompt file from configured path using filesystem API. Catch FileNotFoundError, PermissionError, and other IO exceptions. Return None on any file error and log specific error message. Validate loaded content is non-empty string.
+
+## 4. Create main conditional summarization decision function [pending]
+### Dependencies: 6.1, 6.2, 6.3
+### Description: Implement the core function that orchestrates tag checking and prompt loading to determine if summarization should proceed.
+### Details:
+Accept email object and config. First call tag checking function. If should_summarize is false, return {summarize: false}. If true, load prompt. If prompt loads successfully, return {summarize: true, prompt: loaded_prompt}. If prompt fails, return {summarize: false, reason: 'prompt_load_failed'}.
+
+## 5. Integrate into email processing pipeline with graceful degradation [pending]
+### Dependencies: 6.4
+### Description: Add the conditional summarization logic to the main email processing flow with comprehensive logging.
+### Details:
+In main email handler, call summarization decision function before LLM processing step. If summarize:true, prepare LLM call parameters with prompt. If false, log reason (tags/no tags/prompt error) at debug level and continue pipeline without summarization. Ensure no exceptions bubble up from summarization logic.
+

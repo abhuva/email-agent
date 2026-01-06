@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Implement YAML frontmatter generation
-# Status: pending
+# Status: done
 # Dependencies: 3
 # Priority: high
 # Description: Create functionality to extract email metadata and format it as YAML frontmatter
@@ -9,3 +9,46 @@ Develop a function that extracts required metadata from email objects (subject, 
 
 # Test Strategy:
 Test with various email formats including those with missing fields, special characters in headers, and different date formats. Verify the output is valid YAML that Obsidian can parse.
+
+# Subtasks:
+## 1. Create core metadata extraction function [done]
+### Dependencies: None
+### Description: Implement a function to safely extract the required metadata fields from email objects with null defaults for missing fields.
+### Details:
+Create `extractEmailMetadata(email)` that returns an object with keys: `subject`, `from`, `to`, `cc`, `date`, `source_message_id`. Use optional chaining (`email?.subject || null`) or similar null-safe access patterns. Log warnings for completely missing email objects but always return a complete metadata object structure.
+
+## 2. Implement date parsing and normalization [done]
+### Dependencies: 4.1
+### Description: Add robust date handling to parse various email date formats into ISO 8601 string format for YAML compatibility.
+### Details:
+Extend the extraction function with date parsing using `Date.parse()` or a library like `date-fns`. Handle malformed dates by falling back to `null` or current timestamp. Format valid dates as `'YYYY-MM-DDTHH:mm:ssZ'` (ISO 8601). Test with common email date formats like RFC 2822 and Unix timestamps.
+
+## 3. Add special character escaping for YAML safety [done]
+### Dependencies: 4.1
+### Description: Implement YAML-safe string escaping for fields containing colons, quotes, or special characters.
+### Details:
+Create a `yamlSafeString(value)` helper that wraps strings containing `:` after non-space or containing quotes in double quotes with escaped inner quotes (`"`). Use single quotes for simple strings. Null values become `null` in YAML. Apply this to all string fields (`subject`, `from`, `to`, `cc`, `source_message_id`).
+
+## 4. Build YAML frontmatter string formatter [done]
+### Dependencies: 4.1, 4.2, 4.3
+### Description: Create the main function to convert metadata objects into valid YAML frontmatter string with proper delimiters.
+### Details:
+Implement `generateYamlFrontmatter(metadata)` that produces:
+```
+---
+subject: "..."
+from: "..."
+to: [...]
+cc: [...]
+date: "..."
+source_message_id: "..."
+---
+```
+Use `yaml` library (recommended) or manual string construction. Ensure arrays (`to`, `cc`) render as YAML lists. Maintain exactly 2 newlines after opening `---` and 1 before closing `---`. Omit null fields or render as `null`.
+
+## 5. Add comprehensive testing and Obsidian validation [done]
+### Dependencies: 4.1, 4.2, 4.3, 4.4
+### Description: Write unit tests covering all edge cases and validate output in Obsidian.
+### Details:
+Create tests for: missing fields, malformed dates, special chars (`subject: "Hi: there"`), multi-recipient `to/cc` arrays, empty email objects. Test final `generateEmailYamlFrontmatter(email)` function. Manually verify output parses correctly in Obsidian by creating test .md files with frontmatter and checking Properties view/metadata extraction.
+

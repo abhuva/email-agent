@@ -1,0 +1,44 @@
+# Task ID: 16
+# Title: Implement Configurable IMAP Query Filtering System
+# Status: pending
+# Dependencies: 2
+# Priority: low
+# Description: Refactor the IMAP query combination logic to make idempotency tags and filtering criteria configurable by users instead of hardcoded values.
+# Details:
+Currently, the system hardcodes idempotency tags (Obsidian-Note-Created, Note-Creation-Failed, AIProcessed) in the IMAP query combination logic. This task involves:
+
+1. Create a configuration system that allows users to specify which tags to exclude from IMAP queries
+2. Implement a flexible query builder that can combine multiple filtering criteria beyond just tag exclusion
+3. Design a clean API for the query builder that maintains backward compatibility
+4. Update the existing query combination logic to use the new configurable system
+5. Ensure the default configuration maintains current behavior (excluding the three idempotency tags)
+6. Add appropriate documentation for the new configuration options
+7. Consider implementing this as a strategy pattern where different query building strategies can be plugged in
+8. Ensure performance is not significantly impacted, especially for large mailboxes
+9. Add validation to prevent users from creating invalid query combinations
+
+The implementation should be in the IMAP service module, focusing on the query building components. Maintain the core idempotency requirement while allowing for greater flexibility.
+
+# Test Strategy:
+Testing should cover:
+
+1. Unit tests:
+   - Verify default configuration produces the same queries as the current system
+   - Test custom tag exclusion configurations work correctly
+   - Test edge cases like empty exclusion lists or complex query combinations
+   - Verify query syntax remains valid for the IMAP protocol
+
+2. Integration tests:
+   - Test the query builder with actual IMAP connections
+   - Verify queries correctly filter messages as expected
+   - Test performance with large mailboxes and complex queries
+
+3. Configuration validation:
+   - Test that invalid configurations are properly handled
+   - Verify configuration changes are properly persisted
+
+4. Backward compatibility:
+   - Ensure existing code using the query system continues to work
+   - Test migration from old to new system
+
+Create a test matrix covering different combinations of filtering criteria to ensure all possible configurations work correctly. Document any changes to expected behavior.

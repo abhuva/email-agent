@@ -9,3 +9,35 @@ Implement a function that takes an email body (which may be HTML or plain text) 
 
 # Test Strategy:
 Test with various email formats including plain text, HTML with formatting, emails with inline images, and emails with special characters. Verify the output is valid Markdown that renders correctly in Obsidian.
+
+# Subtasks:
+## 1. Implement input detection and basic sanitization [pending]
+### Dependencies: None
+### Description: Create the initial function to detect email body type (plain text or HTML) and perform basic security sanitization to remove potentially harmful content.
+### Details:
+Develop a function `sanitizeEmailBody(emailBody: string): SanitizedResult` that: 1) Detects content type by checking for HTML tags (e.g., regex `/<[a-z][\s\S]*>/i`); 2) Uses a HTML sanitization library like DOMPurify or html-sanitizer to strip dangerous elements (script, iframe, object, embed, javascript: URLs); 3) Removes inline images by stripping img tags with data: URLs or external sources; 4) Returns { content: string, isHtml: boolean, warnings: string[] }. Test with sample malicious HTML containing scripts and tracking pixels.
+
+## 2. Build HTML to Markdown conversion core [pending]
+### Dependencies: 5.1
+### Description: Convert sanitized HTML to Markdown, preserving essential formatting like headings, paragraphs, emphasis, and links.
+### Details:
+Extend the function to handle HTML input using a library like Turndown or html-to-md. Implement conversion rules: h1-h6 → # headings, strong/em → **bold**/*italic*, a tags → [text](url), p → paragraphs. Preserve link text and href attributes (after sanitization). Handle basic tables → Markdown tables. Add error handling for malformed HTML. Unit test with sample HTML emails containing formatted content.
+
+## 3. Add list and structural element conversion [pending]
+### Dependencies: 5.2
+### Description: Handle complex structural elements including lists, blockquotes, and code blocks during HTML to Markdown conversion.
+### Details:
+Extend HTML parser to convert: ul/ol/li → -/* numbered lists (preserve nesting), blockquote → > quotes, pre/code → ``` fenced code blocks. Ensure proper indentation and spacing. Handle definition lists (dl/dt/dd) if present in emails. Test with newsletters containing bullet points, numbered instructions, and quoted replies. Validate output renders correctly in Markdown viewers.
+
+## 4. Implement plain text to Markdown enhancement [pending]
+### Dependencies: 5.1
+### Description: Convert plain text emails to enhanced Markdown, detecting and converting natural formatting patterns.
+### Details:
+For plain text input (isHtml: false), implement smart formatting: Detect lines starting with * → **bold**, _ → *italic*, URLs → [url](url), lines starting with -/* → lists, multiple === → headings. Use libraries like remarkable or custom regex patterns. Preserve original line breaks as paragraphs. Test with plain text emails containing informal formatting like *important* and http://links.
+
+## 5. Add final cleanup, validation, and unified API [pending]
+### Dependencies: 5.2, 5.3, 5.4
+### Description: Implement final output normalization, validation, and create the complete public API with comprehensive testing.
+### Details:
+Create `convertEmailToMarkdown(emailBody: string, options?: ConvertOptions): string` that chains all previous steps. Add final cleanup: normalize whitespace, limit line length to 80 chars, escape special Markdown chars, remove excessive empty lines. Add validation to ensure output is valid Markdown. Include options for strict mode (remove all HTML) vs. lenient mode. Write integration tests covering HTML/plain text edge cases, malicious content, and common email formats (newsletters, signatures, replies).
+

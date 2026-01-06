@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Implement flexible IMAP query system
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Develop a system to use configurable IMAP queries while maintaining idempotency
@@ -9,3 +9,35 @@ Modify the email selection logic to use the user-defined imap_query from config.
 
 # Test Strategy:
 Test with various IMAP query strings including UNSEEN, date-based queries, and complex conditions. Verify idempotency by running the same query twice and confirming no duplicate processing.
+
+# Subtasks:
+## 1. Load and validate user-defined IMAP query from config.yaml [done]
+### Dependencies: None
+### Description: Implement configuration loading logic to read the imap_query parameter from config.yaml and validate its format before use.
+### Details:
+Use a YAML parsing library (e.g., PyYAML for Python) to load config.yaml. Access the 'imap_query' field as a string. Add validation to check if it's a valid IMAP SEARCH criteria string by testing basic syntax (parentheses matching, valid keywords like SUBJECT, FROM, SINCE). Raise ConfigError with clear message if malformed. Log the loaded query for debugging.
+
+## 2. Create IMAP query builder with NOT condition for processed tags [done]
+### Dependencies: 2.1
+### Description: Develop a query builder function that combines the user-defined query with NOT conditions excluding emails tagged with [Obsidian-Note-Created] or [Note-Creation-Failed].
+### Details:
+Create function build_final_query(user_query: str) -> str. Construct combined query: '(user_query) NOT (FLAGS.ANSWERED OR FLAGS.\Seen OR KEYWORD "[Obsidian-Note-Created]" OR KEYWORD "[Note-Creation-Failed]")'. Use IMAP library's query builder if available (e.g., Aspose.Email ImapQueryBuilder) or raw IMAP SEARCH string. Test with sample queries to ensure proper parentheses balancing.
+
+## 3. Modify email selection logic to use combined IMAP query [done]
+### Dependencies: 2.2
+### Description: Replace existing email selection code with the new configurable query system while preserving connection and folder selection logic.
+### Details:
+In the existing email fetching function, replace hardcoded SEARCH criteria with build_final_query(config.imap_query). Execute via IMAP client.ListMessages() or equivalent (e.g., client.search(query)). Preserve existing folder selection (INBOX) and connection handling. Log query string and result count before processing.
+
+## 4. Implement comprehensive IMAP query error handling [done]
+### Dependencies: 2.3
+### Description: Add robust error handling for malformed queries, IMAP server errors, and connection issues with graceful recovery.
+### Details:
+Wrap query execution in try-catch. Handle IMAP-specific exceptions (MalformedSearchCriteria, SearchFailed, ConnectionLost). On query error, log full error + attempted query string, fallback to empty result set, and continue without crashing. Implement retry logic (max 3 attempts) for transient errors. Add connection health check before query execution.
+
+## 5. Add idempotency verification and comprehensive testing [done]
+### Dependencies: 2.4
+### Description: Verify the NOT condition prevents reprocessing, add unit tests for all query scenarios, and validate end-to-end idempotency.
+### Details:
+Create test cases: 1) Valid query finds untagged emails only; 2) Tagged emails excluded regardless of user query; 3) Malformed query handled gracefully; 4) Changing user_query doesn't reprocess tagged emails. Add integration test with real IMAP server using test account. Verify idempotency by running same query twice - second run returns 0 emails.
+
