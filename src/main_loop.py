@@ -147,9 +147,9 @@ def run_email_processing_loop(
         # Get IMAP connection params
         imap_params = config.imap_connection_params()
         
-        # Load IMAP queries from config
-        from src.imap_connection import load_imap_queries
-        queries = load_imap_queries()  # Uses default config path
+        # Get IMAP query from config (V2: single query string)
+        user_query = config.get_imap_query()
+        logger.info(f"Using IMAP query: {user_query}")
         
         logger.info(f"Starting email processing loop (max_emails={max_emails_to_process}, single_run={single_run})")
         
@@ -169,7 +169,7 @@ def run_email_processing_loop(
                     host=imap_params['host'],
                     user=imap_params['username'],
                     password=imap_params['password'],
-                    queries=queries,
+                    user_query=user_query,
                     processed_tag=config.processed_tag
                 )
                 

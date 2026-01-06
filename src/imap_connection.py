@@ -110,22 +110,57 @@ def load_imap_queries(config_path: str = "config/config.yaml"):
     logging.info(f"Loaded IMAP queries: {queries}")
     return queries
 
-def search_emails_excluding_processed(imap, queries: List[str], processed_tag: str = 'AIProcessed') -> List[bytes]:
+def search_emails_excluding_processed(
+    imap, 
+    user_query: str, 
+    processed_tag: str = 'AIProcessed',
+    obsidian_note_created_tag: str = 'Obsidian-Note-Created',
+    note_creation_failed_tag: str = 'Note-Creation-Failed'
+) -> List[bytes]:
+    """
+    Search emails using user query combined with idempotency checks.
+    
+    The user query is combined with NOT conditions to exclude emails that have
+    already been processed (V1: AIProcessed, V2: Obsidian-Note-Created, Note-Creation-Failed).
+    
+    Args:
+        imap: IMAP connection object
+        user_query: User-defined IMAP query string from config
+        processed_tag: V1 processed tag (for backward compatibility)
+        obsidian_note_created_tag: V2 success tag
+        note_creation_failed_tag: V2 failure tag
+    
+    Returns:
+        List of email UIDs (bytes)
+    """
     try:
         imap.select('INBOX')
-        all_ids = set()
-        for q in queries:
-            # Note: IMAP uses "KEYWORD" keyword in SEARCH to search FLAGS
-            # This is confusing naming in the IMAP spec, but it's correct
-            # We're searching for custom FLAGS, not the KEYWORDS extension
-            status, data = imap.search(None, f'{q} NOT KEYWORD "{processed_tag}"')
-            if status != 'OK':
-                logging.error(f"IMAP search failed on query: {q}")
-                continue
-            ids = data[0].split()
-            all_ids.update(ids)
-        logging.info(f"Found {len(all_ids)} unprocessed emails matching queries.")
-        return list(all_ids)
+        
+        # Combine user query with idempotency checks
+        # Format: ({user_query} NOT KEYWORD "tag1" NOT KEYWORD "tag2" NOT KEYWORD "tag3")
+        # This ensures we never reprocess emails that have already been handled
+        final_query = (
+            f'({user_query} '
+            f'NOT KEYWORD "{processed_tag}" '
+            f'NOT KEYWORD "{obsidian_note_created_tag}" '
+            f'NOT KEYWORD "{note_creation_failed_tag}")'
+        )
+        
+        logging.debug(f"Executing IMAP query: {final_query}")
+        
+        # Note: IMAP uses "KEYWORD" keyword in SEARCH to search FLAGS
+        # This is confusing naming in the IMAP spec, but it's correct
+        # We're searching for custom FLAGS, not the KEYWORDS extension
+        status, data = imap.search(None, final_query)
+        
+        if status != 'OK':
+            logging.error(f"IMAP search failed on query: {final_query}")
+            raise IMAPConnectionError(f"IMAP search failed: {status} {data}")
+        
+        ids = data[0].split() if data[0] else []
+        logging.info(f"Found {len(ids)} unprocessed emails matching query.")
+        return ids
+        
     except Exception as e:
         logging.error(f"IMAP search failed: {e}")
         raise IMAPConnectionError(f"IMAP search failed: {e}")
@@ -182,12 +217,30 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
 
 def fetch_emails(
     host: str, user: str, password: str,
-    queries: List[str],
+    user_query: str,
     processed_tag: str = 'AIProcessed',
+    obsidian_note_created_tag: str = 'Obsidian-Note-Created',
+    note_creation_failed_tag: str = 'Note-Creation-Failed',
     max_retries: int = 3,
     timeout: int = 30
 ) -> List[Dict[str, Any]]:
-    """High-level function to orchestrate config loading, connecting, searching, fetching, and parsing."""
+    """
+    High-level function to orchestrate config loading, connecting, searching, fetching, and parsing.
+    
+    Args:
+        host: IMAP server hostname
+        user: IMAP username
+        password: IMAP password
+        user_query: User-defined IMAP query string from config
+        processed_tag: V1 processed tag (for backward compatibility)
+        obsidian_note_created_tag: V2 success tag
+        note_creation_failed_tag: V2 failure tag
+        max_retries: Maximum retry attempts
+        timeout: IMAP socket timeout in seconds
+    
+    Returns:
+        List of parsed email dictionaries
+    """
     attempt = 0
     while attempt < max_retries:
         attempt += 1
@@ -197,7 +250,13 @@ def fetch_emails(
             # Set global timeout for IMAP socket
             imap.sock.settimeout(timeout)
             try:
-                ids = search_emails_excluding_processed(imap, queries, processed_tag)
+                ids = search_emails_excluding_processed(
+                    imap, 
+                    user_query, 
+                    processed_tag,
+                    obsidian_note_created_tag,
+                    note_creation_failed_tag
+                )
                 emails = fetch_and_parse_emails(imap, ids)
                 logging.info(f"Fetched and parsed {len(emails)} emails.")
                 return emails

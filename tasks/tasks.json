@@ -77,7 +77,7 @@
           "id": 1,
           "title": "Load and validate user-defined IMAP query from config.yaml",
           "description": "Implement configuration loading logic to read the imap_query parameter from config.yaml and validate its format before use.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use a YAML parsing library (e.g., PyYAML for Python) to load config.yaml. Access the 'imap_query' field as a string. Add validation to check if it's a valid IMAP SEARCH criteria string by testing basic syntax (parentheses matching, valid keywords like SUBJECT, FROM, SINCE). Raise ConfigError with clear message if malformed. Log the loaded query for debugging."
         },
@@ -95,7 +95,7 @@
           "id": 3,
           "title": "Modify email selection logic to use combined IMAP query",
           "description": "Replace existing email selection code with the new configurable query system while preserving connection and folder selection logic.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],

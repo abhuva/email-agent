@@ -22,6 +22,7 @@ def mock_config():
     config.processed_tag = 'AIProcessed'
     config.tag_mapping = {'urgent': 'Urgent', 'neutral': 'Neutral', 'spam': 'Spam'}
     config.max_body_chars = 4000
+    config.get_imap_query.return_value = 'UNSEEN'  # V2: single query string
     config.openrouter_params.return_value = {
         'api_key': 'test-key',
         'api_url': 'https://test.api'
@@ -118,7 +119,7 @@ def test_run_email_processing_loop_fetches_emails(mock_config):
     
     with patch('src.main_loop.fetch_emails', return_value=mock_emails), \
          patch('src.main_loop.OpenRouterClient'), \
-         patch('src.imap_connection.load_imap_queries', return_value=['UNSEEN']), \
+         patch.object(mock_config, 'get_imap_query', return_value='UNSEEN'), \
          patch('src.main_loop.process_email_with_ai', return_value='urgent'), \
          patch('src.main_loop.safe_imap_operation'), \
          patch('src.main_loop.process_email_with_ai_tags', return_value={'success': True, 'keyword': 'urgent'}):
