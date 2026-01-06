@@ -65,7 +65,7 @@
       "id": 2,
       "title": "Implement flexible IMAP query system",
       "description": "Develop a system to use configurable IMAP queries while maintaining idempotency",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -85,7 +85,7 @@
           "id": 2,
           "title": "Create IMAP query builder with NOT condition for processed tags",
           "description": "Develop a query builder function that combines the user-defined query with NOT conditions excluding emails tagged with [Obsidian-Note-Created] or [Note-Creation-Failed].",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -105,7 +105,7 @@
           "id": 4,
           "title": "Implement comprehensive IMAP query error handling",
           "description": "Add robust error handling for malformed queries, IMAP server errors, and connection issues with graceful recovery.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -115,7 +115,7 @@
           "id": 5,
           "title": "Add idempotency verification and comprehensive testing",
           "description": "Verify the NOT condition prevents reprocessing, add unit tests for all query scenarios, and validate end-to-end idempotency.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -977,6 +977,18 @@
           "details": "Extract PRD rollout details into phases (e.g., internal testing, beta, full release) with objectives, milestones, responsibilities, feedback mechanisms, and user participation instructions per phase. Use tables/Gantt-style timelines. Add deployment section (e.g., hosting, CI/CD if applicable). Review entire doc for consistency, add index/table of contents, and export to PDF/HTML. Reference rollout templates for structure like phases, checkpoints, and metrics."
         }
       ]
+    },
+    {
+      "id": 16,
+      "title": "Implement Configurable IMAP Query Filtering System",
+      "description": "Refactor the IMAP query combination logic to make idempotency tags and filtering criteria configurable by users instead of hardcoded values.",
+      "details": "Currently, the system hardcodes idempotency tags (Obsidian-Note-Created, Note-Creation-Failed, AIProcessed) in the IMAP query combination logic. This task involves:\n\n1. Create a configuration system that allows users to specify which tags to exclude from IMAP queries\n2. Implement a flexible query builder that can combine multiple filtering criteria beyond just tag exclusion\n3. Design a clean API for the query builder that maintains backward compatibility\n4. Update the existing query combination logic to use the new configurable system\n5. Ensure the default configuration maintains current behavior (excluding the three idempotency tags)\n6. Add appropriate documentation for the new configuration options\n7. Consider implementing this as a strategy pattern where different query building strategies can be plugged in\n8. Ensure performance is not significantly impacted, especially for large mailboxes\n9. Add validation to prevent users from creating invalid query combinations\n\nThe implementation should be in the IMAP service module, focusing on the query building components. Maintain the core idempotency requirement while allowing for greater flexibility.",
+      "testStrategy": "Testing should cover:\n\n1. Unit tests:\n   - Verify default configuration produces the same queries as the current system\n   - Test custom tag exclusion configurations work correctly\n   - Test edge cases like empty exclusion lists or complex query combinations\n   - Verify query syntax remains valid for the IMAP protocol\n\n2. Integration tests:\n   - Test the query builder with actual IMAP connections\n   - Verify queries correctly filter messages as expected\n   - Test performance with large mailboxes and complex queries\n\n3. Configuration validation:\n   - Test that invalid configurations are properly handled\n   - Verify configuration changes are properly persisted\n\n4. Backward compatibility:\n   - Ensure existing code using the query system continues to work\n   - Test migration from old to new system\n\nCreate a test matrix covering different combinations of filtering criteria to ensure all possible configurations work correctly. Document any changes to expected behavior.",
+      "status": "pending",
+      "dependencies": [
+        2
+      ],
+      "priority": "low"
     }
   ],
   "metadata": {
