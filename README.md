@@ -4,6 +4,8 @@
 
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
+**Current Status:** V1 (Email Tagging) is complete. We are now working on **V2 (Obsidian Integration)** - automatically creating structured Markdown notes in Obsidian vaults for processed emails.
+
 ---
 
 ## Features
@@ -176,7 +178,8 @@ Generate analytics summary → Exit
 
 ## Documentation
 
-- **[Product Design Doc (PDD)](pdd.md)** — Project strategy, requirements, roadmap
+- **[Product Design Doc V1 (PDD)](pdd.md)** — V1 project strategy, requirements, roadmap (✅ Complete)
+- **[Product Design Doc V2 (PDD)](pdd_v2.md)** — V2 project strategy, requirements, roadmap (🚧 In Progress)
 - **[Logging System](docs/logging-system.md)** — Logger, analytics, config, test patterns
 - **[IMAP Email Fetching](docs/imap-fetching.md)** — IMAP workflow, error handling, FLAGS vs KEYWORDS
 - **[Prompt Loader](docs/prompts.md)** — How AI prompts are loaded and managed
@@ -302,7 +305,7 @@ python scripts/test_imap_flags.py
 
 > To restart after a break, or for Cursor AI:
 
-1. Open this `README.md` and [pdd.md](pdd.md)
+1. Open this `README.md` and [pdd_v2.md](pdd_v2.md) (we're working on V2 now)
 2. Run:
    ```bash
    task-master list
@@ -312,6 +315,8 @@ python scripts/test_imap_flags.py
 3. Review the doc links above for any system/module orientation
 
 *Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
+
+**Note:** V1 (Email Tagging) is complete. Current focus is V2 (Obsidian Integration) - see [pdd_v2.md](pdd_v2.md) for details.
 
 ---
 

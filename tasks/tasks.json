@@ -2,766 +2,987 @@
   "tasks": [
     {
       "id": 1,
-      "title": "Set up project structure and configuration handling",
-      "description": "Create the basic project structure, implement configuration loading from YAML and environment variables",
-      "status": "done",
+      "title": "Set up configuration file structure",
+      "description": "Create and implement the enhanced configuration file structure with new parameters for Obsidian integration",
+      "status": "pending",
       "dependencies": [],
       "priority": "high",
-      "details": "Create directory structure for the project. Implement functions to load and validate configuration from config.yaml and secrets from .env file. Configuration should include IMAP settings, OpenRouter API details, and tag mappings. Implement validation to ensure all required configuration is present. Fail fast if required environment variables are missing.",
-      "testStrategy": "Write unit tests to verify config loading with various valid and invalid inputs. Test environment variable validation with missing keys.",
+      "details": "Extend the existing config.yaml to include new parameters: obsidian_vault_path, summarization_tags, summarization_prompt_path, changelog_path, and imap_query. Implement validation logic to ensure all required paths exist and parameters are properly formatted. The configuration should fail early with clear error messages if critical paths don't exist.",
+      "testStrategy": "Verify configuration loads correctly with valid inputs. Test error handling with missing or invalid paths. Ensure backward compatibility with V1 configuration parameters.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Set up project directory structure and package layout",
-          "description": "Create the basic directory structure for the Python CLI project, including package directories, test directories, and configuration files.",
+          "title": "Extend config.yaml schema with new Obsidian parameters",
+          "description": "Add the five new configuration parameters to the existing config.yaml structure following YAML best practices.",
+          "status": "pending",
           "dependencies": [],
-          "details": "1. Create the main project directory\n2. Set up Python package structure with `__init__.py` files\n3. Create directories for: src/, tests/, config/\n4. Create empty placeholder files: setup.py, requirements.txt, README.md\n5. Set up .gitignore with standard Python patterns\n6. Create empty config.yaml and .env.example files in the config directory\n7. Verify the structure is correct and follows Python package conventions",
-          "status": "done",
-          "parentTaskId": 1
+          "details": "Update the config.yaml file to include: `obsidian_vault_path` (string path), `summarization_tags` (list of strings), `summarization_prompt_path` (string path), `changelog_path` (string path), and `imap_query` (string). Use 2-space indentation consistently, add descriptive comments for each parameter, and ensure proper YAML structure with quotes around string values that may contain spaces or special characters[1][4]."
         },
         {
           "id": 2,
-          "title": "Set up testing framework and write initial config tests",
-          "description": "Set up pytest as the testing framework and write initial failing tests for configuration loading and validation.",
+          "title": "Implement configuration loading function",
+          "description": "Create or update the function that loads and parses the extended config.yaml file.",
+          "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "1. Add pytest and related packages to requirements.txt\n2. Create a conftest.py file in the tests directory\n3. Create test fixtures for sample config files (valid and invalid)\n4. Write test_config.py with failing tests for:\n   - Loading config from YAML file\n   - Validating required YAML config fields\n   - Loading environment variables\n   - Validating required environment variables\n   - Handling missing files gracefully\n5. Run tests to verify they fail as expected (TDD approach)",
-          "status": "done",
-          "parentTaskId": 1
+          "details": "Modify the existing config loader to use a YAML parser library (PyYAML recommended). Add support for the new fields by defining a config model/data class with all parameters including the new ones. Implement safe loading with error handling for malformed YAML syntax[1]. Return a structured config object."
         },
         {
           "id": 3,
-          "title": "Implement YAML configuration loading and validation",
-          "description": "Create the module for loading and validating configuration from YAML files.",
+          "title": "Add parameter format validation logic",
+          "description": "Implement validation to ensure new parameters have correct data types and formats.",
+          "status": "pending",
           "dependencies": [
-            1,
             2
           ],
-          "details": "1. Create a config module in the src directory\n2. Implement a function to load YAML configuration files\n3. Define the expected configuration schema (IMAP settings, OpenRouter API details, tag mappings)\n4. Implement validation logic to check for required fields\n5. Add proper error handling for missing files or invalid YAML\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
-          "status": "done",
-          "parentTaskId": 1
+          "details": "In the config loader, validate: `obsidian_vault_path`, `summarization_prompt_path`, `changelog_path` are non-empty strings; `summarization_tags` is a list of non-empty strings; `imap_query` is a non-empty string matching IMAP search syntax pattern if applicable. Raise specific `ValidationError` with parameter name and issue description for each failure."
         },
         {
           "id": 4,
-          "title": "Implement environment variables loading and validation",
-          "description": "Create functionality to load and validate environment variables from .env files.",
+          "title": "Implement critical path existence validation",
+          "description": "Add file/directory existence checks for all required path parameters.",
+          "status": "pending",
           "dependencies": [
-            1,
             2
           ],
-          "details": "1. Add python-dotenv to requirements.txt\n2. Implement a function to load environment variables from .env file\n3. Define which environment variables are required (secrets, API keys)\n4. Implement validation to ensure required variables are present\n5. Add proper error handling for missing .env file or missing variables\n6. Add docstrings and type hints\n7. Run the previously written tests to verify implementation works",
-          "status": "done",
-          "parentTaskId": 1
+          "details": "Using `os.path.exists()` and `os.path.isdir()`/`os.path.isfile()`, validate that `obsidian_vault_path` is an existing directory, and `summarization_prompt_path` and `changelog_path` are existing files. Check all three paths before proceeding. Collect all path errors into a single validation report."
         },
         {
           "id": 5,
-          "title": "Create unified configuration manager",
-          "description": "Implement a configuration manager class that combines YAML and environment variable configuration.",
+          "title": "Implement early failure with clear error messaging",
+          "description": "Create comprehensive error handling that fails fast with user-friendly error messages.",
+          "status": "pending",
           "dependencies": [
             3,
             4
           ],
-          "details": "1. Create a ConfigManager class that handles both YAML and environment variables\n2. Implement methods to access configuration values with proper typing\n3. Add validation that runs on initialization to ensure all required config is present\n4. Implement 'fail fast' behavior for missing critical configuration\n5. Add helper methods for common configuration access patterns\n6. Update tests to verify the unified configuration manager works correctly\n7. Ensure proper error messages are provided for configuration issues",
-          "status": "done",
-          "parentTaskId": 1
-        },
-        {
-          "id": 6,
-          "title": "Create CLI entry point with configuration validation",
-          "description": "Implement the main CLI entry point that loads and validates configuration before proceeding.",
-          "dependencies": [
-            5
-          ],
-          "details": "1. Create main.py or cli.py as the entry point\n2. Implement argument parsing for configuration file paths\n3. Add initialization code that loads and validates configuration\n4. Implement proper error handling and user-friendly error messages\n5. Add logging configuration based on settings\n6. Create a simple --version and --help command line interface\n7. Write tests for the CLI entry point\n8. Verify all tests pass for the complete configuration handling system",
-          "status": "done",
-          "parentTaskId": 1
+          "details": "Wrap config loading and validation in a try-catch block. If format validation fails, raise `ConfigFormatError` listing invalid parameters. If paths don't exist, raise `ConfigPathError` with bullet-point list of missing paths and their expected types (file/dir). Log full error details for debugging. Exit application with status code 1 on config failure."
         }
       ]
     },
     {
       "id": 2,
-      "title": "Implement logging system",
-      "description": "Create a comprehensive logging system with console and file outputs, supporting info and debug modes",
-      "status": "done",
+      "title": "Implement flexible IMAP query system",
+      "description": "Develop a system to use configurable IMAP queries while maintaining idempotency",
+      "status": "pending",
       "dependencies": [
         1
       ],
       "priority": "high",
-      "details": "Set up Python's logging module to write to both console and file. Include timestamps, message IDs, and appropriate log levels. Implement debug mode with full trace logging. Create a function to generate analytics summaries at the end of each run. Store logs in a configurable location specified in config.yaml. Maintain continuous documentation in docs/logging-system.md, updating it after every major design or implementation step.",
-      "testStrategy": "Verify log output format in both console and file. Test different log levels and ensure appropriate information is captured. Validate analytics summary generation. Ensure documentation is kept up-to-date with implementation.",
+      "details": "Modify the email selection logic to use the user-defined imap_query from config.yaml. Implement logic to combine this query with a NOT condition for emails already tagged with [Obsidian-Note-Created] or [Note-Creation-Failed]. This ensures the agent won't reprocess emails even with changing queries. Include proper error handling for malformed IMAP queries.",
+      "testStrategy": "Test with various IMAP query strings including UNSEEN, date-based queries, and complex conditions. Verify idempotency by running the same query twice and confirming no duplicate processing.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Set up test scaffolding for logging system",
-          "description": "Create test fixtures and scaffolding to support TDD approach for the logging system",
+          "title": "Load and validate user-defined IMAP query from config.yaml",
+          "description": "Implement configuration loading logic to read the imap_query parameter from config.yaml and validate its format before use.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Implementation steps:\n1. Create a test directory structure with test_logging.py\n2. Set up pytest fixtures for temporary log files and directory\n3. Create mock configuration for testing\n4. Implement helper functions to capture console output\n5. Set up test environment isolation to prevent test logs from affecting real logs\n\nTesting approach:\n- Verify test fixtures work correctly\n- Ensure test environment is properly isolated\n- Confirm temporary log directories are created and cleaned up",
-          "status": "done",
-          "parentTaskId": 2
+          "details": "Use a YAML parsing library (e.g., PyYAML for Python) to load config.yaml. Access the 'imap_query' field as a string. Add validation to check if it's a valid IMAP SEARCH criteria string by testing basic syntax (parentheses matching, valid keywords like SUBJECT, FROM, SINCE). Raise ConfigError with clear message if malformed. Log the loaded query for debugging."
         },
         {
           "id": 2,
-          "title": "Write failing tests for basic logging functionality",
-          "description": "Create comprehensive test cases for core logging features including console and file output with different log levels",
+          "title": "Create IMAP query builder with NOT condition for processed tags",
+          "description": "Develop a query builder function that combines the user-defined query with NOT conditions excluding emails tagged with [Obsidian-Note-Created] or [Note-Creation-Failed].",
+          "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Implementation steps:\n1. Write tests for logger initialization with different configurations\n2. Create tests for INFO level logging to console\n3. Create tests for DEBUG level logging to console\n4. Write tests for file output at different log levels\n5. Test log message structure (timestamps, IDs, formatting)\n6. Test log level filtering behavior\n\nTesting approach:\n- All tests should initially fail (TDD approach)\n- Tests should verify both content and structure of log messages\n- Include edge cases like empty messages, special characters",
-          "status": "done",
-          "parentTaskId": 2
+          "details": "Create function build_final_query(user_query: str) -> str. Construct combined query: '(user_query) NOT (FLAGS.ANSWERED OR FLAGS.\\Seen OR KEYWORD \"[Obsidian-Note-Created]\" OR KEYWORD \"[Note-Creation-Failed]\")'. Use IMAP library's query builder if available (e.g., Aspose.Email ImapQueryBuilder) or raw IMAP SEARCH string. Test with sample queries to ensure proper parentheses balancing."
         },
         {
           "id": 3,
-          "title": "Implement core logging functionality",
-          "description": "Create the main logging module with support for console and file outputs at different log levels",
+          "title": "Modify email selection logic to use combined IMAP query",
+          "description": "Replace existing email selection code with the new configurable query system while preserving connection and folder selection logic.",
+          "status": "pending",
           "dependencies": [
             2
           ],
-          "details": "Implementation steps:\n1. Create a logger.py module\n2. Implement a LoggerFactory class to create and configure loggers\n3. Set up console handler with proper formatting\n4. Set up file handler with configurable output location\n5. Implement log level configuration (INFO/DEBUG)\n6. Add message ID generation for log entries\n7. Create proper timestamp formatting\n\nTesting approach:\n- Run previously created tests to verify implementation\n- Manually verify log output format matches requirements\n- Check that both console and file outputs work correctly",
-          "status": "done",
-          "parentTaskId": 2
+          "details": "In the existing email fetching function, replace hardcoded SEARCH criteria with build_final_query(config.imap_query). Execute via IMAP client.ListMessages() or equivalent (e.g., client.search(query)). Preserve existing folder selection (INBOX) and connection handling. Log query string and result count before processing."
         },
         {
           "id": 4,
-          "title": "Write failing tests for analytics summary functionality",
-          "description": "Create test cases for the analytics summary generation feature",
+          "title": "Implement comprehensive IMAP query error handling",
+          "description": "Add robust error handling for malformed queries, IMAP server errors, and connection issues with graceful recovery.",
+          "status": "pending",
           "dependencies": [
-            2
+            3
           ],
-          "details": "Implementation steps:\n1. Write tests for analytics summary generation at end of run\n2. Create tests for different analytics metrics (counts by level, timing info)\n3. Test analytics file output format and location\n4. Test edge cases (no logs, very large number of logs)\n5. Test analytics with different log levels\n\nTesting approach:\n- All tests should initially fail (TDD approach)\n- Tests should verify analytics data accuracy\n- Verify analytics file structure and content",
-          "status": "done",
-          "parentTaskId": 2
+          "details": "Wrap query execution in try-catch. Handle IMAP-specific exceptions (MalformedSearchCriteria, SearchFailed, ConnectionLost). On query error, log full error + attempted query string, fallback to empty result set, and continue without crashing. Implement retry logic (max 3 attempts) for transient errors. Add connection health check before query execution."
         },
         {
           "id": 5,
-          "title": "Implement analytics summary functionality",
-          "description": "Create the analytics summary generation system that produces reports at the end of each run",
+          "title": "Add idempotency verification and comprehensive testing",
+          "description": "Verify the NOT condition prevents reprocessing, add unit tests for all query scenarios, and validate end-to-end idempotency.",
+          "status": "pending",
           "dependencies": [
-            3,
             4
           ],
-          "details": "Implementation steps:\n1. Create an analytics.py module\n2. Implement log message counting by level\n3. Add timing information collection\n4. Create analytics report generation function\n5. Implement analytics file output with configurable location\n6. Add function to trigger analytics at program end\n\nTesting approach:\n- Run previously created tests to verify implementation\n- Manually verify analytics output format\n- Check that analytics accurately reflect actual logging activity",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 6,
-          "title": "Implement configuration and integration",
-          "description": "Create configuration loading from config.yaml and integrate the logging system with the main application",
-          "dependencies": [
-            3,
-            5
-          ],
-          "details": "Implementation steps:\n1. Implement configuration loading from config.yaml\n2. Add logging configuration section to config schema\n3. Create initialization function for application startup\n4. Add shutdown hook for analytics generation\n5. Document usage with examples\n6. Create helper functions for common logging patterns\n7. Implement global access to logger instance\n\nTesting approach:\n- Test configuration loading from different file locations\n- Verify integration with application startup/shutdown\n- Test with various configuration settings\n- End-to-end test of full logging system",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 7,
-          "title": "Create initial logging system documentation",
-          "description": "Set up the docs/logging-system.md file with initial structure and design documentation",
-          "dependencies": [],
-          "details": "Implementation steps:\n1. Create docs directory if it doesn't exist\n2. Create logging-system.md file with proper markdown structure\n3. Document the overall logging system architecture and design\n4. Include sections for configuration options, usage examples, and API reference\n5. Document the test strategy and approach\n6. Add placeholders for sections to be completed during implementation\n\nTesting approach:\n- Verify markdown renders correctly\n- Ensure documentation accurately reflects the planned implementation\n- Review with team members for clarity and completeness",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 8,
-          "title": "Update documentation with test scaffolding details",
-          "description": "Document the test scaffolding approach and implementation in docs/logging-system.md",
-          "dependencies": [
-            1,
-            7
-          ],
-          "details": "Implementation steps:\n1. Document the test fixtures and their purpose\n2. Explain the test isolation approach\n3. Add examples of how to use the test scaffolding\n4. Update the test strategy section with actual implementation details\n\nTesting approach:\n- Verify documentation accurately reflects the implemented test scaffolding\n- Ensure examples are correct and runnable\n- Check for clarity and completeness",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 9,
-          "title": "Update documentation with core logging functionality",
-          "description": "Document the core logging functionality implementation in docs/logging-system.md",
-          "dependencies": [
-            3,
-            7
-          ],
-          "details": "Implementation steps:\n1. Document the LoggerFactory class and its configuration options\n2. Explain the log level system and when to use each level\n3. Document the message ID generation system\n4. Add examples of basic logging usage\n5. Update API reference with implemented functions and classes\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and runnable\n- Check for clarity and completeness",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 10,
-          "title": "Update documentation with analytics summary functionality",
-          "description": "Document the analytics summary generation feature in docs/logging-system.md",
-          "dependencies": [
-            5,
-            7
-          ],
-          "details": "Implementation steps:\n1. Document the analytics generation process\n2. Explain the metrics collected and their meaning\n3. Document the analytics file format and location configuration\n4. Add examples of how to interpret analytics reports\n5. Update API reference with analytics-related functions\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and helpful\n- Check for clarity and completeness",
-          "status": "done",
-          "parentTaskId": 2
-        },
-        {
-          "id": 11,
-          "title": "Update documentation with configuration and integration details",
-          "description": "Document the configuration system and application integration in docs/logging-system.md",
-          "dependencies": [
-            6,
-            7
-          ],
-          "details": "Implementation steps:\n1. Document the configuration schema for logging in config.yaml\n2. Explain the initialization and shutdown processes\n3. Add complete examples of application integration\n4. Document the helper functions and global access patterns\n5. Finalize the API reference with all implemented components\n\nTesting approach:\n- Verify documentation accurately reflects the implemented functionality\n- Ensure examples are correct and comprehensive\n- Check for clarity and completeness\n- Verify all configuration options are documented",
-          "status": "done",
-          "parentTaskId": 2
+          "details": "Create test cases: 1) Valid query finds untagged emails only; 2) Tagged emails excluded regardless of user query; 3) Malformed query handled gracefully; 4) Changing user_query doesn't reprocess tagged emails. Add integration test with real IMAP server using test account. Verify idempotency by running same query twice - second run returns 0 emails."
         }
       ]
     },
     {
       "id": 3,
-      "title": "Implement IMAP connection and email fetching",
-      "description": "Create functionality to connect to an IMAP server and fetch emails based on configurable query",
-      "status": "done",
+      "title": "Create file system utilities for Obsidian integration",
+      "description": "Develop utility functions for file path handling, sanitization, and I/O operations",
+      "status": "pending",
       "dependencies": [
-        1,
-        2
+        1
       ],
       "priority": "high",
-      "details": "Use Python's imaplib to establish connection to IMAP server using credentials from .env. Implement a function to execute configurable IMAP queries from config.yaml. Ensure the query excludes emails with the [AI-Processed] tag. Handle connection errors gracefully with appropriate logging. Implement email parsing to extract relevant information (subject, body, sender, etc.).",
-      "testStrategy": "Test IMAP connection with valid and invalid credentials. Verify query execution and email fetching. Test error handling for connection issues.",
+      "details": "Create a module with functions for: 1) Sanitizing email subjects for filenames (removing invalid characters), 2) Generating unique, timestamped filenames following the YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md format, 3) Safely writing files with proper error handling, 4) Checking for file existence and path validity. Include comprehensive error handling for all file operations.",
+      "testStrategy": "Test filename generation with various email subjects including special characters. Verify file writing works with proper permissions and fails gracefully with insufficient permissions.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Implement IMAP connection with .env credentials",
-          "description": "Create a function to establish secure IMAP connection using credentials loaded from .env file with proper error handling and logging.",
-          "status": "done",
+          "title": "Implement email subject sanitization function",
+          "description": "Create a utility function to sanitize email subjects by removing invalid filename characters and handling special cases for Obsidian compatibility.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Use `python-dotenv` to load `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD` from .env. Implement `connect_imap()` function using `imaplib.IMAP4_SSL(host, port=993)`. Add `login(username, password)` call. Wrap in try-except for `imaplib.IMAP4.error` and socket errors. Use `logging` module to log connection success/failure. Ensure `logout()` and `close()` in finally block. Test with Gmail (`imap.gmail.com:993`)[1][2][4]."
+          "details": "Develop `sanitizeFilename(subject: string): string` function that: 1) Removes or replaces invalid filename characters (/, \\, :, *, ?, \", <, >, |), 2) Trims whitespace, 3) Replaces multiple spaces with single hyphen, 4) Converts to lowercase or keeps original case based on Obsidian conventions, 5) Limits length to prevent filesystem issues (e.g., 200 chars), 6) Add comprehensive JSDoc with examples. Test with edge cases: subjects with emojis, long subjects, subjects with only invalid chars."
         },
         {
           "id": 2,
-          "title": "Load and parse configurable IMAP queries from config.yaml",
-          "description": "Implement YAML configuration loading and query parsing logic for IMAP search criteria.",
-          "status": "done",
-          "dependencies": [],
-          "details": "Use `PyYAML` to load `config.yaml` containing `imap_queries: [query1, query2]` structure. Create `load_imap_queries()` function returning list of query strings. Validate queries are valid IMAP search criteria (e.g., 'UNSEEN', 'FROM \"sender\"'). Add logging for loaded queries. Ensure queries can be modified without code changes."
+          "title": "Implement timestamped unique filename generator",
+          "description": "Create function to generate Obsidian-compatible filenames in 'YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md' format using the sanitizer from subtask 1.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop `generateUniqueFilename(subject: string, basePath?: string): string` using: 1) `new Date()` for precise UTC timestamp formatting, 2) Call `sanitizeFilename()` from subtask 1, 3) Format as `YYYY-MM-DD-HHMMSS - ${sanitizedSubject}.md`, 4) If `basePath` provided, use `normalizePath()` from Obsidian API for cross-platform compatibility[1], 5) Return full path if basePath provided. Include JSDoc showing timestamp precision and path normalization."
         },
         {
           "id": 3,
-          "title": "Implement IMAP search excluding [AI-Processed] tagged emails",
-          "description": "Create search function that selects INBOX and executes configurable queries while filtering out emails with [AI-Processed] flag.",
-          "status": "done",
+          "title": "Implement file existence and path validation utilities",
+          "description": "Create functions to check file existence, validate paths, and ensure write permissions using Obsidian Vault API.",
+          "status": "pending",
           "dependencies": [
-            1,
             2
           ],
-          "details": "Use `connect_imap()` from subtask 1. Implement `search_emails(imap_conn, queries)`: call `imap.select('INBOX')`, then for each query from subtask 2, execute `imap.search(None, query + ' NOT FLAGS \\Seen')`. Append exclusion: search for emails NOT having `[AI-Processed]` flag using `NOT FLAGS \"\\\\[AI-Processed\\\\]\"`. Return list of message IDs. Log search results count[1][3][4]."
+          "details": "Implement: 1) `fileExists(path: string): Promise<boolean>` using `app.vault.adapter.exists(path)`[1], 2) `isValidPath(path: string): boolean` using `normalizePath()` and regex validation, 3) `getUniquePath(basePath: string): Promise<string>` that appends numbers if file exists (e.g., 'note (1).md'), 4) `hasWritePermission(path: string): Promise<boolean>` checking parent directory existence. Use async/await consistently with proper error typing."
         },
         {
           "id": 4,
-          "title": "Implement email fetching and parsing functionality",
-          "description": "Fetch raw email messages and parse to extract subject, sender, body, date, and flags using email.parser.",
-          "status": "done",
+          "title": "Implement safe file writing with error handling",
+          "description": "Create robust file writing function that integrates filename generation, existence checking, and path validation with comprehensive error handling.",
+          "status": "pending",
           "dependencies": [
             1,
+            2,
             3
           ],
-          "details": "Create `fetch_and_parse_emails(imap_conn, msg_ids)` function. For each msg_id, call `imap.fetch(msg_id, '(RFC822)')`. Use `email.message_from_bytes(msg_data[0][1])` to parse. Extract: `msg['Subject']`, `msg['From']`, get body with `msg.get_payload(decode=True)` handling multipart/alternative. Store in dict: `{'id': msg_id, 'subject': ..., 'sender': ..., 'body': ..., 'date': msg['Date']}`. Return list of parsed emails[1][4]."
+          "details": "Develop `safeWriteFile(pathOrSubject: string, content: string, options?: {basePath?: string, overwrite?: boolean}): Promise<string>` that: 1) Determines if input is subject or path, 2) Calls `generateUniqueFilename()` or validates path, 3) Uses `fileExists()` and `getUniquePath()` to avoid conflicts, 4) Writes using `app.vault.adapter.write()`[1] with try-catch, 5) Returns actual written path, 6) Throws custom typed errors (InvalidPathError, WritePermissionError, etc.) with user-friendly messages."
         },
         {
           "id": 5,
-          "title": "Create main orchestrator with comprehensive error handling",
-          "description": "Implement high-level `fetch_emails()` function integrating all components with retry logic and full error recovery.",
-          "status": "done",
+          "title": "Create module with exports, types, and comprehensive tests",
+          "description": "Package all functions into a cohesive module with TypeScript interfaces, error types, and integration tests.",
+          "status": "pending",
           "dependencies": [
             1,
             2,
             3,
             4
           ],
-          "details": "Create `fetch_emails()` orchestrating: load config → connect → search → fetch/parse → disconnect. Add 3-attempt retry for connection failures with exponential backoff. Implement context manager for IMAP connection. Log full workflow: 'Connected', 'Found X emails', 'Parsed Y emails'. Raise custom `IMAPFetchError` for unrecoverable failures. Include timeout handling with `imap.socket().settimeout(30)`. Test end-to-end flow[1][2][3][4]."
+          "details": "1) Create `index.ts` exporting all functions with named exports, 2) Define `FileSystemError` union type and specific error classes, 3) Create `types.ts` with interfaces for options objects, 4) Add barrel export, 5) Write integration tests covering: sanitization edge cases, timestamp uniqueness, file existence scenarios, write failures, path normalization[1], 6) Include usage example in JSDoc for main `safeWriteFile()` function showing complete workflow."
         }
       ]
     },
     {
       "id": 4,
-      "title": "Implement Markdown prompt loading and parsing",
-      "description": "Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter",
-      "status": "done",
+      "title": "Implement YAML frontmatter generation",
+      "description": "Create functionality to extract email metadata and format it as YAML frontmatter",
+      "status": "pending",
       "dependencies": [
-        1
+        3
       ],
-      "priority": "medium",
-      "details": "Implement functions to read Markdown files from paths specified in config. Parse YAML frontmatter to extract metadata. Convert Markdown content to appropriate format for AI prompts. Reload prompts on each run to allow for easy editing. Handle file not found and parsing errors gracefully.",
-      "testStrategy": "Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files.",
+      "priority": "high",
+      "details": "Develop a function that extracts required metadata from email objects (subject, from, to, cc, date, source_message_id) and formats it as valid YAML frontmatter. Handle edge cases like missing fields, malformed dates, and special characters. Ensure the function produces valid YAML that Obsidian can parse correctly.",
+      "testStrategy": "Test with various email formats including those with missing fields, special characters in headers, and different date formats. Verify the output is valid YAML that Obsidian can parse.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Implement Markdown file loader from config paths",
-          "description": "Create a function to read Markdown files from directory paths specified in the application config.",
-          "status": "done",
+          "title": "Create core metadata extraction function",
+          "description": "Implement a function to safely extract the required metadata fields from email objects with null defaults for missing fields.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Read config to get prompt directory paths. Use filesystem APIs (fs.readFileSync or equivalent) to scan directories for .md files. Return array of file paths. Handle empty directories gracefully by returning empty array."
+          "details": "Create `extractEmailMetadata(email)` that returns an object with keys: `subject`, `from`, `to`, `cc`, `date`, `source_message_id`. Use optional chaining (`email?.subject || null`) or similar null-safe access patterns. Log warnings for completely missing email objects but always return a complete metadata object structure."
         },
         {
           "id": 2,
-          "title": "Implement YAML frontmatter parser",
-          "description": "Create a parser that extracts YAML frontmatter from Markdown content and separates metadata from body.",
-          "status": "done",
+          "title": "Implement date parsing and normalization",
+          "description": "Add robust date handling to parse various email date formats into ISO 8601 string format for YAML compatibility.",
+          "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Detect YAML frontmatter delimited by '---'. Extract content between first and second '---'. Use YAML library (js-yaml, YamlDotNet, etc based on language) to parse metadata. Return object with {metadata, content} properties. Handle missing frontmatter by returning empty metadata object."
+          "details": "Extend the extraction function with date parsing using `Date.parse()` or a library like `date-fns`. Handle malformed dates by falling back to `null` or current timestamp. Format valid dates as `'YYYY-MM-DDTHH:mm:ssZ'` (ISO 8601). Test with common email date formats like RFC 2822 and Unix timestamps."
         },
         {
           "id": 3,
-          "title": "Implement Markdown content processor for AI prompts",
-          "description": "Convert parsed Markdown body content into AI prompt format.",
-          "status": "done",
+          "title": "Add special character escaping for YAML safety",
+          "description": "Implement YAML-safe string escaping for fields containing colons, quotes, or special characters.",
+          "status": "pending",
           "dependencies": [
-            1,
-            2
+            1
           ],
-          "details": "Use Markdown parser (marked, Markdig, remark, goldmark) to convert Markdown to plain text or HTML. Strip unnecessary formatting for AI consumption. Preserve important structure like headings, lists. Combine metadata with processed content into prompt object structure."
+          "details": "Create a `yamlSafeString(value)` helper that wraps strings containing `:` after non-space or containing quotes in double quotes with escaped inner quotes (`\"`). Use single quotes for simple strings. Null values become `null` in YAML. Apply this to all string fields (`subject`, `from`, `to`, `cc`, `source_message_id`)."
         },
         {
           "id": 4,
-          "title": "Implement complete prompt loading pipeline",
-          "description": "Orchestrate file loading, parsing, and processing into single loadPrompts() function.",
-          "status": "done",
+          "title": "Build YAML frontmatter string formatter",
+          "description": "Create the main function to convert metadata objects into valid YAML frontmatter string with proper delimiters.",
+          "status": "pending",
           "dependencies": [
             1,
             2,
             3
           ],
-          "details": "Create main function that: 1) loads file paths, 2) reads and parses each file, 3) processes content, 4) returns array of complete prompt objects. Each prompt object should contain metadata and processed content. Cache results if needed but support reload."
+          "details": "Implement `generateYamlFrontmatter(metadata)` that produces:\n```\n---\nsubject: \"...\"\nfrom: \"...\"\nto: [...]\ncc: [...]\ndate: \"...\"\nsource_message_id: \"...\"\n---\n```\nUse `yaml` library (recommended) or manual string construction. Ensure arrays (`to`, `cc`) render as YAML lists. Maintain exactly 2 newlines after opening `---` and 1 before closing `---`. Omit null fields or render as `null`."
         },
         {
           "id": 5,
-          "title": "Implement error handling and reload functionality",
-          "description": "Add comprehensive error handling and automatic reload on each run.",
-          "status": "done",
+          "title": "Add comprehensive testing and Obsidian validation",
+          "description": "Write unit tests covering all edge cases and validate output in Obsidian.",
+          "status": "pending",
           "dependencies": [
+            1,
+            2,
+            3,
             4
           ],
-          "details": "Handle FileNotFoundError, YAML parsing errors, invalid Markdown gracefully. Log specific errors with file paths. Continue processing other files when one fails. Ensure loadPrompts() always returns (possibly partial) results. Add reload flag or always-fresh loading for development workflow."
+          "details": "Create tests for: missing fields, malformed dates, special chars (`subject: \"Hi: there\"`), multi-recipient `to/cc` arrays, empty email objects. Test final `generateEmailYamlFrontmatter(email)` function. Manually verify output parses correctly in Obsidian by creating test .md files with frontmatter and checking Properties view/metadata extraction."
         }
       ]
     },
     {
       "id": 5,
-      "title": "Implement OpenRouter API integration",
-      "description": "Create functionality to send prompts to OpenRouter API and process responses",
-      "status": "done",
+      "title": "Develop email body sanitization and Markdown conversion",
+      "description": "Create functionality to clean and convert email body content to Markdown format",
+      "status": "pending",
       "dependencies": [
-        1,
-        2,
-        4
+        3
       ],
-      "priority": "high",
-      "details": "Implement functions to communicate with OpenRouter API using credentials from .env. Create prompt templates that include email content (truncated to max chars from config). Process API responses to extract tag keywords. Implement error handling for API failures, rate limits, and unexpected responses. Add retry logic with exponential backoff for transient errors.",
-      "testStrategy": "Test API integration with mock responses. Verify proper handling of rate limits and errors. Test prompt formatting with various email contents.",
+      "priority": "medium",
+      "details": "Implement a function that takes an email body (which may be HTML or plain text) and converts it to clean Markdown. Handle HTML emails by converting tags to Markdown equivalents. Strip or replace problematic content like inline images. Preserve important formatting like lists, links, and emphasis. Sanitize any potentially harmful content.",
+      "testStrategy": "Test with various email formats including plain text, HTML with formatting, emails with inline images, and emails with special characters. Verify the output is valid Markdown that renders correctly in Obsidian.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Set up OpenRouter client with .env credentials",
-          "description": "Create client initialization function that loads credentials from .env and configures OpenAI SDK for OpenRouter API",
-          "status": "done",
+          "title": "Implement input detection and basic sanitization",
+          "description": "Create the initial function to detect email body type (plain text or HTML) and perform basic security sanitization to remove potentially harmful content.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Use `python-dotenv` to load `OPENROUTER_API_KEY` from .env file. Initialize `OpenAI` client with `base_url='https://openrouter.ai/api/v1'` and `api_key=os.getenv('OPENROUTER_API_KEY')`. Add a test function to verify connection with simple chat completion using model like 'openai/gpt-3.5-turbo'. Create `openrouter_client.py` module exporting the client function."
+          "details": "Develop a function `sanitizeEmailBody(emailBody: string): SanitizedResult` that: 1) Detects content type by checking for HTML tags (e.g., regex `/<[a-z][\\s\\S]*>/i`); 2) Uses a HTML sanitization library like DOMPurify or html-sanitizer to strip dangerous elements (script, iframe, object, embed, javascript: URLs); 3) Removes inline images by stripping img tags with data: URLs or external sources; 4) Returns { content: string, isHtml: boolean, warnings: string[] }. Test with sample malicious HTML containing scripts and tracking pixels."
         },
         {
           "id": 2,
-          "title": "Implement prompt template generation",
-          "description": "Create function to build standardized prompt templates that include truncated email content and extraction instructions",
-          "status": "done",
+          "title": "Build HTML to Markdown conversion core",
+          "description": "Convert sanitized HTML to Markdown, preserving essential formatting like headings, paragraphs, emphasis, and links.",
+          "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Define function `create_prompt(email_content: str, max_chars: int = 4000) -> str` that truncates email_content to max_chars from config. Use f-string template: 'Analyze this email and extract the 3 most relevant tag keywords: {truncated_email}'. Import config for max_chars limit. Add validation to ensure prompt length stays under model context limits (e.g., 4096 tokens)."
+          "details": "Extend the function to handle HTML input using a library like Turndown or html-to-md. Implement conversion rules: h1-h6 → # headings, strong/em → **bold**/*italic*, a tags → [text](url), p → paragraphs. Preserve link text and href attributes (after sanitization). Handle basic tables → Markdown tables. Add error handling for malformed HTML. Unit test with sample HTML emails containing formatted content."
         },
         {
           "id": 3,
-          "title": "Build core API communication function",
-          "description": "Create main function to send prompts to OpenRouter and return raw responses",
-          "status": "done",
+          "title": "Add list and structural element conversion",
+          "description": "Handle complex structural elements including lists, blockquotes, and code blocks during HTML to Markdown conversion.",
+          "status": "pending",
           "dependencies": [
-            1,
             2
           ],
-          "details": "Implement `send_prompt(prompt: str, model: str = 'openai/gpt-4o-mini') -> dict` using client.chat.completions.create(). Use messages=[{'role': 'system', 'content': 'You are a precise email tag extractor.'}, {'role': 'user', 'content': prompt}]. Return full response object. Log request parameters and response metadata for debugging."
+          "details": "Extend HTML parser to convert: ul/ol/li → -/* numbered lists (preserve nesting), blockquote → > quotes, pre/code → ``` fenced code blocks. Ensure proper indentation and spacing. Handle definition lists (dl/dt/dd) if present in emails. Test with newsletters containing bullet points, numbered instructions, and quoted replies. Validate output renders correctly in Markdown viewers."
         },
         {
           "id": 4,
-          "title": "Add response processing and keyword extraction",
-          "description": "Implement function to parse API responses and extract structured tag keywords",
-          "status": "done",
+          "title": "Implement plain text to Markdown enhancement",
+          "description": "Convert plain text emails to enhanced Markdown, detecting and converting natural formatting patterns.",
+          "status": "pending",
           "dependencies": [
-            3
+            1
           ],
-          "details": "Create `extract_keywords(response: dict) -> list[str]` that safely accesses `response.choices[0].message.content`. Parse response for comma-separated keywords or JSON if instructed in prompt. Handle empty/malformed responses by returning empty list. Add regex fallback: `re.findall(r'\\b[a-zA-Z]{3,}\\b', content)` for keyword extraction. Validate keywords (3-15 chars, no special chars)."
+          "details": "For plain text input (isHtml: false), implement smart formatting: Detect lines starting with * → **bold**, _ → *italic*, URLs → [url](url), lines starting with -/* → lists, multiple === → headings. Use libraries like remarkable or custom regex patterns. Preserve original line breaks as paragraphs. Test with plain text emails containing informal formatting like *important* and http://links."
         },
         {
           "id": 5,
-          "title": "Implement comprehensive error handling and retry logic",
-          "description": "Add robust error handling, rate limiting detection, and exponential backoff retries across all API functions",
-          "status": "done",
+          "title": "Add final cleanup, validation, and unified API",
+          "description": "Implement final output normalization, validation, and create the complete public API with comprehensive testing.",
+          "status": "pending",
           "dependencies": [
+            2,
             3,
             4
           ],
-          "details": "Wrap `send_prompt` with `@retry` decorator (use `tenacity` library). Configure exponential backoff: `stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=10)`. Catch specific errors: `openai.RateLimitError` (wait longer), `openai.APIConnectionError` (retry), `openai.InvalidRequestError` (raise). Log all errors with `logging.error`. Add circuit breaker pattern for repeated failures."
-        },
-        {
-          "id": 6,
-          "title": "Verify live OpenRouter API call using OpenRouterClient example",
-          "description": "Run a live API call using the OpenRouterClient example code in src/openrouter_client.py with environment credentials. Verify authentication, API responses, and error handling. This test should be performed before marking the full OpenRouter integration task as complete. Log any issues and confirm with a valid OpenAI-compatible prompt.",
-          "details": "",
-          "status": "done",
-          "dependencies": [],
-          "parentTaskId": 5
+          "details": "Create `convertEmailToMarkdown(emailBody: string, options?: ConvertOptions): string` that chains all previous steps. Add final cleanup: normalize whitespace, limit line length to 80 chars, escape special Markdown chars, remove excessive empty lines. Add validation to ensure output is valid Markdown. Include options for strict mode (remove all HTML) vs. lenient mode. Write integration tests covering HTML/plain text edge cases, malicious content, and common email formats (newsletters, signatures, replies)."
         }
       ]
     },
     {
       "id": 6,
-      "title": "Implement email tagging functionality",
-      "description": "Create functionality to add tags to emails based on AI responses",
-      "status": "done",
+      "title": "Implement conditional summarization logic",
+      "description": "Create the system to conditionally generate summaries based on email tags",
+      "status": "pending",
       "dependencies": [
-        3,
-        5
+        1,
+        2
       ],
-      "priority": "high",
-      "details": "Implement functions to add tags to emails via IMAP. Map AI response keywords to actual IMAP tags based on config. Always add [AI-Processed] tag to processed emails. Implement fallback to 'neutral' tag if AI response doesn't match expected format. Ensure tagging operations are non-destructive (no moving or deleting emails).",
-      "testStrategy": "Test tagging with various AI responses. Verify fallback behavior. Ensure [AI-Processed] tag is always added. Verify idempotency by attempting to process already-tagged emails.",
+      "priority": "medium",
+      "details": "Develop logic that checks if an email has any tags matching those in the summarization_tags configuration. If it does, load the summarization prompt from the configured path and prepare for an LLM call. Include error handling for missing prompt files and invalid configurations. The system should gracefully continue without summarization if any part fails.",
+      "testStrategy": "Test with emails having various tag combinations, including those that should and shouldn't trigger summarization. Verify the system correctly identifies emails for summarization based on configuration.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Implement AI response keyword extraction and config-based tag mapping",
-          "description": "Create a function to parse AI responses, extract keywords, and map them to IMAP tags using a configuration mapping. Implement fallback logic to assign 'neutral' tag when AI response doesn't match expected format.",
-          "status": "done",
+          "title": "Implement tag matching configuration access",
+          "description": "Create a function to safely access the summarization_tags configuration and validate its structure.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Develop `map_ai_response_to_tags(ai_response: str, config: dict) -> List[str]` that: 1) Parses AI response for keywords using regex or NLP (e.g., match patterns like 'priority: high', 'spam: yes'); 2) Looks up keywords in config dict like `{'high': 'URGENT', 'spam': 'SPAM'}`; 3) Returns empty list if no matches, triggering fallback; 4) Test with sample responses: 'This is spam' → ['SPAM'], 'Priority high' → ['URGENT'], malformed → []"
+          "details": "Read the summarization_tags from the configuration file/system. Add validation to ensure it's a non-empty list of strings. Return empty list if config is missing or invalid. Log warning message for invalid config but do not raise exceptions."
         },
         {
           "id": 2,
-          "title": "Create core IMAP tagging function with non-destructive operations",
-          "description": "Implement a function to add tags (IMAP keywords/flags) to specific email messages using IMAP STORE command without modifying email content, position, or other flags.",
-          "status": "done",
-          "dependencies": [],
-          "details": "Develop `add_tags_to_email(imap_connection, email_uid: int, tags: List[str]) -> bool` that: 1) Uses `UID STORE {email_uid} +FLAGS.SILENT (tag1 tag2)` for adding tags; 2) Handles IMAP keyword syntax correctly (RFC 3501 §6.4.6); 3) Uses SILENT flag to avoid unnecessary server notifications; 4) Returns success/failure based on IMAP OK response; 5) Includes error handling for invalid UIDs and permission issues"
+          "title": "Implement email tag checking logic",
+          "description": "Create a function that checks if an email's tags intersect with summarization_tags.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Accept email object with tags array and summarization_tags list. Use set intersection (e.g., `set(email_tags) & set(summarization_tags)`) to check for matches. Return boolean `should_summarize`. Handle cases where email has no tags (return false)."
         },
         {
           "id": 3,
-          "title": "Implement always-add [AI-Processed] tagging mechanism",
-          "description": "Create wrapper function that guarantees [AI-Processed] tag is always applied to processed emails regardless of AI classification outcome.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "Develop `tag_email_safely(imap_connection, email_uid: int, ai_response: str, config: dict) -> bool` that: 1) Calls subtask 1 to get mapped tags; 2) Always appends '[AI-Processed]' to result list; 3) Calls subtask 2 `add_tags_to_email()` with final tag list; 4) Logs applied tags for audit trail; 5) Example: neutral AI → ['neutral', '[AI-Processed]'], spam AI → ['SPAM', '[AI-Processed]']"
+          "title": "Implement prompt file loading with error handling",
+          "description": "Create a function to load the summarization prompt from the configured file path with comprehensive error handling.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Read prompt file from configured path using filesystem API. Catch FileNotFoundError, PermissionError, and other IO exceptions. Return None on any file error and log specific error message. Validate loaded content is non-empty string."
         },
         {
           "id": 4,
-          "title": "Add comprehensive error handling and connection management",
-          "description": "Enhance IMAP operations with proper connection pooling, retry logic, and transaction safety to ensure reliable non-destructive tagging.",
-          "status": "done",
+          "title": "Create main conditional summarization decision function",
+          "description": "Implement the core function that orchestrates tag checking and prompt loading to determine if summarization should proceed.",
+          "status": "pending",
           "dependencies": [
+            1,
             2,
             3
           ],
-          "details": "Implement `safe_imap_operation(operation_func, max_retries: int = 3)` context manager that: 1) Uses `imaplib.IMAP4_SSL()` with proper SSL context; 2) Implements exponential backoff retry for transient errors (NO/TRYAGAIN); 3) Ensures SELECT/UID operations use same mailbox context; 4) Rolls back on failure (though IMAP STORE is atomic); 5) Validates server capabilities for KEYWORDS support via `CAPABILITY` command before tagging"
+          "details": "Accept email object and config. First call tag checking function. If should_summarize is false, return {summarize: false}. If true, load prompt. If prompt loads successfully, return {summarize: true, prompt: loaded_prompt}. If prompt fails, return {summarize: false, reason: 'prompt_load_failed'}."
         },
         {
           "id": 5,
-          "title": "Create complete email tagging workflow with validation and logging",
-          "description": "Integrate all components into production-ready workflow with input validation, comprehensive logging, and verification of tagging success.",
-          "status": "done",
+          "title": "Integrate into email processing pipeline with graceful degradation",
+          "description": "Add the conditional summarization logic to the main email processing flow with comprehensive logging.",
+          "status": "pending",
           "dependencies": [
-            1,
-            3,
             4
           ],
-          "details": "Develop main `process_email_with_ai_tags(imap_connection, email_uid: int, ai_response: str, config: dict) -> Dict[str, Any]` that: 1) Validates inputs (non-empty UID, valid AI response); 2) Uses subtask 4 wrapper around subtask 3; 3) Verifies success by fetching flags post-operation (`UID FETCH uid FLAGS`); 4) Returns dict with `{'success': bool, 'applied_tags': List[str], 'before_tags': List[str], 'after_tags': List[str]}`; 5) Logs full audit trail including timestamps and email metadata"
+          "details": "In main email handler, call summarization decision function before LLM processing step. If summarize:true, prepare LLM call parameters with prompt. If false, log reason (tags/no tags/prompt error) at debug level and continue pipeline without summarization. Ensure no exceptions bubble up from summarization logic."
         }
       ]
     },
     {
       "id": 7,
-      "title": "Implement email body truncation",
-      "description": "Create functionality to truncate email bodies to a configurable maximum length",
-      "status": "done",
+      "title": "Implement LLM integration for email summarization",
+      "description": "Create the functionality to call an LLM API for generating email summaries",
+      "status": "pending",
       "dependencies": [
-        3
+        6
       ],
       "priority": "medium",
-      "details": "Implement a function to truncate email bodies to the maximum character count specified in config. Handle different email formats (plain text, HTML) appropriately. Ensure truncation doesn't break the email structure or content in a way that would affect AI processing. Add an indicator when content has been truncated.",
-      "testStrategy": "Test truncation with various email formats and lengths. Verify the truncated content is still valid for processing.",
+      "details": "Implement the LLM API call functionality using the loaded prompt and email content. Structure the prompt to generate concise, informative summaries focusing on key points and action items. Include error handling for API failures, rate limiting, and malformed responses. The system should log errors but continue processing if summarization fails.",
+      "testStrategy": "Test with various email contents including short messages, long threads, and emails with different structures. Verify the summaries are accurate and helpful. Test error handling by simulating API failures.",
       "subtasks": [
         {
           "id": 1,
-          "title": "Implement configuration loading for maximum truncation length",
-          "description": "Create a function to read and validate the maximum character count from the application configuration.",
-          "status": "done",
+          "title": "Create prompt template for email summarization",
+          "description": "Design and implement a structured prompt template that combines the loaded prompt with email content to generate concise summaries focusing on key points and action items.",
+          "status": "pending",
           "dependencies": [],
-          "details": "Access the config using the application's config system (e.g., environment variable or config file). Parse the value as an integer with a default fallback (e.g., 10000 characters). Add validation to ensure it's positive. Return the value for use in later subtasks. Test with valid, invalid, and missing config values."
+          "details": "Load the existing prompt configuration. Create a prompt formatter using f-strings or a templating library (e.g., Jinja2) that injects email fields: subject, sender, body, date. Structure the prompt to explicitly request: 1) 2-3 sentence summary of main content, 2) bullet-point list of action items, 3) priority level (low/medium/high). Test template rendering with sample email data to ensure proper formatting and token limits."
         },
         {
           "id": 2,
-          "title": "Develop plain text email body truncation function",
-          "description": "Implement a truncation function specifically for plain text email bodies using the configured max length.",
-          "status": "done",
+          "title": "Implement core LLM API integration",
+          "description": "Build the LLM API client and core summarization function that calls the external LLM API using the formatted prompt from subtask 1.",
+          "status": "pending",
           "dependencies": [
             1
           ],
-          "details": "Create a function `truncatePlainText(body: string, maxLength: number): {truncatedBody: string, isTruncated: boolean}`. Use string slicing to cut at maxLength, preferring to truncate at the last space or newline before maxLength to avoid mid-word cuts. Append '[Content truncated]' if truncated. Ensure the result doesn't exceed maxLength including the indicator."
+          "details": "Use requests library or LLM client SDK (e.g., openai-python, litellm for multi-provider support). Implement async function `summarize_email(email_data)` that: 1) formats prompt using template from subtask 1, 2) makes POST request to LLM endpoint with proper headers (Authorization, Content-Type), 3) sends JSON payload with model name, prompt, temperature=0.3, max_tokens=300. Return raw API response. Include timeout (30s) and basic request validation."
         },
         {
           "id": 3,
-          "title": "Develop HTML email body truncation function",
-          "description": "Implement truncation for HTML email bodies that preserves valid HTML structure.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "Create `truncateHtml(body: string, maxLength: number): {truncatedBody: string, isTruncated: boolean}`. Use a HTML parser library (e.g., htmlparser2 or cheerio) to parse the DOM. Traverse text nodes cumulatively until maxLength is reached, removing subsequent nodes/branches. Re-serialize to valid HTML. Append a safe HTML indicator like `<p><em>[Content truncated]</em></p>` at a logical break point (end of last complete paragraph or div). Test structure validity post-truncation."
-        },
-        {
-          "id": 4,
-          "title": "Create email format detection and unified truncation dispatcher",
-          "description": "Build a main truncation function that detects email format and delegates to appropriate handlers.",
-          "status": "done",
-          "dependencies": [
-            2,
-            3
-          ],
-          "details": "Implement `truncateEmailBody(body: string, contentType: string, maxLength: number): {truncatedBody: string, isTruncated: boolean}`. Detect format from contentType header (text/plain vs text/html). Strip or handle multipart/mixed if present by focusing on body-text part. Call plain text or HTML handler accordingly. Log format detection for debugging. Ensure output maintains original contentType."
-        },
-        {
-          "id": 5,
-          "title": "Add truncation indicator, AI-safety validation, and integration tests",
-          "description": "Finalize with comprehensive testing ensuring safe truncation for AI processing and proper indicator display.",
-          "status": "done",
-          "dependencies": [
-            4
-          ],
-          "details": "Verify truncated content remains parseable by AI (no broken tags, complete sentences where possible). Test across edge cases: empty bodies, exactly maxLength, HTML with scripts/styles/images, mixed content. Add unit/integration tests covering all paths. Document the function API and integration points. Ensure indicator is non-intrusive and clearly marks truncation without affecting email renderability."
-        }
-      ]
-    },
-    {
-      "id": 8,
-      "title": "Implement main processing loop",
-      "description": "Create the main processing loop that orchestrates the email fetching, AI processing, and tagging",
-      "status": "done",
-      "dependencies": [
-        3,
-        5,
-        6,
-        7
-      ],
-      "priority": "high",
-      "details": "Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the AIProcessed flag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.",
-      "testStrategy": "Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement email fetching with AIProcessed exclusion",
-          "description": "Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged with AIProcessed flag, and return a list of email objects for processing.",
-          "status": "done",
-          "dependencies": [],
-          "details": "Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAG AIProcessed' (FLAG is for custom flags). Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found.\n\n<info added on 2026-01-05T23:05:05.922Z>\nThe subtask has already been updated with most of the requested changes. The title now uses \"AIProcessed exclusion\" without brackets, the description uses \"AIProcessed\" without brackets, and the details already specify \"NOT FLAG AIProcessed\" as the correct IMAP search query syntax.\n\nThe only additional information to add would be:\n\n\"The fetch_emails function should use the processed_tag value from config.yaml rather than hardcoding 'AIProcessed'. This ensures consistency if the tag name changes in the future. When implementing the IMAP search query, remember that custom flags require the FLAG command, while system flags like \\Seen use FLAGGED.\"\n</info added on 2026-01-05T23:05:05.922Z>"
-        },
-        {
-          "id": 2,
-          "title": "Implement per-email AI processing with error isolation",
-          "description": "Create a function to process individual emails via AI API, handling failures gracefully without stopping the loop.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "details": "For each email from fetch results, send body/content to AI service (e.g., OpenAI/Groq) with prompt for analysis. Capture AI response (JSON with categories/intent). Wrap in try-catch: log error, mark as 'AIProcessingFailed' flag, continue to next email. Use async/await for non-blocking. Rate limit API calls (e.g., 10/min)."
-        },
-        {
-          "id": 3,
-          "title": "Implement AI response-based tagging logic",
-          "description": "Add logic to parse AI responses and apply appropriate IMAP flags to processed emails.",
-          "status": "done",
+          "title": "Add comprehensive error handling and fallbacks",
+          "description": "Implement robust error handling for API failures, rate limiting, malformed responses, and network issues while ensuring the system continues processing.",
+          "status": "pending",
           "dependencies": [
             2
           ],
-          "details": "Parse AI JSON response for tags like 'Spam', 'Urgent', 'Neutral' (from config). Use IMAP STORE command to add flags (e.g., STORE UID +FLAGS (AIProcessed Spam)). If processing failed, add only AIProcessingFailed flag. Commit changes with UID STORE. Note that we use FLAGS as the server doesn't support KEYWORDS extension. Log applied flags per email.\n\n<info added on 2026-01-05T23:05:12.304Z>\nThe tagging implementation uses FLAGS.SILENT to avoid server notifications, improving efficiency. The actual flag format is without brackets (e.g., \"AIProcessed\", \"Spam\") as most IMAP servers don't support special characters in flags. \n\nThe tag_email_safely() function handles all tagging operations and automatically adds the \"AIProcessed\" flag to every processed email, while additional tags come from the AI response mapping: urgent→Urgent, neutral→Neutral, spam→Spam.\n\nWhen applying flags, the implementation uses:\n```python\nconn.uid('STORE', uid, '+FLAGS.SILENT', '({})'.format(' '.join(flags)))\n```\n\nThis approach ensures atomic flag operations and proper error handling. If the AI processing fails, only the \"AIProcessingFailed\" flag is applied (not bracketed). The function also implements retries with exponential backoff for transient IMAP connection issues.\n\nThe tag mapping is loaded from configuration, allowing customization without code changes. Each mapping is validated at startup to ensure it contains only valid IMAP flag characters.\n</info added on 2026-01-05T23:05:12.304Z>"
+          "details": "Wrap API call in try-except blocks handling: HTTPError (4xx/5xx), ConnectionError, Timeout, JSONDecodeError. Implement exponential backoff retry (3 attempts, 1s/2s/4s delays) for 429 rate limits and 5xx errors. For failures, return fallback summary: 'Summary unavailable - please read original email'. Validate response structure (check for 'choices[0].message.content'). Log all errors with structured logging (email_id, error_type, response_status)."
         },
         {
           "id": 4,
-          "title": "Implement main loop orchestration and error handling",
-          "description": "Assemble the main processing loop that fetches emails, processes each sequentially, handles overall errors, and ensures loop completion.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "details": "In main(): while True or single-run mode: fetch emails → for each: process_AI → tag → log. Outer try-catch for connection/IMAP failures (retry 3x). Inner per-email error handling to skip failures. Sleep 30s between batches if multi-batch. Graceful exit on KeyboardInterrupt. Use logging module with timestamps."
-        },
-        {
-          "id": 5,
-          "title": "Implement analytics summary generation and logging",
-          "description": "Track metrics throughout processing and generate/log a summary report at end of each run.",
-          "status": "done",
-          "dependencies": [
-            4
-          ],
-          "details": "Use counters: total_fetched, successfully_processed, failed, tag_breakdown dict. Update in process/tag functions. At loop end: compute percentages, print/log JSON: {'run_id': timestamp, 'total': N, 'success_rate': 95%, 'tags': {'Spam': 10, ...}}. Log to file and console. Schedule via cron/loop interval."
-        }
-      ]
-    },
-    {
-      "id": 9,
-      "title": "Implement CLI interface",
-      "description": "Create a command-line interface for running the agent with various options",
-      "status": "done",
-      "dependencies": [
-        8
-      ],
-      "priority": "medium",
-      "details": "Implement a CLI interface using argparse or click. Support options for specifying config file path, enabling debug mode, and other relevant parameters. Provide helpful usage information and error messages. Ensure the CLI returns appropriate exit codes based on execution success or failure.",
-      "testStrategy": "Test CLI with various valid and invalid arguments. Verify help text and error messages are clear and helpful.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Set up basic CLI structure with argparse",
-          "description": "Create the foundational CLI parser using argparse with description and basic help formatting.",
-          "status": "done",
-          "dependencies": [],
-          "details": "Import argparse and create ArgumentParser with description='Command-line interface for running the agent' and epilog with usage examples. Use RawDescriptionHelpFormatter for clean help output. Add --version option using parser.add_argument('--version', action='version', version='agent 1.0'). Test with python script.py --help to verify basic structure works."
-        },
-        {
-          "id": 2,
-          "title": "Implement config file path option",
-          "description": "Add support for specifying config file path as a required or optional parameter with validation.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "details": "Add parser.add_argument('--config', type=str, required=True, help='Path to configuration file') or make optional with default. Use Path type validation if using pathlib: from pathlib import Path; type=Path. Add existence check: nargs='?', default=None, and validate if provided using Path(config_path).exists(). Test with python script.py --config config.yaml."
-        },
-        {
-          "id": 3,
-          "title": "Add debug mode and other common options",
-          "description": "Implement debug flag and additional relevant parameters like log level or verbosity.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "details": "Add parser.add_argument('--debug', action='store_true', help='Enable debug mode'). Add parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO', help='Logging level'). Consider adding --verbose / -v with action='count' for verbosity levels. Test combinations: python script.py --debug --log-level DEBUG."
-        },
-        {
-          "id": 4,
-          "title": "Implement argument parsing and error handling",
-          "description": "Parse arguments safely with comprehensive error messages and input validation.",
-          "status": "done",
+          "title": "Implement response parsing and validation",
+          "description": "Parse LLM responses into structured summary objects and validate output quality before returning to the calling system.",
+          "status": "pending",
           "dependencies": [
             2,
             3
           ],
-          "details": "Wrap parser.parse_args() in try-except for SystemExit handling. Add custom validation: if args.config and not Path(args.config).exists(): raise ValueError('Config file not found'). Use parser.error('message') for argument errors. Print helpful usage: print(parser.format_usage()) on validation failure. Test invalid inputs like non-existent config files."
+          "details": "Create `parse_summary_response(raw_response)` function that: 1) extracts content from standard LLM response format, 2) strips markdown/whitespace, 3) validates minimum length (>20 chars) and maximum length (<500 chars), 4) checks for key phrases ('action items', 'summary') using regex, 5) returns structured dict: {'summary': str, 'action_items': list[str], 'priority': str, 'success': bool}. Default to empty values on parsing failure."
         },
         {
           "id": 5,
-          "title": "Add exit code handling and main execution flow",
-          "description": "Integrate CLI with agent execution and return appropriate sys.exit() codes.",
-          "status": "done",
-          "dependencies": [
-            4
-          ],
-          "details": "Create main() function that calls parser.parse_args(), validates inputs, then runs agent logic. Use sys.exit(0) on success, sys.exit(1) on errors. Wrap agent execution in try-except: except Exception as e: print(f'Error: {e}'); sys.exit(1). Add if __name__ == '__main__': main(). Test full flow with valid/invalid inputs verifying exit codes: echo $? after runs."
-        }
-      ]
-    },
-    {
-      "id": 10,
-      "title": "Implement comprehensive error handling and documentation",
-      "description": "Add comprehensive error handling throughout the codebase and create documentation",
-      "status": "done",
-      "dependencies": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9
-      ],
-      "priority": "medium",
-      "details": "Review and enhance error handling throughout the codebase. Ensure all functions have appropriate docstrings and type hints. Create a README.md with installation and usage instructions. Include example configuration files and prompts. Document the expected format for AI responses and tag mappings. Create a troubleshooting guide for common issues.",
-      "testStrategy": "Review documentation for clarity and completeness. Verify error handling by intentionally triggering various error conditions.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Review and implement comprehensive error handling throughout codebase",
-          "description": "Audit all functions and modules for potential failure points and add try-catch blocks with custom error types, logging, and graceful fallbacks.",
-          "status": "done",
-          "dependencies": [],
-          "details": "1. Create custom error classes extending Error (e.g., ValidationError, APIError, ConfigError) for specific failure types[4][5]. 2. Wrap risky operations (file I/O, API calls, JSON parsing, user input) in try-catch-finally blocks using console.error() for logging[1][3]. 3. Add input validation with explicit throws before processing[2]. 4. Implement global error handler or wrapper functions to catch unhandled errors[2][3]. 5. Test each error path to ensure graceful degradation."
-        },
-        {
-          "id": 2,
-          "title": "Add docstrings and type hints to all functions",
-          "description": "Ensure every function has complete JSDoc documentation and TypeScript-style type hints for parameters, returns, and thrown errors.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "details": "1. Use JSDoc format: @param, @returns, @throws for all functions. 2. Document expected input formats, success responses, and specific error conditions. 3. Add @example blocks showing correct usage and common error scenarios. 4. Include type hints like {@link string|number} for parameters. 5. Run eslint or documentation linter to validate coverage."
-        },
-        {
-          "id": 3,
-          "title": "Create comprehensive README.md with installation and usage",
-          "description": "Build complete project documentation covering setup, configuration, basic usage, and quick start examples.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "details": "1. Include Prerequisites, Installation (npm/yarn commands), Quick Start with code example. 2. Add Configuration section with example config.json structure. 3. Include Usage Examples showing basic API calls and CLI commands. 4. Add sections for AI Response Format and Tag Mappings with schemas. 5. Use markdown badges, code blocks, and tables for clarity."
-        },
-        {
-          "id": 4,
-          "title": "Create example configuration files and prompts",
-          "description": "Generate template configuration files and example prompt templates for common use cases.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "details": "1. Create config.example.json with all required fields commented. 2. Add .env.example for environment variables. 3. Create prompts/ directory with example prompt templates (system, user prompts). 4. Include validation schemas for configs using JSON Schema or comments. 5. Add these files to README with copy-paste instructions."
-        },
-        {
-          "id": 5,
-          "title": "Develop troubleshooting guide and finalize documentation",
-          "description": "Create dedicated troubleshooting section covering common errors, solutions, and error code mappings.",
-          "status": "done",
+          "title": "Add logging, monitoring, and integration wrapper",
+          "description": "Implement production-ready logging, metrics, and a complete wrapper function that integrates all previous subtasks with proper error boundaries.",
+          "status": "pending",
           "dependencies": [
             1,
             2,
             3,
             4
           ],
-          "details": "1. Document top 10 common errors from error handling implementation with solutions. 2. Create error code mappings table (Error Type → Cause → Solution). 3. Add FAQ section for configuration and API issues. 4. Include debug/logging instructions and common misconfigurations. 5. Add TROUBLESHOOTING.md link in README and validate all links/examples work."
+          "details": "Create main `generate_email_summary(email_data)` function that orchestrates subtasks 1-4. Add structured logging at each step (INFO: prompt formatted, API called; ERROR: failures with email_id). Track metrics: api_latency, success_rate, token_usage, error_type. Implement circuit breaker pattern (pause after 5 consecutive failures). Ensure function signature matches existing system expectations and gracefully handles all edge cases while maintaining processing flow."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Create Obsidian note assembly and formatting",
+      "description": "Implement the functionality to assemble and format complete Obsidian notes",
+      "status": "pending",
+      "dependencies": [
+        4,
+        5,
+        7
+      ],
+      "priority": "high",
+      "details": "Develop a function that assembles the complete Markdown note by combining: 1) YAML frontmatter, 2) Summary section (if available) formatted as an Obsidian callout, and 3) Original email content under a 'Original Content' heading. Ensure proper spacing and formatting between sections. The function should produce a complete, well-formatted Markdown file ready for writing to disk.",
+      "testStrategy": "Test with various combinations of inputs including with and without summaries. Verify the output is valid Markdown that renders correctly in Obsidian with proper section formatting.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create YAML frontmatter formatting function",
+          "description": "Develop a function that takes YAML data as input and formats it as valid Obsidian YAML frontmatter with proper delimiters.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create `format_yaml_frontmatter(yaml_data)` function that: 1) Validates input is a dictionary, 2) Uses `yaml.dump()` with `default_flow_style=False` and `sort_keys=False` to preserve order, 3) Wraps output in `---\\n` + content + `\\n---\\n`, 4) Handles empty YAML data by returning empty frontmatter block. Test with sample data like `{'tags': ['email'], 'date': '2026-01-06'}`.[1]"
+        },
+        {
+          "id": 2,
+          "title": "Implement summary callout formatter",
+          "description": "Create function to format summary text as Obsidian callout with proper syntax and spacing.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create `format_summary_callout(summary_text)` function that: 1) Checks if summary exists and is non-empty, 2) Returns `> [!summary] Summary\\n> ${summary_text}\\n\\n` if summary exists, 3) Returns empty string `''` if no summary, 4) Ensures single newline after callout. Test with sample summary text.[1]"
+        },
+        {
+          "id": 3,
+          "title": "Build original content section formatter",
+          "description": "Create function to format email content under 'Original Content' heading with proper Markdown escaping.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create `format_original_content(email_content)` function that: 1) Escapes Markdown special characters if needed, 2) Returns `# Original Content\\n\\n${email_content}\\n` with double newlines before and single after, 3) Preserves original email formatting. Test with multi-line email content."
+        },
+        {
+          "id": 4,
+          "title": "Implement main note assembly function",
+          "description": "Create the core assembly function that orchestrates all components with proper spacing.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Create `assemble_obsidian_note(yaml_data, summary_text, email_content)` function that: 1) Calls subtask functions 1-3, 2) Joins sections: frontmatter + summary_callout + original_content, 3) Ensures exactly one blank line (`\\n`) between sections, 4) Returns complete Markdown string. Test full assembly flow."
+        },
+        {
+          "id": 5,
+          "title": "Add validation, error handling, and testing",
+          "description": "Implement input validation, error handling, and comprehensive test suite for production readiness.",
+          "status": "pending",
+          "dependencies": [
+            4
+          ],
+          "details": "1) Add input validation for all functions (non-null yaml_data, strings for summary/content), 2) Add try-catch for YAML serialization errors, 3) Create test cases covering: empty summary, missing YAML keys, multi-line content, edge cases, 4) Add docstrings with parameter types, 5) Verify output renders correctly in Obsidian."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Implement note creation and email tagging workflow",
+      "description": "Create the core workflow that processes emails, creates notes, and applies appropriate tags",
+      "status": "pending",
+      "dependencies": [
+        2,
+        3,
+        8
+      ],
+      "priority": "high",
+      "details": "Implement the main workflow that: 1) Processes each selected email, 2) Generates the Markdown note content, 3) Writes the file to the configured location, 4) Tags the email with [Obsidian-Note-Created] on success or [Note-Creation-Failed] on failure. Include comprehensive error handling at each step, ensuring the email is always tagged appropriately based on the outcome.",
+      "testStrategy": "Test the complete workflow with various email scenarios. Verify files are created correctly and emails are tagged appropriately. Test error handling by simulating failures at different stages of the process.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement email processing loop with initial error handling",
+          "description": "Create the main workflow function that iterates through selected emails and sets up comprehensive error handling structure with success/failure tracking.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "1. Create async function `processSelectedEmails()` that accepts array of selected email objects. 2. Initialize tracking variables: `successCount`, `failureCount`, `results[]`. 3. Implement try-catch wrapper around entire loop with `finally` block to ensure email tagging occurs regardless of outcome. 4. For each email, extract core metadata (subject, sender, date, body) into structured object. 5. Log processing start for each email with unique identifier."
+        },
+        {
+          "id": 2,
+          "title": "Implement Markdown note content generation",
+          "description": "Create function to convert email data into properly formatted Markdown note content with Obsidian-compatible frontmatter.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create `generateMarkdownNote(emailData)` function that returns complete Markdown string. 2. Add YAML frontmatter with `title: email.subject`, `email: sender.email`, `date: email.date`, `tags: ['email', 'inbox']`. 3. Convert email body to Markdown using HTML-to-Markdown library if HTML, preserve plain text otherwise. 4. Include sender signature block with reply link. 5. Add email metadata section (To/CC, attachments list). 6. Sanitize filename from subject (remove invalid chars, limit length). 7. Include comprehensive error handling with descriptive error messages."
+        },
+        {
+          "id": 3,
+          "title": "Implement note file writing with path resolution",
+          "description": "Create file writing function that resolves configured output path and writes Markdown content with proper filename.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "1. Create `writeNoteFile(markdownContent, filename)` function. 2. Read configured output directory from settings (e.g., `app.settings.get('notesOutputPath')`). 3. Ensure output directory exists using `fs.ensureDir()`. 4. Generate safe filename: `${sanitizedSubject}-${timestamp}.md`. 5. Write file with UTF-8 encoding using `fs.writeFile()`. 6. Return file path on success or throw specific `FileWriteError` on failure. 7. Implement atomic write (temp file + rename) for reliability. 8. Add file existence check to prevent overwrites."
+        },
+        {
+          "id": 4,
+          "title": "Implement success email tagging mechanism",
+          "description": "Create function to apply [Obsidian-Note-Created] tag to successfully processed emails with note file path reference.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create `tagEmailSuccess(emailId, notePath)` function. 2. Use email client API to add label/tag `[Obsidian-Note-Created]`. 3. Optionally append note filepath to email subject or comments field. 4. Implement idempotency check (don't re-tag if already tagged). 5. Log success with email ID, note path, and timestamp. 6. Return success metadata for workflow tracking."
+        },
+        {
+          "id": 5,
+          "title": "Implement failure email tagging and complete workflow integration",
+          "description": "Integrate all components into complete workflow with failure tagging [Note-Creation-Failed] and detailed error reporting.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "1. In main workflow loop, call generateMarkdownNote → writeNoteFile → tagEmailSuccess sequence. 2. Catch specific errors at each step and map to `tagEmailFailure(emailId, errorMessage)`. 3. Create `tagEmailFailure(emailId, error)` function that applies [Note-Creation-Failed] tag. 4. Store detailed error info in email comments/subject or separate log. 5. Implement retry logic for transient failures (network, permissions). 6. Add final workflow summary: total processed, successes, failures with error breakdown. 7. Ensure 100% email tagging coverage via finally blocks."
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Develop changelog/audit log functionality",
+      "description": "Create the system to maintain a Markdown table of processed emails",
+      "status": "pending",
+      "dependencies": [
+        3,
+        9
+      ],
+      "priority": "medium",
+      "details": "Implement functionality to create and update a Markdown changelog file at the configured path. The file should contain a table with columns for Timestamp, Email Account, Subject, From, and Filename. Each execution run should be visually separated. The function should handle cases where the file doesn't exist yet and where it needs to be appended to.",
+      "testStrategy": "Test with new and existing changelog files. Verify the table format is maintained correctly when appending new entries. Check that all required information is included and properly formatted.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create Markdown table header and file initialization function",
+          "description": "Implement a function that creates the changelog file with proper Markdown table header if it doesn't exist, or reads existing file safely.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create `initialize_changelog(path)` function that: 1) Checks if file exists at configured path using `os.path.exists()` 2) If not exists, writes Markdown header `# Email Processing Changelog` followed by table header `| Timestamp | Email Account | Subject | From | Filename |` and separator `|---|` 3) If exists, reads file content safely with UTF-8 encoding handling. Use `pathlib.Path` for cross-platform path handling. Return file content as string."
+        },
+        {
+          "id": 2,
+          "title": "Implement email run data collection and formatting",
+          "description": "Create function to collect processed email data and format it as Markdown table row with current timestamp.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create `format_email_row(email_data)` function that takes dict with keys `email_account`, `subject`, `from_addr`, `filename` and: 1) Gets current UTC timestamp using `datetime.datetime.now(datetime.timezone.utc).isoformat()` 2) Escapes Markdown special characters (`|`, `\\`) in fields using `str.replace()` 3) Returns pipe-formatted row string like `| 2026-01-06T23:00:00Z | account@example.com | Subject | sender@domain.com | file.eml |`. Handle None/empty values as empty cells."
+        },
+        {
+          "id": 3,
+          "title": "Develop visual run separator generation",
+          "description": "Create function to generate visual separator between execution runs using Markdown horizontal rule and run metadata.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Create `generate_run_separator(run_count, run_timestamp)` function that returns Markdown string like:\n```\n\n---\n\n**Run #{run_count} - {timestamp}**\n\n```\nUse timestamp format `YYYY-MM-DD HH:MM UTC`. `run_count` increments per execution (track via file parsing or external counter). Place separator before new table rows to visually separate runs."
+        },
+        {
+          "id": 4,
+          "title": "Build core changelog update function",
+          "description": "Implement main function to append new email rows with proper separators to existing changelog.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Create `update_changelog(path, email_list, run_count)` function that: 1) Calls `initialize_changelog(path)` 2) Generates run separator via `generate_run_separator(run_count)` 3) Formats each email as row via `format_email_row()` 4) Appends `separator + '\\n'.join(rows) + '\\n'` to file content 5) Writes back using `with open(path, 'w', encoding='utf-8') as f:`. Ensure atomic writes using temporary file or `os.rename()`."
+        },
+        {
+          "id": 5,
+          "title": "Integrate changelog functionality into main execution workflow",
+          "description": "Add changelog update calls to main email processing pipeline with configuration and error handling.",
+          "status": "pending",
+          "dependencies": [
+            4
+          ],
+          "details": "1) Add `changelog_path` to config (default `./changelog.md`) 2) In main execution loop, collect `processed_emails = []` list 3) After processing batch, call `update_changelog(config.changelog_path, processed_emails, get_run_count())` 4) Implement `get_run_count()` by counting `**Run #` occurrences in file or use simple incrementing counter 5) Add try/except with logging for file I/O errors, continue execution if changelog fails. Test file locking/concurrency if multi-process."
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Update analytics tracking system",
+      "description": "Enhance the analytics system to track new metrics for note creation and summarization",
+      "status": "pending",
+      "dependencies": [
+        9
+      ],
+      "priority": "low",
+      "details": "Update the analytics tracking to include new metrics: notes_created, summaries_generated, and note_creation_failures. Modify the JSON schema and file writing logic to include these new fields. Ensure backward compatibility with existing analytics files.",
+      "testStrategy": "Test analytics recording with various processing scenarios. Verify the JSON structure is correct and all metrics are accurately tracked. Test with existing analytics files to ensure backward compatibility.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update JSON schema to include new metrics",
+          "description": "Modify the existing JSON schema definition to add the new fields: notes_created, summaries_generated, and note_creation_failures as optional integer fields.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Locate the JSON schema file (likely schema.json or similar in the analytics module). Add the new properties under the root object with type: 'integer', default: 0, and description for each. Use 'required' array exclusion to ensure backward compatibility. Validate the updated schema using a JSON schema validator tool."
+        },
+        {
+          "id": 2,
+          "title": "Update analytics data collection logic",
+          "description": "Modify the code responsible for collecting and populating analytics data to increment the new metrics: notes_created on successful note creation, summaries_generated on successful summarization, and note_creation_failures on note creation errors.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Identify event handlers for note creation, summarization success/failure (likely in services like NoteService or AnalyticsTracker). Use atomic counters (e.g., Redis increment or in-memory with locks) to track per-session or global counts. Initialize new fields to 0 if absent in existing data objects. Add unit tests for each increment scenario."
+        },
+        {
+          "id": 3,
+          "title": "Modify file writing logic for new schema",
+          "description": "Update the JSON serialization and file append/write logic to include the new fields while preserving backward compatibility with existing analytics files.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "In the file writer (likely AnalyticsFileWriter class), ensure JSON marshal/unmarshal handles optional fields gracefully. When reading existing files, merge new fields with default 0 values. When writing, always include all fields. Use json.MarshalIndent for consistent formatting. Test with mixed old/new data files."
+        },
+        {
+          "id": 4,
+          "title": "Add comprehensive unit and integration tests",
+          "description": "Create tests to verify new metrics tracking, schema validation, file compatibility, and edge cases like failures and zero values.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Write unit tests for data collection increments, schema validation, and file I/O. Create integration tests simulating note creation/summarization flows with mock failures. Test reading/writing mixed files. Use test fixtures with real old analytics files. Aim for 90%+ code coverage on modified paths."
+        },
+        {
+          "id": 5,
+          "title": "Perform end-to-end testing and deployment validation",
+          "description": "Run full system tests, validate backward compatibility with production files, and deploy with monitoring.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Test in staging: generate notes/summaries, trigger failures, verify metrics in output files. Backup production analytics files, deploy incrementally, monitor file writes for errors. Validate old files remain readable. Add logging for new metrics. Roll back plan if compatibility issues detected."
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Enhance CLI user experience",
+      "description": "Update the terminal UI to show progress and results for new functionality",
+      "status": "pending",
+      "dependencies": [
+        9,
+        10,
+        11
+      ],
+      "priority": "low",
+      "details": "Enhance the CLI interface to show progress during note creation and summarization. Update the final summary report to include new metrics: Notes Created, Summaries Generated, and Note Creation Failures. Improve error messaging to be more informative about specific failures.",
+      "testStrategy": "Test the CLI with various processing scenarios including successful and failed operations. Verify the progress indicators and summary report accurately reflect the processing results.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement progress bars for note creation and summarization",
+          "description": "Add visual progress indicators during note creation and summarization operations using a terminal-friendly library.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Install and use the **rich** library (pip install rich) for modern progress bars. Wrap note creation loops with `rich.progress.Progress()` context manager, adding tasks like `p.add_task('Creating notes...', total=note_count)`. Update progress with `p.update(task_id, advance=1)` after each note. Repeat for summarization process. Use `BarColumn()`, `TextColumn()`, and `TimeElapsedColumn()` for clear UX. Test with sample data to ensure bars display correctly in terminal.[1][3][5]"
+        },
+        {
+          "id": 2,
+          "title": "Add metrics tracking counters",
+          "description": "Implement counters to track Notes Created, Summaries Generated, and Note Creation Failures throughout CLI operations.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Create a metrics dictionary or class with keys: `notes_created=0`, `summaries_generated=0`, `note_creation_failures=0`. Increment `notes_created` after successful note creation, `summaries_generated` after successful summarization, and `note_creation_failures` in exception handlers during note creation. Use these counters in both progress bar updates and final reporting. Ensure thread-safe incrementing if operations are parallelized."
+        },
+        {
+          "id": 3,
+          "title": "Update final summary report with new metrics",
+          "description": "Modify the existing summary report to display the three new metrics at operation completion.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "After all operations complete, use **rich** `Table` or styled text to display: 'Notes Created: {metrics['notes_created']}', 'Summaries Generated: {metrics['summaries_generated']}', 'Note Creation Failures: {metrics['note_creation_failures']}'. Add success rate calculation: `success_rate = (notes_created / (notes_created + note_creation_failures)) * 100 if (notes_created + note_creation_failures) > 0 else 0`. Position report after progress bars complete."
+        },
+        {
+          "id": 4,
+          "title": "Implement context-specific error messaging",
+          "description": "Replace generic error messages with detailed, actionable error information for note creation failures.",
+          "status": "pending",
+          "dependencies": [
+            2
+          ],
+          "details": "In note creation exception handlers, capture specific error details: file I/O errors ('Failed to write note to {path}'), API errors ('Note service unavailable'), validation errors ('Invalid note content length'). Format messages as: 'Note creation failed for item {index}: {specific_error}. Skipping...'. Log full traceback to debug file. Increment failure counter and continue processing other notes. Display summary of failure types in final report."
+        },
+        {
+          "id": 5,
+          "title": "Integrate all components and test end-to-end workflow",
+          "description": "Combine progress bars, metrics, reporting, and error handling into cohesive CLI experience with comprehensive testing.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Create test scenarios: normal operation (100 notes, 0 failures), partial failures (20% failure rate), edge cases (0 notes, all failures). Verify progress bars update smoothly, metrics are accurate, error messages are informative, and final report displays correctly. Test terminal resizing, interruption handling (Ctrl+C), and color support across terminals. Add progress bar cleanup in exception handlers using `progress.update(task_id, completed=True)`."
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Implement comprehensive error handling and logging",
+      "description": "Enhance error handling throughout the application with detailed logging",
+      "status": "pending",
+      "dependencies": [
+        9,
+        10,
+        11
+      ],
+      "priority": "medium",
+      "details": "Review and enhance error handling throughout the application. Implement detailed logging for all operations, especially failures. Ensure errors are caught at appropriate levels and don't cause the entire process to fail. Log specific details about failures to aid in troubleshooting.",
+      "testStrategy": "Test error handling by simulating various failure scenarios including network issues, permission problems, and invalid inputs. Verify the application handles errors gracefully and logs appropriate information.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Audit current error handling and define standardized error schema",
+          "description": "Review existing error handling across the application and establish consistent error response formats and custom exception types.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Use API monitoring tools or code review to analyze endpoints for inconsistencies in error handling. Define structured error schema following RFC 9457 (Problem Details) standards including HTTP status codes (400 for client errors, 500 for server), unique error codes, human-readable messages, contextual details, and request IDs. Create custom exception classes like DatabaseException and ValidationException for specific error conditions[1][2][4]."
+        },
+        {
+          "id": 2,
+          "title": "Implement centralized logging infrastructure",
+          "description": "Set up comprehensive logging system to capture detailed operation traces, especially failures, across all application layers.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Configure structured logging (JSON format preferred) with levels (DEBUG, INFO, WARN, ERROR). Log essential details: timestamp, request ID, user ID, operation context, error codes, stack traces (internal only), and business metrics. Integrate with monitoring tools and ensure logs include enough context for troubleshooting without exposing sensitive data[2][3][4]."
+        },
+        {
+          "id": 3,
+          "title": "Implement centralized exception handling middleware",
+          "description": "Create global error handling middleware to catch unhandled exceptions and standardize error responses throughout the application.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Develop middleware/global exception handler that intercepts all exceptions, maps them to standardized error responses, logs comprehensive details using the logging infrastructure, and returns secure user-friendly error messages. Ensure proper HTTP status code mapping and graceful degradation without exposing stack traces to clients[1][2][6]."
+        },
+        {
+          "id": 4,
+          "title": "Enhance layer-specific error handling with detailed operation logging",
+          "description": "Implement targeted error handling and logging for key application layers (API, business logic, data access) with operation-specific details.",
+          "status": "pending",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Add try-catch blocks at appropriate layers with custom exceptions. Log entry/exit points for critical operations, input validation failures, database constraints, external API calls, and business rule violations. Include operation duration, input sanitization (no PII), and failure recovery attempts. Ensure errors bubble up appropriately without cascading failures[2][3][4]."
+        },
+        {
+          "id": 5,
+          "title": "Test comprehensive error scenarios and validate logging effectiveness",
+          "description": "Create automated tests covering all error scenarios and verify logging captures sufficient diagnostic information.",
+          "status": "pending",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Write unit/integration tests for input validation, authentication failures, database errors, network timeouts, rate limiting, and third-party failures. Validate error responses match defined schema, middleware catches unhandled exceptions, logs contain all required context, and application maintains stability. Use log analysis to confirm troubleshooting capability[3][4][5]."
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Create integration tests for the complete workflow",
+      "description": "Develop comprehensive tests for the end-to-end email processing workflow",
+      "status": "pending",
+      "dependencies": [
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "priority": "medium",
+      "details": "Create integration tests that verify the complete workflow from email selection to note creation and tagging. Include test cases for various scenarios including emails that should trigger summarization, emails that shouldn't, and error conditions. Use mock objects where appropriate to simulate IMAP and LLM API interactions.",
+      "testStrategy": "Run tests with various email scenarios and verify all outputs (files created, tags applied, changelog entries, analytics) match expectations. Test both success paths and failure scenarios.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up integration test framework and mock IMAP/LLM dependencies",
+          "description": "Configure the test environment with mock objects for IMAP client and LLM API to isolate the email processing workflow for reliable testing.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Use a testing framework like pytest (Python) or Jest (Node.js). Create mock classes for IMAP connections that simulate email fetching/selection and return predefined email payloads. Mock LLM API responses with configurable outputs for summarization success/failure. Ensure mocks support async operations if the workflow is asynchronous. Verify setup with a simple smoke test that initializes mocks without errors."
+        },
+        {
+          "id": 2,
+          "title": "Implement tests for emails that trigger summarization workflow",
+          "description": "Develop test cases verifying the full workflow (email selection → processing → summarization → note creation → tagging) for emails meeting trigger criteria.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Write end-to-end tests using mocked IMAP to select qualifying emails (e.g., specific subjects/senders/content patterns). Assert successful LLM summarization call, note creation in storage/database, and correct tagging applied. Include assertions for workflow completion status, note content matching summary, and tags persisted correctly. Test multiple email variations that should trigger (e.g., different trigger keywords)."
+        },
+        {
+          "id": 3,
+          "title": "Implement tests for emails that should not trigger workflow",
+          "description": "Create test cases ensuring emails not meeting criteria are correctly filtered out without note creation or tagging.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Use IMAP mocks to provide non-qualifying emails (e.g., spam, newsletters, excluded senders/domains). Verify workflow skips processing—no LLM calls, no note creation, no tags added. Assert logging/auditing records the skip decision with correct reason. Test boundary cases like emails just outside criteria thresholds."
+        },
+        {
+          "id": 4,
+          "title": "Add test cases for error conditions and failure scenarios",
+          "description": "Cover error handling across the workflow including IMAP failures, LLM API errors, storage issues, and network timeouts.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Configure mocks to simulate failures: IMAP connection timeout, LLM API 500 errors, database write failures during note creation. Verify graceful error handling—proper exception catching, rollback of partial operations, error logging, and user notifications/retries where applicable. Assert no data corruption or infinite loops occur. Include recovery tests where possible (e.g., retry logic)."
+        },
+        {
+          "id": 5,
+          "title": "Enhance tests with assertions, cleanup, and documentation",
+          "description": "Add comprehensive assertions, test data cleanup, performance checks, and documentation to complete the test suite.",
+          "status": "pending",
+          "dependencies": [
+            2,
+            3,
+            4
+          ],
+          "details": "Implement database cleanup fixtures to reset state between tests. Add performance assertions (workflow completes under time limits). Verify audit logs capture full workflow traces. Document each test case with scenario descriptions, expected vs actual behavior, and coverage notes. Run full suite to achieve 100% workflow path coverage and fix any gaps."
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Prepare documentation and deployment instructions",
+      "description": "Create comprehensive documentation for setup, configuration, and usage",
+      "status": "pending",
+      "dependencies": [
+        14
+      ],
+      "priority": "medium",
+      "details": "Prepare detailed documentation covering: 1) Installation and setup, 2) Configuration options with examples, 3) Usage instructions, 4) Troubleshooting guide, 5) Explanation of the note format and how to use it in Obsidian. Include information about the phased rollout plan described in the PRD.",
+      "testStrategy": "Review documentation for accuracy and completeness. Have a team member follow the instructions to verify they are clear and complete. Test configuration examples to ensure they work as described.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Draft Installation and Setup Documentation",
+          "description": "Create the first section of documentation detailing how users can install and initially set up the software, including prerequisites, step-by-step instructions, and verification steps.",
+          "status": "pending",
+          "dependencies": [],
+          "details": "Structure as a markdown file with headings for prerequisites (e.g., system requirements, dependencies), numbered installation steps (e.g., download, extract, run installer), initial configuration commands, and a verification checklist. Include code snippets for common platforms (Windows, macOS, Linux) and screenshots if applicable. Ensure steps are testable and reference any required tools like Node.js or Git."
+        },
+        {
+          "id": 2,
+          "title": "Document Configuration Options with Examples",
+          "description": "Develop the configuration section explaining all available options, their purposes, default values, and practical examples for common use cases.",
+          "status": "pending",
+          "dependencies": [
+            1
+          ],
+          "details": "Use a table format to list options (parameter name, type, default, description), followed by YAML/JSON example configs for basic, advanced, and Obsidian-specific setups. Include validation steps and common pitfalls. Reference setup from subtask 1 for initial config file location. Test examples by applying them locally."
+        },
+        {
+          "id": 3,
+          "title": "Write Usage Instructions and Note Format Explanation",
+          "description": "Prepare usage guide covering core workflows, command-line/API usage, and specific instructions for the note format integration with Obsidian including syntax examples and plugins.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Organize into subsections: quick start, daily usage, advanced features, and Obsidian section with note format spec (e.g., frontmatter, tags, Markdown extensions), embedding examples, and vault setup. Include copy-paste code blocks and workflow diagrams. Build on prior sections by cross-referencing installation and config."
+        },
+        {
+          "id": 4,
+          "title": "Create Troubleshooting Guide",
+          "description": "Compile a comprehensive troubleshooting section addressing common errors, diagnostic steps, log analysis, and solutions for installation, config, usage, and Obsidian issues.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3
+          ],
+          "details": "Categorize by error type (e.g., installation failures, config parsing errors, runtime issues, Obsidian sync problems) with symptoms, causes, step-by-step fixes, and prevention tips. Include log file locations from config docs and testing commands. Validate by simulating errors from previous subtasks."
+        },
+        {
+          "id": 5,
+          "title": "Incorporate Phased Rollout Plan and Finalize Documentation",
+          "description": "Add a dedicated section explaining the phased rollout plan from the PRD with timelines, milestones, and user guidance, then compile all sections into a cohesive document with deployment instructions.",
+          "status": "pending",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "Extract PRD rollout details into phases (e.g., internal testing, beta, full release) with objectives, milestones, responsibilities, feedback mechanisms, and user participation instructions per phase. Use tables/Gantt-style timelines. Add deployment section (e.g., hosting, CI/CD if applicable). Review entire doc for consistency, add index/table of contents, and export to PDF/HTML. Reference rollout templates for structure like phases, checkpoints, and metrics."
         }
       ]
     }
   ],
   "metadata": {
-    "projectName": "Headless AI Email Agent Implementation",
-    "totalTasks": 10,
-    "sourceFile": "C:\\Users\\Marc Bielert\\Github\\email-agent\\scripts\\prd.txt",
-    "generatedAt": "2023-11-12"
+    "projectName": "PRD Implementation",
+    "totalTasks": 15,
+    "sourceFile": "c:\\Users\\Marc Bielert\\Github\\email-agent\\pdd_v2.md",
+    "generatedAt": "2023-11-09"
   }
 }

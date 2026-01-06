@@ -1,66 +1,11 @@
 # Task ID: 8
-# Title: Implement main processing loop
-# Status: done
-# Dependencies: 3, 5, 6, 7
+# Title: Create Obsidian note assembly and formatting
+# Status: pending
+# Dependencies: 4, 5, 7
 # Priority: high
-# Description: Create the main processing loop that orchestrates the email fetching, AI processing, and tagging
+# Description: Implement the functionality to assemble and format complete Obsidian notes
 # Details:
-Implement the main function that orchestrates the entire process: fetch emails, process each with AI, tag based on responses, and log results. Ensure each email is processed only once by using the AIProcessed flag exclusion in the IMAP query. Implement proper error handling to ensure one failed email doesn't stop the entire process. Generate and log analytics summary at the end of each run.
+Develop a function that assembles the complete Markdown note by combining: 1) YAML frontmatter, 2) Summary section (if available) formatted as an Obsidian callout, and 3) Original email content under a 'Original Content' heading. Ensure proper spacing and formatting between sections. The function should produce a complete, well-formatted Markdown file ready for writing to disk.
 
 # Test Strategy:
-Test the entire workflow with various scenarios. Verify proper handling of errors during processing. Ensure analytics summary is accurate.
-
-# Subtasks:
-## 1. Implement email fetching with AIProcessed exclusion [done]
-### Dependencies: None
-### Description: Create a function to connect to IMAP, fetch unprocessed emails excluding those tagged with AIProcessed flag, and return a list of email objects for processing.
-### Details:
-Use IMAP library to connect with credentials from config. Construct SEARCH query: 'ALL NOT FLAG AIProcessed' (FLAG is for custom flags). Fetch email headers and bodies, storing as structured objects with UID, subject, sender, body. Implement connection retry logic (3 attempts, 5s delay). Log number of emails found.
-
-<info added on 2026-01-05T23:05:05.922Z>
-The subtask has already been updated with most of the requested changes. The title now uses "AIProcessed exclusion" without brackets, the description uses "AIProcessed" without brackets, and the details already specify "NOT FLAG AIProcessed" as the correct IMAP search query syntax.
-
-The only additional information to add would be:
-
-"The fetch_emails function should use the processed_tag value from config.yaml rather than hardcoding 'AIProcessed'. This ensures consistency if the tag name changes in the future. When implementing the IMAP search query, remember that custom flags require the FLAG command, while system flags like \Seen use FLAGGED."
-</info added on 2026-01-05T23:05:05.922Z>
-
-## 2. Implement per-email AI processing with error isolation [done]
-### Dependencies: 8.1
-### Description: Create a function to process individual emails via AI API, handling failures gracefully without stopping the loop.
-### Details:
-For each email from fetch results, send body/content to AI service (e.g., OpenAI/Groq) with prompt for analysis. Capture AI response (JSON with categories/intent). Wrap in try-catch: log error, mark as 'AIProcessingFailed' flag, continue to next email. Use async/await for non-blocking. Rate limit API calls (e.g., 10/min).
-
-## 3. Implement AI response-based tagging logic [done]
-### Dependencies: 8.2
-### Description: Add logic to parse AI responses and apply appropriate IMAP flags to processed emails.
-### Details:
-Parse AI JSON response for tags like 'Spam', 'Urgent', 'Neutral' (from config). Use IMAP STORE command to add flags (e.g., STORE UID +FLAGS (AIProcessed Spam)). If processing failed, add only AIProcessingFailed flag. Commit changes with UID STORE. Note that we use FLAGS as the server doesn't support KEYWORDS extension. Log applied flags per email.
-
-<info added on 2026-01-05T23:05:12.304Z>
-The tagging implementation uses FLAGS.SILENT to avoid server notifications, improving efficiency. The actual flag format is without brackets (e.g., "AIProcessed", "Spam") as most IMAP servers don't support special characters in flags. 
-
-The tag_email_safely() function handles all tagging operations and automatically adds the "AIProcessed" flag to every processed email, while additional tags come from the AI response mapping: urgent→Urgent, neutral→Neutral, spam→Spam.
-
-When applying flags, the implementation uses:
-```python
-conn.uid('STORE', uid, '+FLAGS.SILENT', '({})'.format(' '.join(flags)))
-```
-
-This approach ensures atomic flag operations and proper error handling. If the AI processing fails, only the "AIProcessingFailed" flag is applied (not bracketed). The function also implements retries with exponential backoff for transient IMAP connection issues.
-
-The tag mapping is loaded from configuration, allowing customization without code changes. Each mapping is validated at startup to ensure it contains only valid IMAP flag characters.
-</info added on 2026-01-05T23:05:12.304Z>
-
-## 4. Implement main loop orchestration and error handling [done]
-### Dependencies: 8.1, 8.2, 8.3
-### Description: Assemble the main processing loop that fetches emails, processes each sequentially, handles overall errors, and ensures loop completion.
-### Details:
-In main(): while True or single-run mode: fetch emails → for each: process_AI → tag → log. Outer try-catch for connection/IMAP failures (retry 3x). Inner per-email error handling to skip failures. Sleep 30s between batches if multi-batch. Graceful exit on KeyboardInterrupt. Use logging module with timestamps.
-
-## 5. Implement analytics summary generation and logging [done]
-### Dependencies: 8.4
-### Description: Track metrics throughout processing and generate/log a summary report at end of each run.
-### Details:
-Use counters: total_fetched, successfully_processed, failed, tag_breakdown dict. Update in process/tag functions. At loop end: compute percentages, print/log JSON: {'run_id': timestamp, 'total': N, 'success_rate': 95%, 'tags': {'Spam': 10, ...}}. Log to file and console. Schedule via cron/loop interval.
-
+Test with various combinations of inputs including with and without summaries. Verify the output is valid Markdown that renders correctly in Obsidian with proper section formatting.

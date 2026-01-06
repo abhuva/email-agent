@@ -4,7 +4,8 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Essential System Docs
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
-- [pdd.md](../pdd.md) — Product Design Document, including business context, acceptance criteria, and non-technical requirements.
+- [pdd.md](../pdd.md) — Product Design Document V1 (✅ Complete), including business context, acceptance criteria, and non-technical requirements.
+- [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (🚧 In Progress), outlining Obsidian integration and note creation features.
 
 ## Deep Dive Module Docs
 - [Logging System](logging-system.md)
@@ -14,13 +15,14 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Onboarding / Loading AI Context
 1. Read the [README](../README.md) for system structure and tasking.
-2. Open [pdd.md](../pdd.md) for requirements and roadmap.
+2. Open [pdd_v2.md](../pdd_v2.md) for current V2 requirements and roadmap (we're working on V2 now).
 3. Use Task Master CLI: `task-master list`, `task-master next` for current project todo/context state.
 4. Browse module docs for implementation specifics and quick code/testing examples.
 
 > **For Cursor or AI Agents:**
 > - Always load this file and README.md first!
-> - Then, review the PDD and module docs as needed.
+> - Then, review the PDD V2 and module docs as needed.
+> - **Current Focus:** V2 (Obsidian Integration) - see [pdd_v2.md](../pdd_v2.md)
 
 ---
 *See README.md for FAQ, upgrade policy, and human+AI best practices.*

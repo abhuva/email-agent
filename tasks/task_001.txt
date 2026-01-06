@@ -1,89 +1,11 @@
 # Task ID: 1
-# Title: Set up project structure and configuration handling
-# Status: done
+# Title: Set up configuration file structure
+# Status: pending
 # Dependencies: None
 # Priority: high
-# Description: Create the basic project structure, implement configuration loading from YAML and environment variables
+# Description: Create and implement the enhanced configuration file structure with new parameters for Obsidian integration
 # Details:
-Create directory structure for the project. Implement functions to load and validate configuration from config.yaml and secrets from .env file. Configuration should include IMAP settings, OpenRouter API details, and tag mappings. Implement validation to ensure all required configuration is present. Fail fast if required environment variables are missing.
+Extend the existing config.yaml to include new parameters: obsidian_vault_path, summarization_tags, summarization_prompt_path, changelog_path, and imap_query. Implement validation logic to ensure all required paths exist and parameters are properly formatted. The configuration should fail early with clear error messages if critical paths don't exist.
 
 # Test Strategy:
-Write unit tests to verify config loading with various valid and invalid inputs. Test environment variable validation with missing keys.
-
-# Subtasks:
-## 1. Set up project directory structure and package layout [done]
-### Dependencies: None
-### Description: Create the basic directory structure for the Python CLI project, including package directories, test directories, and configuration files.
-### Details:
-1. Create the main project directory
-2. Set up Python package structure with `__init__.py` files
-3. Create directories for: src/, tests/, config/
-4. Create empty placeholder files: setup.py, requirements.txt, README.md
-5. Set up .gitignore with standard Python patterns
-6. Create empty config.yaml and .env.example files in the config directory
-7. Verify the structure is correct and follows Python package conventions
-
-## 2. Set up testing framework and write initial config tests [done]
-### Dependencies: 1.1
-### Description: Set up pytest as the testing framework and write initial failing tests for configuration loading and validation.
-### Details:
-1. Add pytest and related packages to requirements.txt
-2. Create a conftest.py file in the tests directory
-3. Create test fixtures for sample config files (valid and invalid)
-4. Write test_config.py with failing tests for:
-   - Loading config from YAML file
-   - Validating required YAML config fields
-   - Loading environment variables
-   - Validating required environment variables
-   - Handling missing files gracefully
-5. Run tests to verify they fail as expected (TDD approach)
-
-## 3. Implement YAML configuration loading and validation [done]
-### Dependencies: 1.1, 1.2
-### Description: Create the module for loading and validating configuration from YAML files.
-### Details:
-1. Create a config module in the src directory
-2. Implement a function to load YAML configuration files
-3. Define the expected configuration schema (IMAP settings, OpenRouter API details, tag mappings)
-4. Implement validation logic to check for required fields
-5. Add proper error handling for missing files or invalid YAML
-6. Add docstrings and type hints
-7. Run the previously written tests to verify implementation works
-
-## 4. Implement environment variables loading and validation [done]
-### Dependencies: 1.1, 1.2
-### Description: Create functionality to load and validate environment variables from .env files.
-### Details:
-1. Add python-dotenv to requirements.txt
-2. Implement a function to load environment variables from .env file
-3. Define which environment variables are required (secrets, API keys)
-4. Implement validation to ensure required variables are present
-5. Add proper error handling for missing .env file or missing variables
-6. Add docstrings and type hints
-7. Run the previously written tests to verify implementation works
-
-## 5. Create unified configuration manager [done]
-### Dependencies: 1.3, 1.4
-### Description: Implement a configuration manager class that combines YAML and environment variable configuration.
-### Details:
-1. Create a ConfigManager class that handles both YAML and environment variables
-2. Implement methods to access configuration values with proper typing
-3. Add validation that runs on initialization to ensure all required config is present
-4. Implement 'fail fast' behavior for missing critical configuration
-5. Add helper methods for common configuration access patterns
-6. Update tests to verify the unified configuration manager works correctly
-7. Ensure proper error messages are provided for configuration issues
-
-## 6. Create CLI entry point with configuration validation [done]
-### Dependencies: 1.5
-### Description: Implement the main CLI entry point that loads and validates configuration before proceeding.
-### Details:
-1. Create main.py or cli.py as the entry point
-2. Implement argument parsing for configuration file paths
-3. Add initialization code that loads and validates configuration
-4. Implement proper error handling and user-friendly error messages
-5. Add logging configuration based on settings
-6. Create a simple --version and --help command line interface
-7. Write tests for the CLI entry point
-8. Verify all tests pass for the complete configuration handling system
-
+Verify configuration loads correctly with valid inputs. Test error handling with missing or invalid paths. Ensure backward compatibility with V1 configuration parameters.

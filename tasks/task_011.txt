@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Update analytics tracking system
+# Status: pending
+# Dependencies: 9
+# Priority: low
+# Description: Enhance the analytics system to track new metrics for note creation and summarization
+# Details:
+Update the analytics tracking to include new metrics: notes_created, summaries_generated, and note_creation_failures. Modify the JSON schema and file writing logic to include these new fields. Ensure backward compatibility with existing analytics files.
+
+# Test Strategy:
+Test analytics recording with various processing scenarios. Verify the JSON structure is correct and all metrics are accurately tracked. Test with existing analytics files to ensure backward compatibility.

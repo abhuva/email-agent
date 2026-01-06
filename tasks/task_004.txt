@@ -1,43 +1,11 @@
 # Task ID: 4
-# Title: Implement Markdown prompt loading and parsing
-# Status: done
-# Dependencies: 1
-# Priority: medium
-# Description: Create functionality to load and parse AI prompts from Markdown files with YAML frontmatter
+# Title: Implement YAML frontmatter generation
+# Status: pending
+# Dependencies: 3
+# Priority: high
+# Description: Create functionality to extract email metadata and format it as YAML frontmatter
 # Details:
-Implement functions to read Markdown files from paths specified in config. Parse YAML frontmatter to extract metadata. Convert Markdown content to appropriate format for AI prompts. Reload prompts on each run to allow for easy editing. Handle file not found and parsing errors gracefully.
+Develop a function that extracts required metadata from email objects (subject, from, to, cc, date, source_message_id) and formats it as valid YAML frontmatter. Handle edge cases like missing fields, malformed dates, and special characters. Ensure the function produces valid YAML that Obsidian can parse correctly.
 
 # Test Strategy:
-Test parsing with various Markdown files containing different frontmatter structures. Verify error handling for malformed Markdown or missing files.
-
-# Subtasks:
-## 1. Implement Markdown file loader from config paths [done]
-### Dependencies: None
-### Description: Create a function to read Markdown files from directory paths specified in the application config.
-### Details:
-Read config to get prompt directory paths. Use filesystem APIs (fs.readFileSync or equivalent) to scan directories for .md files. Return array of file paths. Handle empty directories gracefully by returning empty array.
-
-## 2. Implement YAML frontmatter parser [done]
-### Dependencies: 4.1
-### Description: Create a parser that extracts YAML frontmatter from Markdown content and separates metadata from body.
-### Details:
-Detect YAML frontmatter delimited by '---'. Extract content between first and second '---'. Use YAML library (js-yaml, YamlDotNet, etc based on language) to parse metadata. Return object with {metadata, content} properties. Handle missing frontmatter by returning empty metadata object.
-
-## 3. Implement Markdown content processor for AI prompts [done]
-### Dependencies: 4.1, 4.2
-### Description: Convert parsed Markdown body content into AI prompt format.
-### Details:
-Use Markdown parser (marked, Markdig, remark, goldmark) to convert Markdown to plain text or HTML. Strip unnecessary formatting for AI consumption. Preserve important structure like headings, lists. Combine metadata with processed content into prompt object structure.
-
-## 4. Implement complete prompt loading pipeline [done]
-### Dependencies: 4.1, 4.2, 4.3
-### Description: Orchestrate file loading, parsing, and processing into single loadPrompts() function.
-### Details:
-Create main function that: 1) loads file paths, 2) reads and parses each file, 3) processes content, 4) returns array of complete prompt objects. Each prompt object should contain metadata and processed content. Cache results if needed but support reload.
-
-## 5. Implement error handling and reload functionality [done]
-### Dependencies: 4.4
-### Description: Add comprehensive error handling and automatic reload on each run.
-### Details:
-Handle FileNotFoundError, YAML parsing errors, invalid Markdown gracefully. Log specific errors with file paths. Continue processing other files when one fails. Ensure loadPrompts() always returns (possibly partial) results. Add reload flag or always-fresh loading for development workflow.
-
+Test with various email formats including those with missing fields, special characters in headers, and different date formats. Verify the output is valid YAML that Obsidian can parse.

@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Create integration tests for the complete workflow
+# Status: pending
+# Dependencies: 9, 10, 11, 12, 13
+# Priority: medium
+# Description: Develop comprehensive tests for the end-to-end email processing workflow
+# Details:
+Create integration tests that verify the complete workflow from email selection to note creation and tagging. Include test cases for various scenarios including emails that should trigger summarization, emails that shouldn't, and error conditions. Use mock objects where appropriate to simulate IMAP and LLM API interactions.
+
+# Test Strategy:
+Run tests with various email scenarios and verify all outputs (files created, tags applied, changelog entries, analytics) match expectations. Test both success paths and failure scenarios.
