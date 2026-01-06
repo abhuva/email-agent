@@ -7,7 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 from typing import Optional
-from src.config import ConfigManager, ConfigError
+from src.config import ConfigManager, ConfigError, ConfigFormatError, ConfigPathError
 from src.logger import LoggerFactory
 from src.analytics import generate_analytics
 from src.main_loop import run_email_processing_loop
@@ -147,6 +147,18 @@ def main(args=None) -> int:
         # Load configuration
         try:
             config = ConfigManager(parsed_args.config, parsed_args.env)
+        except ConfigFormatError as e:
+            print("Configuration format error:", file=sys.stderr)
+            print(str(e), file=sys.stderr)
+            print("\nPlease check your config.yaml file and ensure all V2 parameters", file=sys.stderr)
+            print("have the correct data types and formats.", file=sys.stderr)
+            return 1
+        except ConfigPathError as e:
+            print("Configuration path error:", file=sys.stderr)
+            print(str(e), file=sys.stderr)
+            print("\nPlease ensure all required directories and files exist.", file=sys.stderr)
+            print("See config/config.yaml.example for the expected configuration structure.", file=sys.stderr)
+            return 1
         except ConfigError as e:
             print(f"Configuration error: {e}", file=sys.stderr)
             return 1
