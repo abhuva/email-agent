@@ -216,7 +216,7 @@ def process_email_with_ai_tags(
             # Specifically verify AIProcessed tag
             if processed_tag not in after_flags:
                 logger.error(
-                    f"CRITICAL: AIProcessed tag not found in flags after tagging for UID {email_uid}. "
+                    f"WARNING: AIProcessed tag not found in flags after tagging for UID {email_uid}. "
                     f"Expected: {processed_tag}, Got: {after_flags}"
                 )
             else:

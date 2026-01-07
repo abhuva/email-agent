@@ -61,7 +61,7 @@ def generate_note_content(
         >>> 'Content' in note
         True
     """
-    # CRITICAL: Log email details to verify UID/content consistency
+    # Log email details for debugging
     email_uid = email.get('id')
     uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
     email_subject = email.get('subject', 'N/A')
@@ -312,7 +312,7 @@ def create_obsidian_note_for_email(
     Returns:
         Dict with 'success', 'note_path', 'error' keys
     """
-    # CRITICAL: Log email details at entry to verify UID/content consistency
+    # Log email details for debugging
     email_uid = email.get('id')
     uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
     email_subject = email.get('subject', 'N/A')

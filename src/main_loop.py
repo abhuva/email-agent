@@ -205,8 +205,8 @@ def run_email_processing_loop(
                     processed_tag=config.processed_tag
                 )
                 
-                logger.info(f"IMAP returned {len(emails)} emails before code-level filtering")
-                if emails:
+                logger.info(f"Found {len(emails)} unprocessed emails from IMAP")
+                if emails and logger.isEnabledFor(logging.DEBUG):
                     logger.debug("Emails found by IMAP:")
                     for email in emails:
                         uid_str = email.get('id')
@@ -214,50 +214,7 @@ def run_email_processing_loop(
                             uid_str = uid_str.decode()
                         logger.debug(f"  - UID {uid_str}: subject='{email.get('subject', 'N/A')[:60]}', date='{email.get('date', 'N/A')}'")
                 
-                # Optional: Filter by sent date in code
-                # DISABLED FOR DEBUGGING: Remove date filter to see all emails
-                # TODO: Re-enable with proper date logic (maybe last N days, or received date)
-                # from datetime import date, timedelta
-                # from email.utils import parsedate_to_datetime
-                # 
-                # original_count = len(emails)
-                # today = date.today()
-                # # Option: Use last 7 days instead of just today
-                # # cutoff_date = today - timedelta(days=7)
-                # cutoff_date = today
-                # 
-                # filtered_emails = []
-                # for email in emails:
-                #     email_date_str = email.get('date')
-                #     uid_str = email.get('id')
-                #     if isinstance(uid_str, bytes):
-                #         uid_str = uid_str.decode()
-                #     
-                #     if email_date_str:
-                #         try:
-                #             email_dt = parsedate_to_datetime(email_date_str)
-                #             email_date = email_dt.date()
-                #             
-                #             if email_date >= cutoff_date:
-                #                 filtered_emails.append(email)
-                #                 logger.info(f"Including email UID {uid_str} - sent date: {email_date}, subject: {email.get('subject', 'N/A')[:50]}")
-                #             else:
-                #                 logger.info(f"Excluding email UID {uid_str} - sent date: {email_date} (before {cutoff_date}), subject: {email.get('subject', 'N/A')[:50]}")
-                #         except (ValueError, TypeError) as e:
-                #             logger.warning(f"Could not parse date '{email_date_str}' for email UID {uid_str}, including anyway: {e}")
-                #             filtered_emails.append(email)
-                #     else:
-                #         logger.warning(f"No date header for email UID {uid_str}, including anyway")
-                #         filtered_emails.append(email)
-                # 
-                # emails = filtered_emails
-                # if len(emails) < original_count:
-                #     logger.info(f"Filtered {original_count - len(emails)} emails by sent date (before {cutoff_date})")
-                
-                # TEMPORARY: No date filtering - process all emails found by IMAP
-                logger.info(f"Date filtering DISABLED for debugging - processing all {len(emails)} emails found by IMAP")
-                
-                # CRITICAL: Sort emails by date (newest first) so we process the most recent emails
+                # Sort emails by date (newest first) so we process the most recent emails
                 # This ensures that when using --limit, we get the newest emails, not the oldest
                 from email.utils import parsedate_to_datetime
                 
@@ -457,7 +414,7 @@ def run_email_processing_loop(
                                         }
                                     
                                     # V2: Create Obsidian note (Task 9)
-                                    # CRITICAL: Log email details to verify UID/content consistency
+                                    # Log email details for debugging
                                     uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
                                     email_subject = email.get('subject', 'N/A')
                                     email_sender = email.get('sender', 'N/A')

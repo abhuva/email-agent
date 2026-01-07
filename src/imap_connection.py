@@ -148,7 +148,7 @@ def search_emails_excluding_processed(
         
         logging.debug(f"Executing IMAP query: {final_query}")
         
-        # CRITICAL: Use UID SEARCH instead of SEARCH to get UIDs directly
+        # Use UID SEARCH instead of SEARCH to get UIDs directly
         # SEARCH returns sequence numbers which can change, UID SEARCH returns stable UIDs
         # Also, some IMAP servers may limit SEARCH results, UID SEARCH is more reliable
         # Note: IMAP uses "KEYWORD" keyword in SEARCH to search FLAGS
@@ -164,28 +164,17 @@ def search_emails_excluding_processed(
         # data[0] is a bytes object containing space-separated UIDs like: b'1 2 3 420 421 422'
         ids = data[0].split() if data[0] else []
         
-        # CRITICAL: Log the actual UIDs returned to debug missing emails
+        # Log search results summary
         if ids:
             first_uid = ids[0].decode() if isinstance(ids[0], bytes) else str(ids[0])
             last_uid = ids[-1].decode() if isinstance(ids[-1], bytes) else str(ids[-1])
-            logging.info(f"Found {len(ids)} unprocessed emails matching query.")
-            logging.info(f"First UID in results: {first_uid}, Last UID in results: {last_uid}")
+            logging.info(f"Found {len(ids)} unprocessed emails matching query (UID range: {first_uid} to {last_uid})")
             
-            # Check if we're missing high UIDs (like 422-431)
-            if len(ids) > 10:
-                # Show first and last few UIDs
+            # Log sample UIDs for debugging (only in debug mode to avoid log bloat)
+            if len(ids) > 10 and logging.getLogger().isEnabledFor(logging.DEBUG):
                 first_few = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids[:5]]
                 last_few = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids[-5:]]
-                logging.info(f"First 5 UIDs: {first_few}, Last 5 UIDs: {last_few}")
-                
-                # CRITICAL: Check if 2026 emails (422-431) are in the results
-                uids_str = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids]
-                uids_2026 = ['422', '423', '424', '425', '426', '427', '428', '429', '430', '431']
-                uids_2026_found = [uid for uid in uids_2026 if uid in uids_str]
-                if uids_2026_found:
-                    logging.info(f"✓ Found {len(uids_2026_found)} 2026 emails in search results: {uids_2026_found}")
-                else:
-                    logging.warning(f"✗ NO 2026 emails found in search results! This is the problem.")
+                logging.debug(f"Sample UIDs - First 5: {first_few}, Last 5: {last_few}")
         else:
             logging.info(f"Found 0 unprocessed emails matching query.")
         
@@ -220,7 +209,7 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
     """
     parsed = []
     for msg_id in msg_ids:
-        # CRITICAL: Use UID FETCH, not FETCH, because msg_ids are UIDs, not sequence numbers
+        # Use UID FETCH, not FETCH, because msg_ids are UIDs, not sequence numbers
         # Convert bytes to string for UID FETCH
         uid_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
         
@@ -239,7 +228,7 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
         sender = decode_mime_header(msg.get('From'))
         date = decode_mime_header(msg.get('Date'))
         
-        # CRITICAL: Log the actual Date header to verify date filtering
+        # Log the Date header for debugging
         date_header_raw = msg.get('Date', 'N/A')
         logging.debug(f"Email UID {uid_str} - Date header (raw): {date_header_raw}, Date header (decoded): {date}")
         body = ''
@@ -358,7 +347,7 @@ def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
         else:
             uid_str = str(email_uid)
         
-        # CRITICAL: Log UID type and value to catch mismatches
+        # Log UID type and value for debugging
         logger = logging.getLogger(__name__)
         logger.info(f"[IMAP] Attempting to add tags {tags} to email UID {uid_str} (input type: {type(email_uid).__name__})")
         
