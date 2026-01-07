@@ -1,7 +1,11 @@
 import os
 import yaml
+import re
+import logging
 from dotenv import load_dotenv
-from typing import Any, Dict
+from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 class ConfigError(Exception):
     """
@@ -201,12 +205,54 @@ def validate_v2_config_paths(config: Dict[str, Any]) -> bool:
     
     return True
 
+def validate_imap_tag(tag: str) -> bool:
+    """
+    Validate that a tag follows IMAP flag naming rules (RFC3501).
+    
+    IMAP flags must contain only alphanumeric characters, underscores, and periods.
+    No hyphens, spaces, or special characters are allowed.
+    
+    Args:
+        tag: Tag name to validate
+        
+    Returns:
+        True if tag is valid
+        
+    Raises:
+        ConfigFormatError: If tag contains invalid characters
+        
+    Example:
+        >>> validate_imap_tag('AIProcessed')
+        True
+        >>> validate_imap_tag('Obsidian-Note-Created')
+        ConfigFormatError: Invalid IMAP flag name...
+    """
+    if not isinstance(tag, str):
+        raise ConfigFormatError(f"Tag must be a string, got {type(tag).__name__}")
+    
+    if not tag.strip():
+        raise ConfigFormatError("Tag cannot be empty")
+    
+    # IMAP flags must match: alphanumeric, underscore, period only
+    # RFC3501: flag = "\\" / atom (atom = 1*ATOM-CHAR, ATOM-CHAR = any CHAR except atom-specials)
+    # For simplicity, we allow: alphanumeric, underscore, period
+    if not re.match(r'^[\w.]+$', tag):
+        raise ConfigFormatError(
+            f"Invalid IMAP flag name: '{tag}'. "
+            f"IMAP flags must contain only alphanumeric characters, underscores, and periods. "
+            f"No hyphens, spaces, or special characters allowed."
+        )
+    
+    return True
+
+
 def validate_v2_config_format(config: Dict[str, Any]) -> bool:
     """
     Validate that V2 configuration parameters have correct data types and formats.
     
     This function validates the format of V2 parameters (obsidian_vault_path,
-    summarization_tags, summarization_prompt_path, changelog_path, imap_query).
+    summarization_tags, summarization_prompt_path, changelog_path, imap_query,
+    imap_query_exclusions).
     It does NOT check if paths exist (that's done in validate_v2_config_paths).
     
     Args:
@@ -272,6 +318,53 @@ def validate_v2_config_format(config: Dict[str, Any]) -> bool:
         if len(query.strip()) > 1000:
             errors.append("imap_query is too long (max 1000 characters)")
     
+    # Validate imap_query_exclusions (Task 16)
+    if 'imap_query_exclusions' in config:
+        exclusions = config['imap_query_exclusions']
+        if not isinstance(exclusions, dict):
+            errors.append("imap_query_exclusions must be a dictionary")
+        else:
+            # Validate exclude_tags
+            if 'exclude_tags' in exclusions:
+                tags = exclusions['exclude_tags']
+                if not isinstance(tags, list):
+                    errors.append("imap_query_exclusions.exclude_tags must be a list")
+                else:
+                    for i, tag in enumerate(tags):
+                        if not isinstance(tag, str):
+                            errors.append(f"imap_query_exclusions.exclude_tags[{i}] must be a string")
+                        elif not tag.strip():
+                            errors.append(f"imap_query_exclusions.exclude_tags[{i}] cannot be empty")
+                        else:
+                            # Validate IMAP flag format
+                            try:
+                                validate_imap_tag(tag)
+                            except ConfigFormatError as e:
+                                errors.append(f"imap_query_exclusions.exclude_tags[{i}]: {str(e)}")
+            
+            # Validate additional_exclude_tags
+            if 'additional_exclude_tags' in exclusions:
+                tags = exclusions['additional_exclude_tags']
+                if not isinstance(tags, list):
+                    errors.append("imap_query_exclusions.additional_exclude_tags must be a list")
+                else:
+                    for i, tag in enumerate(tags):
+                        if not isinstance(tag, str):
+                            errors.append(f"imap_query_exclusions.additional_exclude_tags[{i}] must be a string")
+                        elif not tag.strip():
+                            errors.append(f"imap_query_exclusions.additional_exclude_tags[{i}] cannot be empty")
+                        else:
+                            # Validate IMAP flag format
+                            try:
+                                validate_imap_tag(tag)
+                            except ConfigFormatError as e:
+                                errors.append(f"imap_query_exclusions.additional_exclude_tags[{i}]: {str(e)}")
+            
+            # Validate disable_idempotency
+            if 'disable_idempotency' in exclusions:
+                if not isinstance(exclusions['disable_idempotency'], bool):
+                    errors.append("imap_query_exclusions.disable_idempotency must be a boolean")
+    
     if errors:
         error_msg = "V2 configuration format errors:\n" + "\n".join(f"  - {e}" for e in errors)
         raise ConfigFormatError(error_msg)
@@ -309,6 +402,8 @@ class ConfigManager:
         summarization_tags: List of IMAP tags that trigger summarization (V2, optional)
         summarization_prompt_path: Path to summarization prompt file (V2, optional)
         changelog_path: Path to changelog/audit log file (V2, optional)
+        exclude_tags: List of IMAP tags to exclude from queries (Task 16, optional)
+        disable_idempotency: Flag to disable idempotency checks (Task 16, optional)
         
     Example:
         >>> config = ConfigManager('config/config.yaml', '.env')
@@ -351,6 +446,50 @@ class ConfigManager:
         self.changelog_path = self.yaml.get('changelog_path')
         # V2: Primary IMAP query (takes precedence over imap_queries if set)
         self.imap_query = self.yaml.get('imap_query')
+        
+        # V2: IMAP query exclusions (Task 16)
+        # Import tag constants to ensure consistency
+        from src.obsidian_note_creation import OBSIDIAN_NOTE_CREATED_TAG, NOTE_CREATION_FAILED_TAG
+        
+        # Default exclude tags (backward compatible with current behavior)
+        default_exclude_tags = [
+            'AIProcessed',
+            OBSIDIAN_NOTE_CREATED_TAG,  # 'ObsidianNoteCreated'
+            NOTE_CREATION_FAILED_TAG    # 'NoteCreationFailed'
+        ]
+        
+        # Get imap_query_exclusions config section
+        imap_query_exclusions = self.yaml.get('imap_query_exclusions', {})
+        
+        # Get exclude_tags from config or use defaults
+        exclude_tags = imap_query_exclusions.get('exclude_tags', default_exclude_tags)
+        additional_tags = imap_query_exclusions.get('additional_exclude_tags', [])
+        
+        # Combine exclude_tags and additional_exclude_tags, removing duplicates
+        all_exclude_tags = list(set(exclude_tags + additional_tags))
+        
+        # Validate all tags are valid IMAP flag names (already validated in validate_v2_config_format)
+        # But double-check here for safety
+        for tag in all_exclude_tags:
+            try:
+                validate_imap_tag(tag)
+            except ConfigFormatError:
+                # Should have been caught in validation, but log warning if somehow missed
+                logger.warning(f"Invalid IMAP tag in exclude_tags: {tag} (will be skipped)")
+                all_exclude_tags.remove(tag)
+        
+        self.exclude_tags = all_exclude_tags
+        
+        # Get disable_idempotency flag (default: False)
+        self.disable_idempotency = imap_query_exclusions.get('disable_idempotency', False)
+        
+        # Warn if idempotency is disabled
+        if self.disable_idempotency:
+            logger.warning("Idempotency checks are disabled - emails may be reprocessed!")
+        
+        # Warn if exclude_tags is empty and idempotency is not explicitly disabled
+        if not self.exclude_tags and not self.disable_idempotency:
+            logger.warning("exclude_tags is empty - idempotency may be compromised")
 
         # Env secrets
         self.imap_password = os.environ[self.imap['password_env']]

@@ -90,3 +90,26 @@ summarization_prompt_path: 'config/summarization_prompt.md'
 # This file tracks all processed emails in a Markdown table format
 # The file will be created if it doesn't exist
 changelog_path: 'logs/email_changelog.md'
+
+# V2: IMAP Query Exclusions Configuration (Task 16)
+# Configure which tags to exclude from IMAP queries for idempotency
+# If not specified, defaults to: ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
+imap_query_exclusions:
+  # Tags to exclude from IMAP queries (for idempotency)
+  # Default: ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
+  # IMPORTANT: IMAP flags must follow RFC3501 - only alphanumeric, underscore, period allowed
+  # No hyphens, spaces, or special characters!
+  exclude_tags:
+    - 'AIProcessed'                    # V1: Emails processed by AI classification
+    - 'ObsidianNoteCreated'            # V2: Notes successfully created
+    - 'NoteCreationFailed'             # V2: Note creation failed
+  
+  # Optional: Additional tags to exclude (beyond idempotency)
+  # Example: ['Archived', 'ProcessedByOtherTool']
+  additional_exclude_tags: []
+  
+  # Optional: Disable idempotency checks (NOT RECOMMENDED)
+  # If true, only user_query is used (no exclusions)
+  # WARNING: This may cause emails to be reprocessed!
+  # Default: false
+  disable_idempotency: false

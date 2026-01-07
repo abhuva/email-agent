@@ -110,40 +110,90 @@ def load_imap_queries(config_path: str = "config/config.yaml"):
     logging.info(f"Loaded IMAP queries: {queries}")
     return queries
 
+def build_imap_query_with_exclusions(
+    user_query: str,
+    exclude_tags: List[str],
+    disable_idempotency: bool = False
+) -> str:
+    """
+    Build IMAP query combining user query with tag exclusions.
+    
+    This function creates an IMAP query that combines the user's base query
+    with NOT KEYWORD clauses to exclude emails with specific tags.
+    
+    Args:
+        user_query: User-defined IMAP query (e.g., 'UNSEEN')
+        exclude_tags: List of tags to exclude (e.g., ['AIProcessed', 'ObsidianNoteCreated'])
+        disable_idempotency: If True, return only user_query (no exclusions)
+    
+    Returns:
+        Combined IMAP query string
+        
+    Example:
+        >>> build_imap_query_with_exclusions('UNSEEN', ['AIProcessed', 'ObsidianNoteCreated'])
+        '(UNSEEN NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated")'
+        
+        >>> build_imap_query_with_exclusions('UNSEEN', [], disable_idempotency=True)
+        'UNSEEN'
+    """
+    if disable_idempotency:
+        return user_query
+    
+    if not exclude_tags:
+        return user_query
+    
+    # Build NOT KEYWORD clauses for each tag
+    # IMAP uses "KEYWORD" in SEARCH to search for FLAGS (confusing naming in IMAP spec)
+    exclusion_clauses = ' '.join(f'NOT KEYWORD "{tag}"' for tag in exclude_tags)
+    
+    # Combine: ({user_query} NOT KEYWORD "tag1" NOT KEYWORD "tag2" ...)
+    final_query = f'({user_query} {exclusion_clauses})'
+    
+    return final_query
+
+
 def search_emails_excluding_processed(
     imap, 
     user_query: str, 
-    processed_tag: str = 'AIProcessed',
-    obsidian_note_created_tag: str = 'ObsidianNoteCreated',
-    note_creation_failed_tag: str = 'NoteCreationFailed'
+    exclude_tags: Optional[List[str]] = None,
+    disable_idempotency: bool = False
 ) -> List[bytes]:
     """
     Search emails using user query combined with idempotency checks.
     
     The user query is combined with NOT conditions to exclude emails that have
-        already been processed (V1: AIProcessed, V2: ObsidianNoteCreated, NoteCreationFailed).
+    already been processed. Uses configurable exclude_tags list instead of hardcoded tags.
     
     Args:
         imap: IMAP connection object
         user_query: User-defined IMAP query string from config
-        processed_tag: V1 processed tag (for backward compatibility)
-        obsidian_note_created_tag: V2 success tag
-        note_creation_failed_tag: V2 failure tag
+        exclude_tags: List of tags to exclude (defaults to standard idempotency tags for backward compatibility)
+        disable_idempotency: If True, skip idempotency checks and return only user_query results
     
     Returns:
         List of email UIDs (bytes)
+        
+    Note:
+        For backward compatibility, if exclude_tags is None, defaults to:
+        ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
     """
+    # Default exclude tags for backward compatibility
+    if exclude_tags is None:
+        from src.obsidian_note_creation import OBSIDIAN_NOTE_CREATED_TAG, NOTE_CREATION_FAILED_TAG
+        exclude_tags = [
+            'AIProcessed',
+            OBSIDIAN_NOTE_CREATED_TAG,  # 'ObsidianNoteCreated'
+            NOTE_CREATION_FAILED_TAG     # 'NoteCreationFailed'
+        ]
+    
     try:
         imap.select('INBOX')
         
-        # Combine user query with idempotency checks
-        # Format: ({user_query} NOT KEYWORD "tag1" NOT KEYWORD "tag2" NOT KEYWORD "tag3")
-        # This ensures we never reprocess emails that have already been handled
-        final_query = (
-            f'({user_query} '
-            f'NOT KEYWORD "{processed_tag}" '
-            f'NOT KEYWORD "{obsidian_note_created_tag}" '
-            f'NOT KEYWORD "{note_creation_failed_tag}")'
+        # Build query using new builder function
+        final_query = build_imap_query_with_exclusions(
+            user_query,
+            exclude_tags,
+            disable_idempotency
         )
         
         logging.debug(f"Executing IMAP query: {final_query}")
@@ -264,28 +314,37 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
 def fetch_emails(
     host: str, user: str, password: str,
     user_query: str,
-    processed_tag: str = 'AIProcessed',
-    obsidian_note_created_tag: str = 'ObsidianNoteCreated',
-    note_creation_failed_tag: str = 'NoteCreationFailed',
+    exclude_tags: Optional[List[str]] = None,
+    disable_idempotency: bool = False,
     max_retries: int = 3,
     timeout: int = 30
 ) -> List[Dict[str, Any]]:
     """
-    High-level function to orchestrate config loading, connecting, searching, fetching, and parsing.
+    Fetch emails from IMAP server using the provided query.
+    
+    This function handles connection, search, and parsing of emails.
+    It automatically excludes emails that have already been processed
+    based on the exclude_tags list (defaults to standard idempotency tags).
     
     Args:
         host: IMAP server hostname
-        user: IMAP username
+        user: IMAP username (email address)
         password: IMAP password
-        user_query: User-defined IMAP query string from config
-        processed_tag: V1 processed tag (for backward compatibility)
-        obsidian_note_created_tag: V2 success tag
-        note_creation_failed_tag: V2 failure tag
-        max_retries: Maximum retry attempts
-        timeout: IMAP socket timeout in seconds
+        user_query: User-defined IMAP query string (e.g., 'UNSEEN')
+        exclude_tags: List of tags to exclude (defaults to standard idempotency tags)
+        disable_idempotency: If True, skip idempotency checks (NOT RECOMMENDED)
+        max_retries: Maximum retry attempts for connection failures
+        timeout: Connection timeout in seconds
     
     Returns:
-        List of parsed email dictionaries
+        List of email dictionaries with keys: id, subject, sender, body, etc.
+        
+    Raises:
+        IMAPFetchError: If fetching fails after all retries
+        
+    Note:
+        For backward compatibility, if exclude_tags is None, defaults to:
+        ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
     """
     attempt = 0
     while attempt < max_retries:
@@ -299,9 +358,8 @@ def fetch_emails(
                 ids = search_emails_excluding_processed(
                     imap, 
                     user_query, 
-                    processed_tag,
-                    obsidian_note_created_tag,
-                    note_creation_failed_tag
+                    exclude_tags=exclude_tags,
+                    disable_idempotency=disable_idempotency
                 )
                 emails = fetch_and_parse_emails(imap, ids)
                 logging.info(f"Fetched and parsed {len(emails)} emails.")

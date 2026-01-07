@@ -250,7 +250,7 @@ imap_query: 'UNSEEN SENTSINCE 07-Jan-2026'
 imap_query: 'SUBJECT "Important"'
 ```
 
-**Note:** The query automatically excludes emails with `ObsidianNoteCreated` flag (V2 idempotency).
+**Note:** The query automatically excludes emails with idempotency tags (see `imap_query_exclusions` below).
 
 ### 2.4 AI Classification Configuration
 
@@ -286,7 +286,48 @@ model: 'openai/gpt-4o-mini'                            # Better quality
 model: 'anthropic/claude-3-haiku'                      # High quality
 ```
 
-### 2.6 V2: Obsidian Integration Configuration
+### 2.6 V2: IMAP Query Exclusions Configuration (Task 16)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `imap_query_exclusions.exclude_tags` | list | `['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']` | Tags to exclude from IMAP queries |
+| `imap_query_exclusions.additional_exclude_tags` | list | `[]` | Additional tags to exclude |
+| `imap_query_exclusions.disable_idempotency` | boolean | `false` | Disable idempotency checks (NOT RECOMMENDED) |
+
+**Important:** IMAP flag names must follow RFC3501 - only alphanumeric characters, underscores, and periods are allowed. No hyphens, spaces, or special characters!
+
+**Example Configurations:**
+```yaml
+# Default (backward compatible - no config needed)
+# Uses: ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
+
+# Custom exclusions
+imap_query_exclusions:
+  exclude_tags:
+    - 'AIProcessed'
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
+    - 'CustomTag'  # Additional custom tag
+
+# Minimal exclusions (only V2 tags)
+imap_query_exclusions:
+  exclude_tags:
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
+  # Note: AIProcessed not excluded (V1 emails can be reprocessed)
+
+# Additional tags
+imap_query_exclusions:
+  exclude_tags:
+    - 'AIProcessed'
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
+  additional_exclude_tags:
+    - 'Archived'
+    - 'ProcessedByOtherTool'
+```
+
+### 2.7 V2: Obsidian Integration Configuration
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -312,7 +353,7 @@ summarization_prompt_path: 'config/summarization_prompt.md'
 changelog_path: 'logs/email_changelog.md'
 ```
 
-### 2.7 Logging Configuration
+### 2.8 Logging Configuration
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -348,6 +389,15 @@ openrouter:
   api_key_env: 'OPENROUTER_API_KEY'
   api_url: 'https://openrouter.ai/api/v1'
   model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+
+# V2: IMAP Query Exclusions (Task 16)
+imap_query_exclusions:
+  exclude_tags:
+    - 'AIProcessed'
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
+  additional_exclude_tags: []
+  disable_idempotency: false
 
 # V2: Obsidian Integration
 obsidian_vault_path: '/path/to/obsidian/vault/emails'

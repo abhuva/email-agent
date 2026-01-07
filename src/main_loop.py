@@ -202,7 +202,8 @@ def run_email_processing_loop(
                     user=imap_params['username'],
                     password=imap_params['password'],
                     user_query=user_query,
-                    processed_tag=config.processed_tag
+                    exclude_tags=config.exclude_tags,
+                    disable_idempotency=config.disable_idempotency
                 )
                 
                 logger.info(f"Found {len(emails)} unprocessed emails from IMAP")
