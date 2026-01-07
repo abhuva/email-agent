@@ -855,7 +855,7 @@
       "id": 14,
       "title": "Create integration tests for the complete workflow",
       "description": "Develop comprehensive tests for the end-to-end email processing workflow",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         9,
         10,
@@ -871,7 +871,7 @@
           "id": 1,
           "title": "Set up integration test framework and mock IMAP/LLM dependencies",
           "description": "Configure the test environment with mock objects for IMAP client and LLM API to isolate the email processing workflow for reliable testing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use a testing framework like pytest (Python) or Jest (Node.js). Create mock classes for IMAP connections that simulate email fetching/selection and return predefined email payloads. Mock LLM API responses with configurable outputs for summarization success/failure. Ensure mocks support async operations if the workflow is asynchronous. Verify setup with a simple smoke test that initializes mocks without errors."
         },
@@ -879,7 +879,7 @@
           "id": 2,
           "title": "Implement tests for emails that trigger summarization workflow",
           "description": "Develop test cases verifying the full workflow (email selection → processing → summarization → note creation → tagging) for emails meeting trigger criteria.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -889,7 +889,7 @@
           "id": 3,
           "title": "Implement tests for emails that should not trigger workflow",
           "description": "Create test cases ensuring emails not meeting criteria are correctly filtered out without note creation or tagging.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -899,7 +899,7 @@
           "id": 4,
           "title": "Add test cases for error conditions and failure scenarios",
           "description": "Cover error handling across the workflow including IMAP failures, LLM API errors, storage issues, and network timeouts.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -909,7 +909,7 @@
           "id": 5,
           "title": "Enhance tests with assertions, cleanup, and documentation",
           "description": "Add comprehensive assertions, test data cleanup, performance checks, and documentation to complete the test suite.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
