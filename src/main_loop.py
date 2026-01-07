@@ -10,6 +10,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import os
+
+# Try to import rich for progress bars (optional dependency)
+try:
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
+    from rich.console import Console
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
 # Fix import path for when running as script
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
@@ -302,12 +310,41 @@ def run_email_processing_loop(
                 
                 analytics['total_fetched'] += len(emails)
                 
+                # V2: Set up progress bar if rich is available (Task 12)
+                progress = None
+                progress_task = None
+                if RICH_AVAILABLE and len(emails) > 0:
+                    console = Console()
+                    progress = Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                        TimeElapsedColumn(),
+                        console=console
+                    )
+                    progress.start()
+                    progress_task = progress.add_task(
+                        f"[cyan]Processing {len(emails)} email(s)...",
+                        total=len(emails)
+                    )
+                
                 # Process each email
-                for email in emails:
+                for idx, email in enumerate(emails, 1):
                     email_uid = email.get('id')
                     # Log UID for debugging - convert bytes to string for readability
                     uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
-                    logger.debug(f"Processing email with UID: {uid_str} (type: {type(email_uid).__name__}), subject: {email.get('subject', 'N/A')[:50]}")
+                    email_subject = email.get('subject', 'N/A')[:50]
+                    logger.debug(f"Processing email with UID: {uid_str} (type: {type(email_uid).__name__}), subject: {email_subject}")
+                    
+                    # V2: Update progress bar (Task 12)
+                    if progress and progress_task is not None:
+                        progress.update(
+                            progress_task,
+                            description=f"[cyan]Processing email {idx}/{len(emails)}: {email_subject}",
+                            advance=0  # Don't advance yet, we'll do it after processing
+                        )
+                    
                     try:
                         # Process with AI
                         ai_response = process_email_with_ai(email, client, config)
@@ -348,6 +385,10 @@ def run_email_processing_loop(
                                         analytics['tag_breakdown'][keyword] = 0
                                     analytics['tag_breakdown'][keyword] += 1
                                     logger.info(f"Successfully processed and tagged email UID {email_uid} ({total_processed_this_run}/{max_emails_to_process if max_emails_to_process else '∞'})")
+                                    
+                                    # V2: Update progress bar (Task 12)
+                                    if progress and progress_task is not None:
+                                        progress.update(progress_task, advance=1)
                                     
                                     # V2: Check if summarization is required (Task 6)
                                     # Get applied tags (excluding processed_tag for summarization check)
@@ -472,7 +513,20 @@ def run_email_processing_loop(
                                                     logger.warning(f"Note created but tagging failed for email UID {email_uid}")
                                             else:
                                                 # Failure - tag with NoteCreationFailed
-                                                logger.warning(f"Note creation failed for email UID {email_uid}: {note_result.get('error')}")
+                                                error_detail = note_result.get('error', 'unknown error')
+                                                email_subject = email.get('subject', 'N/A')[:60]
+                                                
+                                                # V2: Enhanced error messaging (Task 12)
+                                                if 'path' in error_detail.lower() or 'permission' in error_detail.lower() or 'write' in error_detail.lower():
+                                                    error_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): File I/O error - {error_detail}"
+                                                elif 'api' in error_detail.lower() or 'network' in error_detail.lower() or 'connection' in error_detail.lower():
+                                                    error_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): API/Network error - {error_detail}"
+                                                elif 'validation' in error_detail.lower() or 'invalid' in error_detail.lower():
+                                                    error_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Validation error - {error_detail}"
+                                                else:
+                                                    error_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): {error_detail}"
+                                                
+                                                logger.warning(error_msg)
                                                 
                                                 # V2: Track note_creation_failures metric (Task 11)
                                                 analytics['note_creation_failures'] += 1
@@ -489,7 +543,21 @@ def run_email_processing_loop(
                                         
                                     except Exception as e:
                                         # Graceful degradation - tag as failed and continue
-                                        logger.error(f"Error creating Obsidian note for email UID {email_uid}: {e}", exc_info=True)
+                                        email_subject = email.get('subject', 'N/A')[:60]
+                                        error_type = type(e).__name__
+                                        error_msg_str = str(e)
+                                        
+                                        # V2: Enhanced error messaging with context (Task 12)
+                                        if isinstance(e, (OSError, IOError, PermissionError)):
+                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): File I/O error - {error_type}: {error_msg_str}"
+                                        elif isinstance(e, (ConnectionError, TimeoutError)):
+                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Network error - {error_type}: {error_msg_str}"
+                                        elif isinstance(e, (ValueError, TypeError)):
+                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Validation error - {error_type}: {error_msg_str}"
+                                        else:
+                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Unexpected error - {error_type}: {error_msg_str}"
+                                        
+                                        logger.error(context_msg, exc_info=True)
                                         
                                         # V2: Track note_creation_failures metric for exceptions (Task 11)
                                         analytics['note_creation_failures'] += 1
@@ -519,6 +587,10 @@ def run_email_processing_loop(
                                     total_processed_this_run += 1  # Count failed attempts too
                                     logger.error(f"Failed to tag email UID {email_uid}")
                                     
+                                    # V2: Update progress bar (Task 12)
+                                    if progress and progress_task is not None:
+                                        progress.update(progress_task, advance=1)
+                                    
                                     # Check if we've hit the limit after this email
                                     if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
                                         logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
@@ -528,6 +600,10 @@ def run_email_processing_loop(
                             analytics['failed'] += 1
                             total_processed_this_run += 1  # Count failed attempts too
                             logger.warning(f"AI processing failed for UID {email_uid}, marking with {AI_PROCESSING_FAILED_FLAG}")
+                            
+                            # V2: Update progress bar (Task 12)
+                            if progress and progress_task is not None:
+                                progress.update(progress_task, advance=1)
                             
                             # Mark email with failure flag
                             with safe_imap_operation(
@@ -552,11 +628,19 @@ def run_email_processing_loop(
                         analytics['errors'].append(error_msg)
                         logger.error(error_msg, exc_info=True)
                         
+                        # V2: Update progress bar even on error (Task 12)
+                        if progress and progress_task is not None:
+                            progress.update(progress_task, advance=1)
+                        
                         # Check if we've hit the limit after this error
                         if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
                             logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping after this batch.")
                             break
                         continue
+                
+                # V2: Stop progress bar after batch (Task 12)
+                if progress:
+                    progress.stop()
                 
                 # V2: Update changelog after processing batch (Task 10)
                 if processed_emails_for_changelog and config.changelog_path:

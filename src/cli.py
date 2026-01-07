@@ -13,6 +13,15 @@ from src.analytics import generate_analytics, write_analytics
 from src.main_loop import run_email_processing_loop
 import atexit
 
+# Try to import rich for enhanced CLI display (optional dependency)
+try:
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
 
 def parse_args(args=None):
     """
@@ -207,31 +216,89 @@ def main(args=None) -> int:
                 max_emails=max_emails
             )
             
-            # Log summary
+            # V2: Display summary with rich tables if available (Task 12)
             summary = analytics.get('summary', {})
-            logger.info("=" * 60)
-            logger.info("Processing Summary:")
-            logger.info(f"  Total processed: {summary.get('total', 0)}")
-            logger.info(f"  Successfully processed: {summary.get('successfully_processed', 0)}")
-            logger.info(f"  Failed: {summary.get('failed', 0)}")
-            logger.info(f"  Success rate: {summary.get('success_rate', 0)}%")
             
-            # V2: Display new metrics (Task 11)
-            if analytics.get('notes_created', 0) > 0 or analytics.get('summaries_generated', 0) > 0 or analytics.get('note_creation_failures', 0) > 0:
-                logger.info("  V2 Metrics:")
-                logger.info(f"    Notes created: {analytics.get('notes_created', 0)}")
-                logger.info(f"    Summaries generated: {analytics.get('summaries_generated', 0)}")
-                logger.info(f"    Note creation failures: {analytics.get('note_creation_failures', 0)}")
-            
-            if summary.get('remaining_unprocessed', 0) > 0:
-                logger.info(f"  Remaining unprocessed: {summary.get('remaining_unprocessed', 0)}")
-            
-            if summary.get('tags'):
-                logger.info("  Tags applied:")
-                for tag, count in summary['tags'].items():
-                    logger.info(f"    {tag}: {count}")
-            
-            logger.info("=" * 60)
+            if RICH_AVAILABLE:
+                console = Console()
+                console.print("\n[bold cyan]Processing Summary[/bold cyan]\n")
+                
+                # Main metrics table
+                main_table = Table(title="Email Processing Results", box=box.ROUNDED, show_header=True, header_style="bold magenta")
+                main_table.add_column("Metric", style="cyan", no_wrap=True)
+                main_table.add_column("Value", style="green", justify="right")
+                
+                main_table.add_row("Total Processed", str(summary.get('total', 0)))
+                main_table.add_row("Successfully Processed", str(summary.get('successfully_processed', 0)))
+                main_table.add_row("Failed", str(summary.get('failed', 0)))
+                main_table.add_row("Success Rate", f"{summary.get('success_rate', 0)}%")
+                
+                if summary.get('remaining_unprocessed', 0) > 0:
+                    main_table.add_row("Remaining Unprocessed", str(summary.get('remaining_unprocessed', 0)))
+                
+                console.print(main_table)
+                
+                # V2 metrics table (Task 12)
+                notes_created = analytics.get('notes_created', 0)
+                summaries_generated = analytics.get('summaries_generated', 0)
+                note_failures = analytics.get('note_creation_failures', 0)
+                
+                if notes_created > 0 or summaries_generated > 0 or note_failures > 0:
+                    v2_table = Table(title="V2 Metrics (Obsidian Integration)", box=box.ROUNDED, show_header=True, header_style="bold blue")
+                    v2_table.add_column("Metric", style="cyan", no_wrap=True)
+                    v2_table.add_column("Value", style="green", justify="right")
+                    
+                    v2_table.add_row("Notes Created", str(notes_created))
+                    v2_table.add_row("Summaries Generated", str(summaries_generated))
+                    v2_table.add_row("Note Creation Failures", str(note_failures))
+                    
+                    # Calculate note creation success rate
+                    total_note_attempts = notes_created + note_failures
+                    if total_note_attempts > 0:
+                        note_success_rate = (notes_created / total_note_attempts) * 100
+                        v2_table.add_row("Note Creation Success Rate", f"{note_success_rate:.1f}%")
+                    
+                    console.print("\n")
+                    console.print(v2_table)
+                
+                # Tags breakdown table
+                if summary.get('tags'):
+                    tags_table = Table(title="Tags Applied", box=box.ROUNDED, show_header=True, header_style="bold yellow")
+                    tags_table.add_column("Tag", style="cyan")
+                    tags_table.add_column("Count", style="green", justify="right")
+                    
+                    for tag, count in summary['tags'].items():
+                        tags_table.add_row(tag, str(count))
+                    
+                    console.print("\n")
+                    console.print(tags_table)
+                
+                console.print()  # Empty line at end
+            else:
+                # Fallback to plain text if rich is not available
+                logger.info("=" * 60)
+                logger.info("Processing Summary:")
+                logger.info(f"  Total processed: {summary.get('total', 0)}")
+                logger.info(f"  Successfully processed: {summary.get('successfully_processed', 0)}")
+                logger.info(f"  Failed: {summary.get('failed', 0)}")
+                logger.info(f"  Success rate: {summary.get('success_rate', 0)}%")
+                
+                # V2: Display new metrics (Task 11)
+                if analytics.get('notes_created', 0) > 0 or analytics.get('summaries_generated', 0) > 0 or analytics.get('note_creation_failures', 0) > 0:
+                    logger.info("  V2 Metrics:")
+                    logger.info(f"    Notes created: {analytics.get('notes_created', 0)}")
+                    logger.info(f"    Summaries generated: {analytics.get('summaries_generated', 0)}")
+                    logger.info(f"    Note creation failures: {analytics.get('note_creation_failures', 0)}")
+                
+                if summary.get('remaining_unprocessed', 0) > 0:
+                    logger.info(f"  Remaining unprocessed: {summary.get('remaining_unprocessed', 0)}")
+                
+                if summary.get('tags'):
+                    logger.info("  Tags applied:")
+                    for tag, count in summary['tags'].items():
+                        logger.info(f"    {tag}: {count}")
+                
+                logger.info("=" * 60)
             
             # V2: Write analytics to file with new schema (Task 11)
             try:
