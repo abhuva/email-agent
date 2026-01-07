@@ -36,6 +36,11 @@ from src.obsidian_note_creation import (
     NOTE_CREATION_FAILED_TAG
 )
 from src.changelog import update_changelog
+from src.error_handling import (
+    log_error_with_context,
+    categorize_error,
+    ErrorCode
+)
 
 logger = logging.getLogger(__name__)
 
@@ -543,21 +548,21 @@ def run_email_processing_loop(
                                         
                                     except Exception as e:
                                         # Graceful degradation - tag as failed and continue
-                                        email_subject = email.get('subject', 'N/A')[:60]
-                                        error_type = type(e).__name__
-                                        error_msg_str = str(e)
+                                        # V2: Enhanced error handling with standardized logging (Task 13)
+                                        error_code, error_category = categorize_error(e)
+                                        context = {
+                                            'email_uid': uid_str,
+                                            'email_subject': email.get('subject', 'N/A')[:60],
+                                            'error_category': error_category
+                                        }
                                         
-                                        # V2: Enhanced error messaging with context (Task 12)
-                                        if isinstance(e, (OSError, IOError, PermissionError)):
-                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): File I/O error - {error_type}: {error_msg_str}"
-                                        elif isinstance(e, (ConnectionError, TimeoutError)):
-                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Network error - {error_type}: {error_msg_str}"
-                                        elif isinstance(e, (ValueError, TypeError)):
-                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Validation error - {error_type}: {error_msg_str}"
-                                        else:
-                                            context_msg = f"Note creation failed for email '{email_subject}' (UID {uid_str}): Unexpected error - {error_type}: {error_msg_str}"
-                                        
-                                        logger.error(context_msg, exc_info=True)
+                                        log_error_with_context(
+                                            e,
+                                            error_code,
+                                            "Creating Obsidian note",
+                                            context=context,
+                                            include_traceback=True
+                                        )
                                         
                                         # V2: Track note_creation_failures metric for exceptions (Task 11)
                                         analytics['note_creation_failures'] += 1
@@ -622,11 +627,26 @@ def run_email_processing_loop(
                             
                     except Exception as e:
                         # Isolate per-email errors - don't stop the loop
+                        # V2: Enhanced error handling with standardized logging (Task 13)
+                        error_code, error_category = categorize_error(e)
+                        context = {
+                            'email_uid': uid_str,
+                            'email_subject': email.get('subject', 'N/A')[:50],
+                            'error_category': error_category
+                        }
+                        
+                        log_error_with_context(
+                            e,
+                            error_code,
+                            "Processing email",
+                            context=context,
+                            include_traceback=True
+                        )
+                        
                         analytics['failed'] += 1
                         total_processed_this_run += 1  # Count errors too
-                        error_msg = f"Error processing email UID {email_uid}: {e}"
+                        error_msg = f"[{error_code}] Error processing email UID {email_uid}: {e}"
                         analytics['errors'].append(error_msg)
-                        logger.error(error_msg, exc_info=True)
                         
                         # V2: Update progress bar even on error (Task 12)
                         if progress and progress_task is not None:
@@ -679,8 +699,15 @@ def run_email_processing_loop(
                     time.sleep(30)
                     
             except IMAPFetchError as e:
-                logger.error(f"IMAP fetch error: {e}")
-                analytics['errors'].append(f"IMAP fetch error: {e}")
+                # V2: Enhanced error handling (Task 13)
+                log_error_with_context(
+                    e,
+                    ErrorCode.IMAP_FETCH_FAILED,
+                    "IMAP email fetch operation",
+                    context={'operation': 'batch_fetch'},
+                    include_traceback=True
+                )
+                analytics['errors'].append(f"[{ErrorCode.IMAP_FETCH_FAILED}] IMAP fetch error: {e}")
                 if single_run:
                     break
                 else:
@@ -690,8 +717,16 @@ def run_email_processing_loop(
                 logger.info("Received KeyboardInterrupt, stopping processing loop")
                 break
             except Exception as e:
-                logger.error(f"Unexpected error in processing loop: {e}", exc_info=True)
-                analytics['errors'].append(f"Unexpected error: {e}")
+                # V2: Enhanced error handling (Task 13)
+                error_code, error_category = categorize_error(e)
+                log_error_with_context(
+                    e,
+                    error_code,
+                    "Processing loop",
+                    context={'error_category': error_category},
+                    include_traceback=True
+                )
+                analytics['errors'].append(f"[{error_code}] Unexpected error: {e}")
                 if single_run:
                     break
                 else:
@@ -699,8 +734,16 @@ def run_email_processing_loop(
                     time.sleep(30)
         
     except Exception as e:
-        logger.error(f"Fatal error in processing loop: {e}", exc_info=True)
-        analytics['errors'].append(f"Fatal error: {e}")
+        # V2: Enhanced error handling (Task 13)
+        error_code, error_category = categorize_error(e)
+        log_error_with_context(
+            e,
+            error_code,
+            "Fatal error in processing loop",
+            context={'error_category': error_category},
+            include_traceback=True
+        )
+        analytics['errors'].append(f"[{error_code}] Fatal error: {e}")
     
     # V2: Final changelog update for any remaining emails (Task 10)
     # This handles the case where the loop exits before processing a batch
