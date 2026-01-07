@@ -468,7 +468,7 @@
           "id": 1,
           "title": "Create YAML frontmatter formatting function",
           "description": "Develop a function that takes YAML data as input and formats it as valid Obsidian YAML frontmatter with proper delimiters.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Create `format_yaml_frontmatter(yaml_data)` function that: 1) Validates input is a dictionary, 2) Uses `yaml.dump()` with `default_flow_style=False` and `sort_keys=False` to preserve order, 3) Wraps output in `---\\n` + content + `\\n---\\n`, 4) Handles empty YAML data by returning empty frontmatter block. Test with sample data like `{'tags': ['email'], 'date': '2026-01-06'}`.[1]"
         },
@@ -492,7 +492,7 @@
           "id": 4,
           "title": "Implement main note assembly function",
           "description": "Create the core assembly function that orchestrates all components with proper spacing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
