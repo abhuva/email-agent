@@ -273,7 +273,7 @@
           "id": 1,
           "title": "Implement input detection and basic sanitization",
           "description": "Create the initial function to detect email body type (plain text or HTML) and perform basic security sanitization to remove potentially harmful content.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Develop a function `sanitizeEmailBody(emailBody: string): SanitizedResult` that: 1) Detects content type by checking for HTML tags (e.g., regex `/<[a-z][\\s\\S]*>/i`); 2) Uses a HTML sanitization library like DOMPurify or html-sanitizer to strip dangerous elements (script, iframe, object, embed, javascript: URLs); 3) Removes inline images by stripping img tags with data: URLs or external sources; 4) Returns { content: string, isHtml: boolean, warnings: string[] }. Test with sample malicious HTML containing scripts and tracking pixels."
         },
@@ -311,7 +311,7 @@
           "id": 5,
           "title": "Add final cleanup, validation, and unified API",
           "description": "Implement final output normalization, validation, and create the complete public API with comprehensive testing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
