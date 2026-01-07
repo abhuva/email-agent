@@ -19,6 +19,13 @@ from src.email_tagging import process_email_with_ai_tags
 from src.email_truncation import truncate_email_body, get_max_truncation_length
 from src.summarization import check_summarization_required
 from src.email_summarization import generate_email_summary
+from src.obsidian_note_creation import (
+    create_obsidian_note_for_email,
+    tag_email_note_created,
+    tag_email_note_failed,
+    OBSIDIAN_NOTE_CREATED_TAG,
+    NOTE_CREATION_FAILED_TAG
+)
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +310,56 @@ def run_email_processing_loop(
                                             'prompt': None,
                                             'reason': f'check_error: {str(e)}'
                                         }
+                                    
+                                    # V2: Create Obsidian note (Task 9)
+                                    try:
+                                        # Get summary result if available
+                                        summary_result = email.get('summary')
+                                        
+                                        # Create the note
+                                        note_result = create_obsidian_note_for_email(
+                                            email,
+                                            config,
+                                            summary_result
+                                        )
+                                        
+                                        # Tag email based on result
+                                        with safe_imap_operation(
+                                            imap_params['host'],
+                                            imap_params['username'],
+                                            imap_params['password'],
+                                            port=imap_params.get('port', 993)
+                                        ) as imap:
+                                            if note_result['success']:
+                                                # Success - tag with Obsidian-Note-Created
+                                                tag_email_note_created(
+                                                    imap,
+                                                    email_uid,
+                                                    note_result.get('note_path')
+                                                )
+                                                logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_result.get('note_path')}")
+                                            else:
+                                                # Failure - tag with Note-Creation-Failed
+                                                tag_email_note_failed(
+                                                    imap,
+                                                    email_uid,
+                                                    note_result.get('error')
+                                                )
+                                                logger.error(f"Failed to create Obsidian note for email UID {email_uid}: {note_result.get('error')}")
+                                        
+                                    except Exception as e:
+                                        # Graceful degradation - tag as failed and continue
+                                        logger.error(f"Error creating Obsidian note for email UID {email_uid}: {e}", exc_info=True)
+                                        try:
+                                            with safe_imap_operation(
+                                                imap_params['host'],
+                                                imap_params['username'],
+                                                imap_params['password'],
+                                                port=imap_params.get('port', 993)
+                                            ) as imap:
+                                                tag_email_note_failed(imap, email_uid, f"unexpected_error: {str(e)}")
+                                        except Exception as tag_error:
+                                            logger.error(f"Failed to tag email UID {email_uid} after note creation error: {tag_error}", exc_info=True)
                                     
                                     # Check if we've hit the limit after this email
                                     if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
