@@ -593,7 +593,7 @@
       "id": 10,
       "title": "Develop changelog/audit log functionality",
       "description": "Create the system to maintain a Markdown table of processed emails",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3,
         9
@@ -606,7 +606,7 @@
           "id": 1,
           "title": "Create Markdown table header and file initialization function",
           "description": "Implement a function that creates the changelog file with proper Markdown table header if it doesn't exist, or reads existing file safely.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Create `initialize_changelog(path)` function that: 1) Checks if file exists at configured path using `os.path.exists()` 2) If not exists, writes Markdown header `# Email Processing Changelog` followed by table header `| Timestamp | Email Account | Subject | From | Filename |` and separator `|---|` 3) If exists, reads file content safely with UTF-8 encoding handling. Use `pathlib.Path` for cross-platform path handling. Return file content as string."
         },
@@ -614,7 +614,7 @@
           "id": 2,
           "title": "Implement email run data collection and formatting",
           "description": "Create function to collect processed email data and format it as Markdown table row with current timestamp.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Create `format_email_row(email_data)` function that takes dict with keys `email_account`, `subject`, `from_addr`, `filename` and: 1) Gets current UTC timestamp using `datetime.datetime.now(datetime.timezone.utc).isoformat()` 2) Escapes Markdown special characters (`|`, `\\`) in fields using `str.replace()` 3) Returns pipe-formatted row string like `| 2026-01-06T23:00:00Z | account@example.com | Subject | sender@domain.com | file.eml |`. Handle None/empty values as empty cells."
         },
@@ -622,7 +622,7 @@
           "id": 3,
           "title": "Develop visual run separator generation",
           "description": "Create function to generate visual separator between execution runs using Markdown horizontal rule and run metadata.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -633,7 +633,7 @@
           "id": 4,
           "title": "Build core changelog update function",
           "description": "Implement main function to append new email rows with proper separators to existing changelog.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -645,7 +645,7 @@
           "id": 5,
           "title": "Integrate changelog functionality into main execution workflow",
           "description": "Add changelog update calls to main email processing pipeline with configuration and error handling.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],

@@ -7,6 +7,7 @@ import logging
 import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
+from pathlib import Path
 import sys
 import os
 # Fix import path for when running as script
@@ -26,6 +27,7 @@ from src.obsidian_note_creation import (
     OBSIDIAN_NOTE_CREATED_TAG,
     NOTE_CREATION_FAILED_TAG
 )
+from src.changelog import update_changelog
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +166,9 @@ def run_email_processing_loop(
         
         # Track total processed across all batches
         total_processed_this_run = 0
+        
+        # V2: Track processed emails for changelog (Task 10)
+        processed_emails_for_changelog = []
         
         while True:
             try:
@@ -439,6 +444,20 @@ def run_email_processing_loop(
                                                 )
                                                 if tag_success:
                                                     logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_result.get('note_path')}")
+                                                    
+                                                    # V2: Collect email data for changelog (Task 10)
+                                                    note_path = note_result.get('note_path', '')
+                                                    # Extract just the filename from the full path
+                                                    filename = Path(note_path).name if note_path else ''
+                                                    
+                                                    email_changelog_data = {
+                                                        'email_account': imap_params['username'],
+                                                        'subject': email.get('subject', 'N/A'),
+                                                        'from_addr': email.get('sender', 'N/A'),
+                                                        'filename': filename
+                                                    }
+                                                    processed_emails_for_changelog.append(email_changelog_data)
+                                                    logger.debug(f"Added email to changelog queue: {email_changelog_data}")
                                                 else:
                                                     logger.warning(f"Note created but tagging failed for email UID {email_uid}")
                                             else:
@@ -521,6 +540,30 @@ def run_email_processing_loop(
                             break
                         continue
                 
+                # V2: Update changelog after processing batch (Task 10)
+                if processed_emails_for_changelog and config.changelog_path:
+                    try:
+                        logger.info(f"Updating changelog with {len(processed_emails_for_changelog)} processed email(s)")
+                        changelog_success = update_changelog(
+                            path=config.changelog_path,
+                            email_list=processed_emails_for_changelog
+                        )
+                        if changelog_success:
+                            logger.info(f"Successfully updated changelog: {config.changelog_path}")
+                            # Clear the list after successful update
+                            processed_emails_for_changelog = []
+                        else:
+                            logger.warning(f"Failed to update changelog: {config.changelog_path}")
+                            # Keep emails in list for retry on next batch
+                    except Exception as e:
+                        # Graceful degradation - log error but continue execution
+                        logger.error(f"Error updating changelog: {e}", exc_info=True)
+                        # Continue execution even if changelog fails
+                elif processed_emails_for_changelog and not config.changelog_path:
+                    logger.debug("Changelog path not configured, skipping changelog update")
+                    # Clear the list since we won't be updating changelog
+                    processed_emails_for_changelog = []
+                
                 # Check if we've hit the limit after processing batch
                 if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
                     logger.info(f"Reached max_emails limit ({max_emails_to_process}). Stopping.")
@@ -556,6 +599,22 @@ def run_email_processing_loop(
     except Exception as e:
         logger.error(f"Fatal error in processing loop: {e}", exc_info=True)
         analytics['errors'].append(f"Fatal error: {e}")
+    
+    # V2: Final changelog update for any remaining emails (Task 10)
+    # This handles the case where the loop exits before processing a batch
+    if processed_emails_for_changelog and config.changelog_path:
+        try:
+            logger.info(f"Performing final changelog update with {len(processed_emails_for_changelog)} email(s)")
+            changelog_success = update_changelog(
+                path=config.changelog_path,
+                email_list=processed_emails_for_changelog
+            )
+            if changelog_success:
+                logger.info(f"Successfully updated changelog: {config.changelog_path}")
+            else:
+                logger.warning(f"Failed to update changelog: {config.changelog_path}")
+        except Exception as e:
+            logger.error(f"Error in final changelog update: {e}", exc_info=True)
     
     # Generate and log analytics summary
     analytics_summary = generate_analytics_summary(analytics)
