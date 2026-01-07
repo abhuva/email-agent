@@ -114,14 +114,14 @@ def search_emails_excluding_processed(
     imap, 
     user_query: str, 
     processed_tag: str = 'AIProcessed',
-    obsidian_note_created_tag: str = 'Obsidian-Note-Created',
-    note_creation_failed_tag: str = 'Note-Creation-Failed'
+    obsidian_note_created_tag: str = 'ObsidianNoteCreated',
+    note_creation_failed_tag: str = 'NoteCreationFailed'
 ) -> List[bytes]:
     """
     Search emails using user query combined with idempotency checks.
     
     The user query is combined with NOT conditions to exclude emails that have
-    already been processed (V1: AIProcessed, V2: Obsidian-Note-Created, Note-Creation-Failed).
+        already been processed (V1: AIProcessed, V2: ObsidianNoteCreated, NoteCreationFailed).
     
     Args:
         imap: IMAP connection object
@@ -148,17 +148,47 @@ def search_emails_excluding_processed(
         
         logging.debug(f"Executing IMAP query: {final_query}")
         
+        # CRITICAL: Use UID SEARCH instead of SEARCH to get UIDs directly
+        # SEARCH returns sequence numbers which can change, UID SEARCH returns stable UIDs
+        # Also, some IMAP servers may limit SEARCH results, UID SEARCH is more reliable
         # Note: IMAP uses "KEYWORD" keyword in SEARCH to search FLAGS
         # This is confusing naming in the IMAP spec, but it's correct
         # We're searching for custom FLAGS, not the KEYWORDS extension
-        status, data = imap.search(None, final_query)
+        status, data = imap.uid('SEARCH', None, final_query)
         
         if status != 'OK':
             logging.error(f"IMAP search failed on query: {final_query}")
             raise IMAPConnectionError(f"IMAP search failed: {status} {data}")
         
+        # Parse UIDs from response
+        # data[0] is a bytes object containing space-separated UIDs like: b'1 2 3 420 421 422'
         ids = data[0].split() if data[0] else []
-        logging.info(f"Found {len(ids)} unprocessed emails matching query.")
+        
+        # CRITICAL: Log the actual UIDs returned to debug missing emails
+        if ids:
+            first_uid = ids[0].decode() if isinstance(ids[0], bytes) else str(ids[0])
+            last_uid = ids[-1].decode() if isinstance(ids[-1], bytes) else str(ids[-1])
+            logging.info(f"Found {len(ids)} unprocessed emails matching query.")
+            logging.info(f"First UID in results: {first_uid}, Last UID in results: {last_uid}")
+            
+            # Check if we're missing high UIDs (like 422-431)
+            if len(ids) > 10:
+                # Show first and last few UIDs
+                first_few = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids[:5]]
+                last_few = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids[-5:]]
+                logging.info(f"First 5 UIDs: {first_few}, Last 5 UIDs: {last_few}")
+                
+                # CRITICAL: Check if 2026 emails (422-431) are in the results
+                uids_str = [uid.decode() if isinstance(uid, bytes) else str(uid) for uid in ids]
+                uids_2026 = ['422', '423', '424', '425', '426', '427', '428', '429', '430', '431']
+                uids_2026_found = [uid for uid in uids_2026 if uid in uids_str]
+                if uids_2026_found:
+                    logging.info(f"✓ Found {len(uids_2026_found)} 2026 emails in search results: {uids_2026_found}")
+                else:
+                    logging.warning(f"✗ NO 2026 emails found in search results! This is the problem.")
+        else:
+            logging.info(f"Found 0 unprocessed emails matching query.")
+        
         return ids
         
     except Exception as e:
@@ -178,17 +208,40 @@ def decode_mime_header(header) -> str:
     return decoded
 
 def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
+    """
+    Fetch and parse emails using UID FETCH (not sequence number FETCH).
+    
+    Args:
+        imap: Active IMAP connection
+        msg_ids: List of email UIDs (bytes) from UID SEARCH
+    
+    Returns:
+        List of parsed email dictionaries with 'id' set to the UID
+    """
     parsed = []
     for msg_id in msg_ids:
-        typ, data = imap.fetch(msg_id, '(RFC822)')
+        # CRITICAL: Use UID FETCH, not FETCH, because msg_ids are UIDs, not sequence numbers
+        # Convert bytes to string for UID FETCH
+        uid_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
+        
+        typ, data = imap.uid('FETCH', uid_str, '(RFC822)')
         if typ != 'OK':
-            logging.error(f'Failed to fetch msg id {msg_id}: {data}')
+            logging.error(f'Failed to fetch UID {uid_str}: {data}')
             continue
+        
+        if not data or not data[0] or len(data[0]) < 2:
+            logging.error(f'Invalid FETCH response for UID {uid_str}: {data}')
+            continue
+        
         raw_email = data[0][1]
         msg = email.message_from_bytes(raw_email)
         subject = decode_mime_header(msg.get('Subject'))
         sender = decode_mime_header(msg.get('From'))
         date = decode_mime_header(msg.get('Date'))
+        
+        # CRITICAL: Log the actual Date header to verify date filtering
+        date_header_raw = msg.get('Date', 'N/A')
+        logging.debug(f"Email UID {uid_str} - Date header (raw): {date_header_raw}, Date header (decoded): {date}")
         body = ''
         if msg.is_multipart():
             for part in msg.walk():
@@ -205,13 +258,17 @@ def fetch_and_parse_emails(imap, msg_ids: List[bytes]) -> List[Dict[str, Any]]:
                 body = body.decode(charset, errors='replace')
             elif not isinstance(body, str):
                 body = ''
+        
+        # Store UID as bytes to maintain consistency
+        # This ensures email['id'] is the UID we can use for UID STORE
         parsed.append({
-            'id': msg_id,
+            'id': msg_id,  # Keep as bytes (UID) for consistency
             'subject': subject,
             'sender': sender,
             'body': body,
             'date': date,
         })
+        logging.debug(f"Fetched email UID {uid_str} (subject: {subject[:50]})")
     logging.info(f"Parsed {len(parsed)} emails.")
     return parsed
 
@@ -219,8 +276,8 @@ def fetch_emails(
     host: str, user: str, password: str,
     user_query: str,
     processed_tag: str = 'AIProcessed',
-    obsidian_note_created_tag: str = 'Obsidian-Note-Created',
-    note_creation_failed_tag: str = 'Note-Creation-Failed',
+    obsidian_note_created_tag: str = 'ObsidianNoteCreated',
+    note_creation_failed_tag: str = 'NoteCreationFailed',
     max_retries: int = 3,
     timeout: int = 30
 ) -> List[Dict[str, Any]]:
@@ -259,6 +316,12 @@ def fetch_emails(
                 )
                 emails = fetch_and_parse_emails(imap, ids)
                 logging.info(f"Fetched and parsed {len(emails)} emails.")
+                
+                # Optional: Filter by sent date in code if SENTSINCE didn't work reliably
+                # This is a fallback for when IMAP server doesn't handle SENTSINCE correctly
+                # For now, we'll return all fetched emails and let the user configure the query
+                # If needed, we can add date filtering here based on email['date']
+                
                 return emails
             finally:
                 try:
@@ -294,17 +357,39 @@ def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
             uid_str = str(email_uid)
         else:
             uid_str = str(email_uid)
+        
+        # CRITICAL: Log UID type and value to catch mismatches
+        logger = logging.getLogger(__name__)
+        logger.info(f"[IMAP] Attempting to add tags {tags} to email UID {uid_str} (input type: {type(email_uid).__name__})")
+        
         # IMAP expects tags as a space-separated string, in parens
         tagset = "(" + " ".join(tags) + ")"
+        logger.debug(f"[IMAP] STORE command: UID {uid_str}, tagset={tagset}")
+        
+        # Check if IMAP connection is still open
+        try:
+            # Try to check connection state
+            if hasattr(imap, 'state') and imap.state != 'SELECTED':
+                logger.warning(f"[IMAP] Connection state is '{imap.state}', not 'SELECTED'. Attempting to select INBOX...")
+                status, _ = imap.select('INBOX')
+                if status != 'OK':
+                    logger.error(f"[IMAP] Failed to select INBOX: {status}")
+                    return False
+        except Exception as e:
+            logger.warning(f"[IMAP] Could not check connection state: {e}")
+        
         result, data = imap.uid('STORE', uid_str, '+FLAGS.SILENT', tagset)
+        logger.info(f"[IMAP] STORE response: result={result}, data={data if data else 'None'}")
+        
         if result == 'OK':
-            logging.info(f"Added tags {tags} to email UID {uid_str}.")
+            logger.info(f"[IMAP] Successfully added tags {tags} to email UID {uid_str}.")
             return True
         else:
-            logging.error(f"Failed to add tags {tags} to UID {uid_str}: {result} {data}")
+            logger.error(f"[IMAP] Failed to add tags {tags} to UID {uid_str}: IMAP response={result}, data={data}")
             return False
     except Exception as e:
-        logging.error(f"Error adding tags {tags} to UID {email_uid}: {e}")
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error adding tags {tags} to UID {email_uid}: {e}", exc_info=True)
         return False
 
 @contextmanager

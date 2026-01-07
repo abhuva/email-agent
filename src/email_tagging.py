@@ -10,6 +10,9 @@ from src.tag_mapping import extract_keyword, map_keyword_to_tags
 from src.imap_connection import add_tags_to_email
 import re
 
+# Module logger
+logger = logging.getLogger(__name__)
+
 
 def tag_email_safely(
     imap,
@@ -34,32 +37,34 @@ def tag_email_safely(
     try:
         # Extract keyword from AI response (guaranteed to return 'urgent', 'neutral', or 'spam')
         keyword = extract_keyword(ai_response)
-        logging.debug(f"Extracted keyword from AI response: {keyword}")
+        logger.debug(f"Extracted keyword from AI response: {keyword}")
         
         # Map keyword to IMAP tags
         tags = map_keyword_to_tags(keyword, tag_mapping)
         if not tags:
             # Fallback: if mapping failed, use neutral
             tags = [tag_mapping.get('neutral', 'Neutral')]
-            logging.warning(f"Tag mapping failed for keyword '{keyword}', using neutral fallback")
+            logger.warning(f"Tag mapping failed for keyword '{keyword}', using neutral fallback")
         
         # Always append AIProcessed tag
         tags.append(processed_tag)
         
-        logging.info(f"Tagging email UID {email_uid} with tags: {tags}")
+        logger.info(f"Tagging email UID {email_uid} with tags: {tags}")
         
         # Apply tags via IMAP
+        logger.debug(f"Calling add_tags_to_email for UID {email_uid} with tags {tags}")
         success = add_tags_to_email(imap, email_uid, tags)
+        logger.debug(f"add_tags_to_email returned: {success}")
         
         if success:
-            logging.info(f"Successfully tagged email UID {email_uid} with {tags}")
+            logger.info(f"Successfully tagged email UID {email_uid} with {tags}")
         else:
-            logging.error(f"Failed to tag email UID {email_uid}")
+            logger.error(f"Failed to tag email UID {email_uid} - add_tags_to_email returned False")
         
         return success
         
     except Exception as e:
-        logging.error(f"Error in tag_email_safely for UID {email_uid}: {e}")
+        logger.error(f"Error in tag_email_safely for UID {email_uid}: {e}", exc_info=True)
         return False
 
 
@@ -76,22 +81,31 @@ def _fetch_email_flags(imap, email_uid) -> List[str]:
         else:
             uid_str = str(email_uid)
         
+        logger.debug(f"Fetching flags for UID {uid_str}")
         status, data = imap.uid('FETCH', uid_str, '(FLAGS)')
+        logger.debug(f"FETCH FLAGS response: status={status}, data={data}")
+        
         if status != 'OK' or not data or not data[0]:
+            logger.warning(f"Failed to fetch flags for UID {uid_str}: status={status}, data={data}")
             return []
         
         # Parse FLAGS from response: b'1 (FLAGS (\\Seen \\Flagged))'
         flags_str = data[0].decode('utf-8', errors='ignore') if isinstance(data[0], bytes) else str(data[0])
+        logger.debug(f"Raw FLAGS response string: {flags_str}")
+        
         # Extract flags between parentheses
         flags_match = re.search(r'FLAGS\s+\(([^)]+)\)', flags_str)
         if flags_match:
             flags = flags_match.group(1).split()
             # Remove backslashes and clean up
             flags = [f.strip('\\') for f in flags if f.strip()]
+            logger.debug(f"Parsed flags for UID {uid_str}: {flags}")
             return flags
+        else:
+            logger.warning(f"Could not parse FLAGS from response: {flags_str}")
         return []
     except Exception as e:
-        logging.warning(f"Failed to fetch flags for UID {email_uid}: {e}")
+        logger.warning(f"Failed to fetch flags for UID {email_uid}: {e}", exc_info=True)
         return []
 
 
@@ -127,15 +141,15 @@ def process_email_with_ai_tags(
     
     # Input validation
     if not email_uid:
-        logging.error(f"Invalid email UID: {email_uid}")
+        logger.error(f"Invalid email UID: {email_uid}")
         return result
     
     if not ai_response or not isinstance(ai_response, str):
-        logging.error(f"Invalid AI response: {ai_response}")
+        logger.error(f"Invalid AI response: {ai_response}")
         return result
     
     if 'tag_mapping' not in config:
-        logging.error("Config missing 'tag_mapping' key")
+        logger.error("Config missing 'tag_mapping' key")
         return result
     
     tag_mapping = config.get('tag_mapping', {})
@@ -147,13 +161,13 @@ def process_email_with_ai_tags(
         subject = email_metadata.get('subject', 'N/A')
         sender = email_metadata.get('sender', 'N/A')
         metadata_str = f" (Subject: {subject[:50]}, From: {sender[:50]})"
-    logging.info(f"Processing email UID {email_uid}{metadata_str} at {timestamp}")
+    logger.info(f"Processing email UID {email_uid}{metadata_str} at {timestamp}")
     
     try:
         # Fetch flags before tagging
         before_flags = _fetch_email_flags(imap_connection, email_uid)
         result['before_tags'] = before_flags
-        logging.debug(f"Email UID {email_uid} flags before: {before_flags}")
+        logger.debug(f"Email UID {email_uid} flags before: {before_flags}")
         
         # Extract keyword and determine tags to apply
         keyword = extract_keyword(ai_response)
@@ -165,30 +179,61 @@ def process_email_with_ai_tags(
         result['applied_tags'] = tags_to_apply
         
         # Apply tags
+        logger.info(f"Calling add_tags_to_email for UID {email_uid} with tags: {tags_to_apply}")
         success = add_tags_to_email(imap_connection, email_uid, tags_to_apply)
         result['success'] = success
+        logger.info(f"add_tags_to_email returned success={success} for UID {email_uid}")
         
         if success:
-            # Verify by fetching flags after
+            # Verify by fetching flags after - wait a moment for IMAP server to process
+            import time
+            time.sleep(0.5)  # Brief delay to ensure IMAP server has processed the STORE command
+            
+            logger.debug(f"Fetching flags after tagging for UID {email_uid}")
             after_flags = _fetch_email_flags(imap_connection, email_uid)
             result['after_tags'] = after_flags
-            logging.debug(f"Email UID {email_uid} flags after: {after_flags}")
+            logger.info(f"Email UID {email_uid} flags after tagging: {after_flags}")
             
-            # Verify AIProcessed tag was applied
+            # Verify all expected tags were applied
+            missing_tags = []
+            for expected_tag in tags_to_apply:
+                if expected_tag not in after_flags:
+                    missing_tags.append(expected_tag)
+            
+            if missing_tags:
+                logger.error(
+                    f"VERIFICATION FAILED: Tags not found after tagging for UID {email_uid}. "
+                    f"Expected: {tags_to_apply}, Missing: {missing_tags}, "
+                    f"Actual flags: {after_flags}"
+                )
+                result['success'] = False  # Mark as failed if verification fails
+            else:
+                logger.info(
+                    f"VERIFICATION SUCCESS: All tags confirmed for UID {email_uid}. "
+                    f"Expected: {tags_to_apply}, Found: {[tag for tag in tags_to_apply if tag in after_flags]}"
+                )
+            
+            # Specifically verify AIProcessed tag
             if processed_tag not in after_flags:
-                logging.warning(f"AIProcessed tag not found in flags after tagging for UID {email_uid}")
+                logger.error(
+                    f"CRITICAL: AIProcessed tag not found in flags after tagging for UID {email_uid}. "
+                    f"Expected: {processed_tag}, Got: {after_flags}"
+                )
+            else:
+                logger.info(f"Verified: {processed_tag} tag is present in flags for UID {email_uid}")
             
-            logging.info(
-                f"Email UID {email_uid} tagged successfully. "
+            logger.info(
+                f"Email UID {email_uid} tagging result. "
                 f"Keyword: {keyword}, Applied: {tags_to_apply}, "
-                f"Before: {before_flags}, After: {after_flags}"
+                f"Before: {before_flags}, After: {after_flags}, "
+                f"Verification: {'PASSED' if not missing_tags else 'FAILED'}"
             )
         else:
-            logging.error(f"Failed to tag email UID {email_uid}")
+            logger.error(f"Failed to tag email UID {email_uid}")
             result['after_tags'] = before_flags  # No change on failure
         
     except Exception as e:
-        logging.error(f"Error processing email UID {email_uid}: {e}", exc_info=True)
+        logger.error(f"Error processing email UID {email_uid}: {e}", exc_info=True)
         result['success'] = False
     
     return result

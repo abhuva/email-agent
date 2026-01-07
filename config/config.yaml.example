@@ -21,10 +21,16 @@ imap_queries:
 # V2: Primary IMAP query string (takes precedence over imap_queries if set)
 # Examples:
 #   imap_query: 'UNSEEN'                    # Unread emails
+#   imap_query: 'UNSEEN SENTSINCE 07-Jan-2026'  # Unread emails sent from today onwards (update date as needed)
 #   imap_query: 'ALL'                       # All emails
-#   imap_query: '(SINCE "01-Jan-2024")'     # Since specific date
+#   imap_query: 'SENTSINCE 01-Jan-2024'     # All emails sent since specific date
+#   imap_query: 'SINCE 01-Jan-2024'         # All emails received since specific date (uses internal date)
 #   imap_query: 'FROM "sender@example.com"'  # From specific sender
-# The Obsidian-Note-Created exclusion is automatically added to exclude already processed emails
+# The ObsidianNoteCreated exclusion is automatically added to exclude already processed emails
+# Note: 
+#   - IMAP date format is DD-MMM-YYYY (e.g., 07-Jan-2026)
+#   - SENTSINCE filters by Date header (sent date) - use this for filtering by when email was sent
+#   - SINCE filters by internal date (received date) - use this for filtering by when email was received
 imap_query: 'UNSEEN'
 
 # Path to the Markdown prompt file used for AI classification

@@ -145,19 +145,18 @@ def normalize_date(date_str: Optional[str]) -> Optional[str]:
         return None
     
     try:
-        # Try parsing with email.utils.parsedate_to_datetime (handles RFC 2822)
-        dt = parsedate_to_datetime(date_str)
-        # Convert to ISO 8601 format with timezone
+        # First try parsing as ISO format (common in modern systems)
+        # Handle 'Z' timezone indicator
+        iso_str = date_str.replace('Z', '+00:00')
+        dt = datetime.fromisoformat(iso_str)
         return dt.isoformat()
-    except (ValueError, TypeError) as e:
-        logger.debug(f"Failed to parse date '{date_str}': {e}")
-        # Try alternative parsing
+    except (ValueError, TypeError):
+        # Fall back to RFC 2822 parsing (email standard)
         try:
-            # Try parsing as ISO format
-            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            dt = parsedate_to_datetime(date_str)
             return dt.isoformat()
-        except (ValueError, TypeError):
-            logger.warning(f"Could not parse date string: {date_str}")
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Could not parse date string '{date_str}': {e}")
             return None
 
 

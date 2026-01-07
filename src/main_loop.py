@@ -6,7 +6,7 @@ Orchestrates email fetching, AI processing, and tagging.
 import logging
 import time
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 # Fix import path for when running as script
@@ -174,6 +174,7 @@ def run_email_processing_loop(
                 
                 # Fetch unprocessed emails
                 logger.info("Fetching unprocessed emails...")
+                logger.debug(f"Using IMAP query: {user_query}")
                 emails = fetch_emails(
                     host=imap_params['host'],
                     user=imap_params['username'],
@@ -182,10 +183,86 @@ def run_email_processing_loop(
                     processed_tag=config.processed_tag
                 )
                 
-                # Track total available (before limiting)
+                logger.info(f"IMAP returned {len(emails)} emails before code-level filtering")
+                if emails:
+                    logger.debug("Emails found by IMAP:")
+                    for email in emails:
+                        uid_str = email.get('id')
+                        if isinstance(uid_str, bytes):
+                            uid_str = uid_str.decode()
+                        logger.debug(f"  - UID {uid_str}: subject='{email.get('subject', 'N/A')[:60]}', date='{email.get('date', 'N/A')}'")
+                
+                # Optional: Filter by sent date in code
+                # DISABLED FOR DEBUGGING: Remove date filter to see all emails
+                # TODO: Re-enable with proper date logic (maybe last N days, or received date)
+                # from datetime import date, timedelta
+                # from email.utils import parsedate_to_datetime
+                # 
+                # original_count = len(emails)
+                # today = date.today()
+                # # Option: Use last 7 days instead of just today
+                # # cutoff_date = today - timedelta(days=7)
+                # cutoff_date = today
+                # 
+                # filtered_emails = []
+                # for email in emails:
+                #     email_date_str = email.get('date')
+                #     uid_str = email.get('id')
+                #     if isinstance(uid_str, bytes):
+                #         uid_str = uid_str.decode()
+                #     
+                #     if email_date_str:
+                #         try:
+                #             email_dt = parsedate_to_datetime(email_date_str)
+                #             email_date = email_dt.date()
+                #             
+                #             if email_date >= cutoff_date:
+                #                 filtered_emails.append(email)
+                #                 logger.info(f"Including email UID {uid_str} - sent date: {email_date}, subject: {email.get('subject', 'N/A')[:50]}")
+                #             else:
+                #                 logger.info(f"Excluding email UID {uid_str} - sent date: {email_date} (before {cutoff_date}), subject: {email.get('subject', 'N/A')[:50]}")
+                #         except (ValueError, TypeError) as e:
+                #             logger.warning(f"Could not parse date '{email_date_str}' for email UID {uid_str}, including anyway: {e}")
+                #             filtered_emails.append(email)
+                #     else:
+                #         logger.warning(f"No date header for email UID {uid_str}, including anyway")
+                #         filtered_emails.append(email)
+                # 
+                # emails = filtered_emails
+                # if len(emails) < original_count:
+                #     logger.info(f"Filtered {original_count - len(emails)} emails by sent date (before {cutoff_date})")
+                
+                # TEMPORARY: No date filtering - process all emails found by IMAP
+                logger.info(f"Date filtering DISABLED for debugging - processing all {len(emails)} emails found by IMAP")
+                
+                # CRITICAL: Sort emails by date (newest first) so we process the most recent emails
+                # This ensures that when using --limit, we get the newest emails, not the oldest
+                from email.utils import parsedate_to_datetime
+                
+                def get_email_date_for_sorting(email_dict):
+                    """Extract date for sorting, returning a timezone-aware datetime or None."""
+                    date_str = email_dict.get('date')
+                    if not date_str:
+                        return None
+                    try:
+                        dt = parsedate_to_datetime(date_str)
+                        # Ensure timezone-aware (if naive, assume UTC)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    except (ValueError, TypeError):
+                        return None
+                
+                # Sort by date (newest first), emails without dates go to the end
+                # Use a consistent timezone-aware datetime for comparison
+                min_date = datetime.min.replace(tzinfo=timezone.utc)
+                emails.sort(key=lambda e: get_email_date_for_sorting(e) or min_date, reverse=True)
+                logger.info(f"Sorted {len(emails)} emails by date (newest first)")
+                
+                # Track total available (after date filtering)
                 total_available_in_batch = len(emails)
                 analytics['total_available'] += total_available_in_batch
-                logger.info(f"Fetched {total_available_in_batch} unprocessed emails")
+                logger.info(f"Fetched {total_available_in_batch} unprocessed emails (after date filtering)")
                 
                 if not emails:
                     logger.info("No unprocessed emails found")
@@ -206,12 +283,22 @@ def run_email_processing_loop(
                     if len(emails) > remaining_quota:
                         emails = emails[:remaining_quota]
                         logger.info(f"Limited to {remaining_quota} emails (remaining quota of {max_emails_to_process} total)")
+                        # Log which email will be processed (newest)
+                        if emails:
+                            first_email = emails[0]
+                            uid_str = first_email.get('id')
+                            if isinstance(uid_str, bytes):
+                                uid_str = uid_str.decode()
+                            logger.info(f"Processing newest email: UID {uid_str}, date: {first_email.get('date', 'N/A')}")
                 
                 analytics['total_fetched'] += len(emails)
                 
                 # Process each email
                 for email in emails:
                     email_uid = email.get('id')
+                    # Log UID for debugging - convert bytes to string for readability
+                    uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
+                    logger.debug(f"Processing email with UID: {uid_str} (type: {type(email_uid).__name__}), subject: {email.get('subject', 'N/A')[:50]}")
                     try:
                         # Process with AI
                         ai_response = process_email_with_ai(email, client, config)
@@ -312,18 +399,30 @@ def run_email_processing_loop(
                                         }
                                     
                                     # V2: Create Obsidian note (Task 9)
+                                    # CRITICAL: Log email details to verify UID/content consistency
+                                    uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
+                                    email_subject = email.get('subject', 'N/A')
+                                    email_sender = email.get('sender', 'N/A')
+                                    logger.info(f"[V2] Starting Obsidian note creation for email UID {uid_str}")
+                                    logger.info(f"[V2] Email details - Subject: {email_subject[:60]}, From: {email_sender[:50]}")
+                                    logger.info(f"[V2] Config has obsidian_vault_path: {hasattr(config, 'obsidian_vault_path') and config.obsidian_vault_path is not None}")
                                     try:
                                         # Get summary result if available
                                         summary_result = email.get('summary')
+                                        logger.debug(f"Summary result available: {summary_result is not None}")
                                         
                                         # Create the note
+                                        logger.info(f"Creating Obsidian note for email UID {uid_str} (Subject: {email_subject[:50]})")
                                         note_result = create_obsidian_note_for_email(
                                             email,
                                             config,
                                             summary_result
                                         )
                                         
+                                        logger.debug(f"Note creation result: success={note_result.get('success')}, path={note_result.get('note_path')}, error={note_result.get('error')}")
+                                        
                                         # Tag email based on result
+                                        logger.debug(f"Opening IMAP connection for tagging email UID {email_uid}")
                                         with safe_imap_operation(
                                             imap_params['host'],
                                             imap_params['username'],
@@ -331,33 +430,46 @@ def run_email_processing_loop(
                                             port=imap_params.get('port', 993)
                                         ) as imap:
                                             if note_result['success']:
-                                                # Success - tag with Obsidian-Note-Created
-                                                tag_email_note_created(
+                                                # Success - tag with ObsidianNoteCreated
+                                                logger.info(f"Tagging email UID {email_uid} with ObsidianNoteCreated")
+                                                tag_success = tag_email_note_created(
                                                     imap,
                                                     email_uid,
                                                     note_result.get('note_path')
                                                 )
-                                                logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_result.get('note_path')}")
+                                                if tag_success:
+                                                    logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_result.get('note_path')}")
+                                                else:
+                                                    logger.warning(f"Note created but tagging failed for email UID {email_uid}")
                                             else:
-                                                # Failure - tag with Note-Creation-Failed
-                                                tag_email_note_failed(
+                                                # Failure - tag with NoteCreationFailed
+                                                logger.warning(f"Note creation failed for email UID {email_uid}: {note_result.get('error')}")
+                                                tag_success = tag_email_note_failed(
                                                     imap,
                                                     email_uid,
                                                     note_result.get('error')
                                                 )
-                                                logger.error(f"Failed to create Obsidian note for email UID {email_uid}: {note_result.get('error')}")
+                                                if tag_success:
+                                                    logger.info(f"Tagged email UID {email_uid} with NoteCreationFailed")
+                                                else:
+                                                    logger.warning(f"Note creation failed and tagging also failed for email UID {email_uid}")
                                         
                                     except Exception as e:
                                         # Graceful degradation - tag as failed and continue
                                         logger.error(f"Error creating Obsidian note for email UID {email_uid}: {e}", exc_info=True)
                                         try:
+                                            logger.debug(f"Attempting to tag email UID {email_uid} as failed after exception")
                                             with safe_imap_operation(
                                                 imap_params['host'],
                                                 imap_params['username'],
                                                 imap_params['password'],
                                                 port=imap_params.get('port', 993)
                                             ) as imap:
-                                                tag_email_note_failed(imap, email_uid, f"unexpected_error: {str(e)}")
+                                                tag_success = tag_email_note_failed(imap, email_uid, f"unexpected_error: {str(e)}")
+                                                if tag_success:
+                                                    logger.info(f"Tagged email UID {email_uid} with NoteCreationFailed after exception")
+                                                else:
+                                                    logger.warning(f"Failed to tag email UID {email_uid} after note creation exception")
                                         except Exception as tag_error:
                                             logger.error(f"Failed to tag email UID {email_uid} after note creation error: {tag_error}", exc_info=True)
                                     

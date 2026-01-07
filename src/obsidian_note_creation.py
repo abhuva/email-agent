@@ -28,8 +28,9 @@ from src.obsidian_utils import (
 logger = logging.getLogger(__name__)
 
 # IMAP tag names for note creation status
-OBSIDIAN_NOTE_CREATED_TAG = 'Obsidian-Note-Created'
-NOTE_CREATION_FAILED_TAG = 'Note-Creation-Failed'
+# Note: No hyphens or special characters - IMAP servers may reject them
+OBSIDIAN_NOTE_CREATED_TAG = 'ObsidianNoteCreated'
+NOTE_CREATION_FAILED_TAG = 'NoteCreationFailed'
 
 
 def generate_note_content(
@@ -60,6 +61,13 @@ def generate_note_content(
         >>> 'Content' in note
         True
     """
+    # CRITICAL: Log email details to verify UID/content consistency
+    email_uid = email.get('id')
+    uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
+    email_subject = email.get('subject', 'N/A')
+    email_sender = email.get('sender', 'N/A')
+    logger.debug(f"generate_note_content: UID {uid_str}, Subject: {email_subject[:50]}, From: {email_sender[:50]}")
+    
     try:
         # Extract metadata for YAML frontmatter
         metadata = extract_email_metadata(email)
@@ -121,6 +129,9 @@ def write_obsidian_note(
         >>> path.endswith('.md')
         True
     """
+    # CRITICAL: Log email subject to verify content consistency
+    logger.debug(f"write_obsidian_note: Subject: {email_subject[:50]}")
+    
     try:
         # Validate vault path exists
         vault_dir = Path(vault_path)
@@ -177,11 +188,37 @@ def tag_email_note_created(
     """
     try:
         from src.imap_connection import add_tags_to_email
+        from src.email_tagging import _fetch_email_flags
+        import time
+        
+        # Fetch flags before tagging for verification
+        before_flags = _fetch_email_flags(imap, email_uid)
+        logger.debug(f"Email UID {email_uid} flags before ObsidianNoteCreated tagging: {before_flags}")
         
         tags = [OBSIDIAN_NOTE_CREATED_TAG]
         success = add_tags_to_email(imap, email_uid, tags)
         
         if success:
+            # Verify by re-fetching flags after a brief delay
+            time.sleep(0.5)  # Brief delay to ensure IMAP server has processed the STORE command
+            
+            after_flags = _fetch_email_flags(imap, email_uid)
+            logger.info(f"Email UID {email_uid} flags after ObsidianNoteCreated tagging: {after_flags}")
+            
+            # Verify the tag was actually applied
+            if OBSIDIAN_NOTE_CREATED_TAG not in after_flags:
+                logger.error(
+                    f"VERIFICATION FAILED: ObsidianNoteCreated tag not found after tagging for UID {email_uid}. "
+                    f"Expected: {OBSIDIAN_NOTE_CREATED_TAG}, Got: {after_flags}, "
+                    f"Before: {before_flags}"
+                )
+                return False  # Mark as failed if verification fails
+            else:
+                logger.info(
+                    f"VERIFICATION SUCCESS: ObsidianNoteCreated tag confirmed for UID {email_uid}. "
+                    f"Before: {before_flags}, After: {after_flags}"
+                )
+            
             logger.info(f"Tagged email UID {email_uid} with {OBSIDIAN_NOTE_CREATED_TAG}" + 
                        (f" (note: {note_path})" if note_path else ""))
         else:
@@ -200,7 +237,7 @@ def tag_email_note_failed(
     error_message: Optional[str] = None
 ) -> bool:
     """
-    Tag email with Note-Creation-Failed tag to mark failed note creation.
+    Tag email with NoteCreationFailed tag to mark failed note creation.
     
     Args:
         imap: Active IMAP connection
@@ -216,11 +253,37 @@ def tag_email_note_failed(
     """
     try:
         from src.imap_connection import add_tags_to_email
+        from src.email_tagging import _fetch_email_flags
+        import time
+        
+        # Fetch flags before tagging for verification
+        before_flags = _fetch_email_flags(imap, email_uid)
+        logger.debug(f"Email UID {email_uid} flags before NoteCreationFailed tagging: {before_flags}")
         
         tags = [NOTE_CREATION_FAILED_TAG]
         success = add_tags_to_email(imap, email_uid, tags)
         
         if success:
+            # Verify by re-fetching flags after a brief delay
+            time.sleep(0.5)  # Brief delay to ensure IMAP server has processed the STORE command
+            
+            after_flags = _fetch_email_flags(imap, email_uid)
+            logger.info(f"Email UID {email_uid} flags after NoteCreationFailed tagging: {after_flags}")
+            
+            # Verify the tag was actually applied
+            if NOTE_CREATION_FAILED_TAG not in after_flags:
+                logger.error(
+                    f"VERIFICATION FAILED: NoteCreationFailed tag not found after tagging for UID {email_uid}. "
+                    f"Expected: {NOTE_CREATION_FAILED_TAG}, Got: {after_flags}, "
+                    f"Before: {before_flags}"
+                )
+                return False  # Mark as failed if verification fails
+            else:
+                logger.info(
+                    f"VERIFICATION SUCCESS: NoteCreationFailed tag confirmed for UID {email_uid}. "
+                    f"Before: {before_flags}, After: {after_flags}"
+                )
+            
             logger.warning(f"Tagged email UID {email_uid} with {NOTE_CREATION_FAILED_TAG}" +
                           (f" (error: {error_message})" if error_message else ""))
         else:
@@ -239,39 +302,29 @@ def create_obsidian_note_for_email(
     summary_result: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Complete workflow to create Obsidian note for an email.
-    
-    This function orchestrates:
-    1. Note content generation
-    2. File writing
-    3. Error handling
+    Complete workflow to create an Obsidian note for an email.
     
     Args:
-        email: Email dict with all required fields
+        email: Email dictionary with 'id', 'subject', 'sender', 'body', 'date', etc.
         config: ConfigManager instance
-        summary_result: Optional summary result from Task 7
+        summary_result: Optional summary result dict from generate_email_summary
     
     Returns:
-        Dict with keys:
-            - success: bool - Whether note creation succeeded
-            - note_path: Optional[str] - Path to created note file
-            - error: Optional[str] - Error message if failed
-    
-    Examples:
-        >>> email = {'subject': 'Test', 'sender': 'test@example.com', 'body': 'Content'}
-        >>> result = create_obsidian_note_for_email(email, config)
-        >>> 'success' in result
-        True
+        Dict with 'success', 'note_path', 'error' keys
     """
-    email_uid = email.get('id', 'unknown')
-    email_subject = email.get('subject', 'Untitled')
+    # CRITICAL: Log email details at entry to verify UID/content consistency
+    email_uid = email.get('id')
+    uid_str = email_uid.decode() if isinstance(email_uid, bytes) else str(email_uid)
+    email_subject = email.get('subject', 'N/A')
+    email_sender = email.get('sender', 'N/A')
+    logger.info(f"create_obsidian_note_for_email: UID {uid_str}, Subject: {email_subject[:60]}, From: {email_sender[:50]}")
     
     try:
         # Get vault path from config
         vault_path = getattr(config, 'obsidian_vault_path', None)
         if not vault_path:
             error_msg = "obsidian_vault_path not configured"
-            logger.error(f"Cannot create note for email UID {email_uid}: {error_msg}")
+            logger.error(f"Cannot create note for email UID {uid_str}: {error_msg}")
             return {
                 'success': False,
                 'note_path': None,
@@ -279,18 +332,18 @@ def create_obsidian_note_for_email(
             }
         
         # Generate note content
-        logger.debug(f"Generating note content for email UID {email_uid}")
+        logger.debug(f"Generating note content for email UID {uid_str}")
         note_content = generate_note_content(email, summary_result)
         
         # Write note to disk
-        logger.info(f"Writing Obsidian note for email UID {email_uid} to {vault_path}")
+        logger.info(f"Writing Obsidian note for email UID {uid_str} to {vault_path}")
         note_path = write_obsidian_note(
             note_content=note_content,
             email_subject=email_subject,
             vault_path=vault_path
         )
         
-        logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_path}")
+        logger.info(f"Successfully created Obsidian note for email UID {uid_str}: {note_path}")
         return {
             'success': True,
             'note_path': note_path,
@@ -299,7 +352,7 @@ def create_obsidian_note_for_email(
         
     except InvalidPathError as e:
         error_msg = f"Invalid vault path: {e}"
-        logger.error(f"Note creation failed for email UID {email_uid}: {error_msg}")
+        logger.error(f"Note creation failed for email UID {uid_str}: {error_msg}")
         return {
             'success': False,
             'note_path': None,
@@ -307,7 +360,7 @@ def create_obsidian_note_for_email(
         }
     except WritePermissionError as e:
         error_msg = f"Write permission denied: {e}"
-        logger.error(f"Note creation failed for email UID {email_uid}: {error_msg}")
+        logger.error(f"Note creation failed for email UID {uid_str}: {error_msg}")
         return {
             'success': False,
             'note_path': None,
@@ -315,7 +368,7 @@ def create_obsidian_note_for_email(
         }
     except FileWriteError as e:
         error_msg = f"File write error: {e}"
-        logger.error(f"Note creation failed for email UID {email_uid}: {error_msg}")
+        logger.error(f"Note creation failed for email UID {uid_str}: {error_msg}")
         return {
             'success': False,
             'note_path': None,
@@ -323,7 +376,7 @@ def create_obsidian_note_for_email(
         }
     except Exception as e:
         error_msg = f"Unexpected error: {e}"
-        logger.error(f"Note creation failed for email UID {email_uid}: {error_msg}", exc_info=True)
+        logger.error(f"Note creation failed for email UID {uid_str}: {error_msg}", exc_info=True)
         return {
             'success': False,
             'note_path': None,

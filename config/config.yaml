@@ -25,3 +25,16 @@ openrouter:
   api_url: 'https://openrouter.ai/api/v1'
   # model: 'openai/gpt-3.5-turbo'  # default fallback
   model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+obsidian_vault_path: 'C:/Users/Marc Bielert/Nextcloud2/8. Emails'
+# Optional - only if you want summarization
+summarization_tags:
+  - 'Urgent'  # Or other tags you use
+summarization_prompt_path: 'config/summarization_prompt.md'
+
+# Optional - changelog tracking
+changelog_path: 'logs/email_changelog.md'
+
+# V2: Primary IMAP query (what emails to process)
+# No UNSEEN restriction - get all emails, then filter by sent date in code
+# Code-level filtering ensures only emails sent today or later are processed
+imap_query: 'ALL'  # Get all emails, date filtering happens in code

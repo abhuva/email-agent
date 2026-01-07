@@ -172,6 +172,11 @@ def main(args=None) -> int:
         log_file_path = Path(config.log_file)
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
         
+        # Set root logger level so module loggers inherit it
+        import logging
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+        
         # Initialize logger
         logger = LoggerFactory.create_logger(
             level=log_level,
