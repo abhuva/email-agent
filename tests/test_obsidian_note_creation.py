@@ -167,6 +167,12 @@ class TestTagEmailNoteCreated:
     def test_tags_email_successfully(self):
         """Test successful email tagging."""
         imap = Mock()
+        # Mock the uid('FETCH', ...) call used by _fetch_email_flags
+        # First call (before tagging) returns empty flags, second call (after) returns the tag
+        imap.uid = Mock(side_effect=[
+            ('OK', [b'1 (FLAGS (\\Seen))']),  # Before tagging
+            ('OK', [b'1 (FLAGS (\\Seen ObsidianNoteCreated))'])  # After tagging
+        ])
         with patch('src.imap_connection.add_tags_to_email', return_value=True):
             result = tag_email_note_created(imap, b'123', '/path/to/note.md')
         
@@ -195,6 +201,12 @@ class TestTagEmailNoteFailed:
     def test_tags_email_successfully(self):
         """Test successful failure tagging."""
         imap = Mock()
+        # Mock the uid('FETCH', ...) call used by _fetch_email_flags
+        # First call (before tagging) returns empty flags, second call (after) returns the tag
+        imap.uid = Mock(side_effect=[
+            ('OK', [b'1 (FLAGS (\\Seen))']),  # Before tagging
+            ('OK', [b'1 (FLAGS (\\Seen NoteCreationFailed))'])  # After tagging
+        ])
         with patch('src.imap_connection.add_tags_to_email', return_value=True):
             result = tag_email_note_failed(imap, b'123', 'Error message')
         

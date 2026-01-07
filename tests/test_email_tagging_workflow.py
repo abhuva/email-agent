@@ -116,7 +116,8 @@ def test_process_email_with_ai_tags_logs_audit_trail(caplog):
     # Check that logging occurred
     log_messages = caplog.text
     assert 'Processing email UID 123' in log_messages
-    assert 'tagged successfully' in log_messages or 'Failed to tag' in log_messages
+    # Updated to match current log message format
+    assert 'VERIFICATION SUCCESS' in log_messages or 'Verification: PASSED' in log_messages or 'Failed to tag' in log_messages
     assert result['timestamp']  # Timestamp should be set
 
 
