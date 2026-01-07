@@ -8,9 +8,35 @@ This module handles connecting to an IMAP server, searching and fetching emails 
 ## Components
 - **connect_imap**: Securely connects with credentials (from .env/config) using SSL; robust error and logging.
 - **load_imap_queries**: Loads list or single-string IMAP search queries from config.yaml.
-- **search_emails_excluding_processed**: Executes queries and ensures AIProcessed-tagged messages are excluded.
-- **fetch_and_parse_emails**: Extracts subject, sender, date, and plain text body even from multipart; safe header decoding.
+- **search_emails_excluding_processed**: Executes queries using `UID SEARCH` (not `SEARCH`) to ensure consistent UID-based operations; ensures AIProcessed-tagged messages are excluded.
+- **fetch_and_parse_emails**: Extracts subject, sender, date, and plain text body even from multipart; safe header decoding. Uses `UID FETCH` (not `FETCH`) to maintain UID consistency.
 - **fetch_emails (orchestrator)**: End-to-end workflow; handles retries, context management, connection/disconnection, and robust logging.
+
+## Critical Implementation Details
+
+### UID vs Sequence Numbers
+**Always use UID-based operations** to ensure consistency:
+- `imap.uid('SEARCH', ...)` - Returns UIDs (stable identifiers)
+- `imap.uid('FETCH', ...)` - Fetches by UID
+- `imap.uid('STORE', ...)` - Tags by UID
+
+**Never use:**
+- `imap.search()` - Returns sequence numbers (can change)
+- `imap.fetch()` - Operates on sequence numbers
+- `imap.store()` - Operates on sequence numbers
+
+This ensures that emails are fetched and tagged using the same identifier (UID), preventing mismatches where tags are applied to the wrong emails.
+
+### Email Processing Order
+**Emails are sorted by date (newest first)** before processing:
+- When using `--limit N`, the **newest N emails** are processed, not the oldest
+- This ensures that recent emails are prioritized
+- Emails without dates are placed at the end of the list
+
+**Sorting behavior:**
+- Emails are sorted by their `Date` header (parsed to datetime)
+- Timezone-aware datetimes are normalized (naive dates assumed UTC)
+- Reverse chronological order (newest → oldest)
 
 ## Error Handling
 - Custom exceptions (IMAPConnectionError, IMAPFetchError) for fine-grained error handling.

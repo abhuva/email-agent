@@ -69,6 +69,44 @@ ConfigError: YAML parse error: ...
 
 ## IMAP Connection Problems
 
+### Processing Old Emails Instead of New Ones
+
+**Symptom:** When using `--limit 1`, the oldest email is processed instead of the newest.
+
+**Explanation:**
+- Emails are fetched in UID order (1, 2, 3... N), which is chronological
+- Without sorting, `--limit 1` would process the oldest email (UID 1)
+
+**Solution:**
+- The code automatically sorts emails by date (newest first) before limiting
+- `--limit 1` now processes the **newest** unprocessed email
+- This ensures recent emails are prioritized
+
+**If you still see old emails:**
+- Check that emails have valid `Date` headers
+- Emails without dates are placed at the end of the sorted list
+- Verify the date parsing in logs (enable `--debug`)
+
+### UID vs Sequence Number Mismatch
+
+**Symptom:** Tags are applied to the wrong emails (e.g., tag appears on email A but note was created for email B).
+
+**Explanation:**
+- IMAP has two identifier systems: UIDs (stable) and sequence numbers (can change)
+- Mixing them causes mismatches where tags are applied to wrong emails
+
+**Solution:**
+- The code uses **UID-based operations** throughout:
+  - `imap.uid('SEARCH', ...)` - Returns UIDs
+  - `imap.uid('FETCH', ...)` - Fetches by UID
+  - `imap.uid('STORE', ...)` - Tags by UID
+- This ensures consistency between fetching and tagging
+
+**Verification:**
+- Check logs for UID values at each step
+- All UIDs should match between fetch, processing, and tagging
+- Use `--debug` to see detailed UID logging
+
 ### Authentication Failed
 
 **Error:**
@@ -266,12 +304,18 @@ NO [b'[CANNOT] Invalid characters in keyword']
 3. **Check flag format:**
    - Flags must be valid IMAP flag names (alphanumeric, no special chars)
    - Verify `tag_mapping` in config uses valid flag names
+   - **Important:** No hyphens in flag names - use `ObsidianNoteCreated` not `Obsidian-Note-Created`
 
 4. **Test manually:**
    ```bash
    python scripts/test_imap_flags.py
    ```
    This will test flag operations on your server
+
+5. **Verify UID consistency:**
+   - The code uses `UID SEARCH` and `UID FETCH` to ensure consistency
+   - Tags are applied using `UID STORE` with the same UID
+   - If tags appear on wrong emails, check logs for UID mismatches
 
 ---
 
@@ -289,6 +333,7 @@ NO [b'[CANNOT] Invalid characters in keyword']
 
 2. **Process fewer emails:**
    - Use `--limit N` to process fewer emails per run
+   - **Note:** Emails are sorted by date (newest first), so `--limit 1` processes the **newest** email, not the oldest
    - Process in smaller batches
 
 3. **Check network:**
@@ -371,6 +416,7 @@ cat logs/analytics.jsonl
 **"Reached max_emails limit"**
 - Normal: Processing stopped at configured limit
 - Use `--limit N` to process more, or check `max_emails_per_run` in config
+- **Note:** Emails are sorted by date (newest first), so the newest emails are processed first
 
 **"AI processing failed for UID X"**
 - Email marked with `AIProcessingFailed` flag
