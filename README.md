@@ -313,16 +313,20 @@ python scripts/test_imap_flags.py
 
 ## Maintaining Context (For AI Agents and Developers)
 
-> To restart after a break, or for Cursor AI:
+> **For AI Agents (Cursor, etc.):**
+> 
+> **Start here:** [README-AI.md](README-AI.md) - Optimized entry point with complete project structure, architecture, and development context.
+> 
+> Then:
+> 1. Read [pdd_v2.md](pdd_v2.md) for current V2 requirements
+> 2. Run `task-master list` and `task-master next` to see project state/tasks
+> 3. Review module docs in `docs/` as needed
 
-1. Open this `README.md` and [pdd_v2.md](pdd_v2.md) (we're working on V2 now)
-2. Run:
-   ```bash
-   task-master list
-   task-master next
-   ```
-   to see project state/tasks
-3. Review the doc links above for any system/module orientation
+> **For Human Developers:**
+> 
+> 1. Read this README.md for overview
+> 2. See [docs/COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md) for detailed user guide
+> 3. See [docs/MAIN_DOCS.md](docs/MAIN_DOCS.md) for documentation index
 
 *Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
 
@@ -389,4 +393,4 @@ email-agent/
 
 ---
 
-> **For AI agents:** Always reread this file and the PDD before making code changes or automation decisions!
+> **For AI agents:** Always start with [README-AI.md](README-AI.md) for complete project context, then review the PDD and current tasks before making changes!
