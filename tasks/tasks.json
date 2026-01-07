@@ -388,7 +388,7 @@
       "id": 7,
       "title": "Implement LLM integration for email summarization",
       "description": "Create the functionality to call an LLM API for generating email summaries",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         6
       ],
@@ -408,7 +408,7 @@
           "id": 2,
           "title": "Implement core LLM API integration",
           "description": "Build the LLM API client and core summarization function that calls the external LLM API using the formatted prompt from subtask 1.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -418,7 +418,7 @@
           "id": 3,
           "title": "Add comprehensive error handling and fallbacks",
           "description": "Implement robust error handling for API failures, rate limiting, malformed responses, and network issues while ensuring the system continues processing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -428,7 +428,7 @@
           "id": 4,
           "title": "Implement response parsing and validation",
           "description": "Parse LLM responses into structured summary objects and validate output quality before returning to the calling system.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -577,6 +577,15 @@
             4
           ],
           "details": "1. In main workflow loop, call generateMarkdownNote → writeNoteFile → tagEmailSuccess sequence. 2. Catch specific errors at each step and map to `tagEmailFailure(emailId, errorMessage)`. 3. Create `tagEmailFailure(emailId, error)` function that applies [Note-Creation-Failed] tag. 4. Store detailed error info in email comments/subject or separate log. 5. Implement retry logic for transient failures (network, permissions). 6. Add final workflow summary: total processed, successes, failures with error breakdown. 7. Ensure 100% email tagging coverage via finally blocks."
+        },
+        {
+          "id": 6,
+          "title": "Perform live end-to-end test with real configuration",
+          "description": "After completing the note creation workflow, perform a comprehensive live test with real IMAP credentials, Obsidian vault path, and actual email processing to verify the complete system works end-to-end.",
+          "details": "1. Configure all required settings in config.yaml:\n   - IMAP connection details\n   - obsidian_vault_path (must exist)\n   - summarization_tags (if testing summarization)\n   - summarization_prompt_path (if testing summarization)\n2. Run the program with real credentials\n3. Verify the following:\n   - Notes are created in the Obsidian vault directory\n   - Notes contain correct YAML frontmatter with all required fields\n   - Notes contain summary section (if email has matching tag) formatted as Obsidian callout\n   - Notes contain email body content in Markdown format\n   - Email filenames follow the correct format: YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md\n   - Emails are tagged with 'Obsidian-Note-Created' on successful note creation\n   - Emails are tagged with 'Note-Creation-Failed' on failure\n   - Notes render correctly in Obsidian (open and verify formatting)\n   - No duplicate notes are created (idempotency check)\n4. Test error scenarios:\n   - Invalid vault path (should fail early with clear error)\n   - Missing write permissions (should tag with Note-Creation-Failed)\n   - Network/IMAP errors (should handle gracefully)\n5. Document any issues found and verify all acceptance criteria from PDD V2 are met",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 9
         }
       ]
     },
