@@ -4,6 +4,8 @@
 **Last Updated:** January 2026  
 **Status:** Production Ready
 
+> **Note for Developers:** For implementation details, module-specific documentation, and project strategy, see [MAIN_DOCS.md](MAIN_DOCS.md).
+
 ---
 
 ## Table of Contents
@@ -836,6 +838,8 @@ NO [b'[CANNOT] Invalid characters in keyword']
 4. Monitor usage in OpenRouter dashboard
 
 ### 5.7 Debugging Tips
+
+> **See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive debugging guidance and solutions.**
 
 **Enable Debug Mode:**
 ```bash
