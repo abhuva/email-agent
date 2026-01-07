@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 from src.config import ConfigManager, ConfigError, ConfigFormatError, ConfigPathError
 from src.logger import LoggerFactory
-from src.analytics import generate_analytics
+from src.analytics import generate_analytics, write_analytics
 from src.main_loop import run_email_processing_loop
 import atexit
 
@@ -216,6 +216,13 @@ def main(args=None) -> int:
             logger.info(f"  Failed: {summary.get('failed', 0)}")
             logger.info(f"  Success rate: {summary.get('success_rate', 0)}%")
             
+            # V2: Display new metrics (Task 11)
+            if analytics.get('notes_created', 0) > 0 or analytics.get('summaries_generated', 0) > 0 or analytics.get('note_creation_failures', 0) > 0:
+                logger.info("  V2 Metrics:")
+                logger.info(f"    Notes created: {analytics.get('notes_created', 0)}")
+                logger.info(f"    Summaries generated: {analytics.get('summaries_generated', 0)}")
+                logger.info(f"    Note creation failures: {analytics.get('note_creation_failures', 0)}")
+            
             if summary.get('remaining_unprocessed', 0) > 0:
                 logger.info(f"  Remaining unprocessed: {summary.get('remaining_unprocessed', 0)}")
             
@@ -225,6 +232,21 @@ def main(args=None) -> int:
                     logger.info(f"    {tag}: {count}")
             
             logger.info("=" * 60)
+            
+            # V2: Write analytics to file with new schema (Task 11)
+            try:
+                write_success = write_analytics(
+                    analytics_file=config.analytics_file,
+                    analytics_data=analytics,
+                    include_v1_fields=True  # Include V1 fields for backward compatibility
+                )
+                if write_success:
+                    logger.debug(f"Analytics written to {config.analytics_file}")
+                else:
+                    logger.warning(f"Failed to write analytics to {config.analytics_file}")
+            except Exception as e:
+                logger.error(f"Error writing analytics: {e}", exc_info=True)
+                # Don't fail the entire run if analytics writing fails
             
             # Return success
             return 0

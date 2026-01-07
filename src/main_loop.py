@@ -141,7 +141,11 @@ def run_email_processing_loop(
         'successfully_processed': 0,
         'failed': 0,
         'tag_breakdown': {},
-        'errors': []
+        'errors': [],
+        # V2: New metrics for note creation and summarization (Task 11)
+        'notes_created': 0,
+        'summaries_generated': 0,
+        'note_creation_failures': 0
     }
     
     # Get max emails from config or parameter
@@ -379,6 +383,9 @@ def run_email_processing_loop(
                                                 
                                                 if summary_result['success']:
                                                     logger.info(f"Successfully generated summary for email UID {email_uid}")
+                                                    
+                                                    # V2: Track summaries_generated metric (Task 11)
+                                                    analytics['summaries_generated'] += 1
                                                 else:
                                                     logger.warning(f"Summary generation failed for email UID {email_uid}: {summary_result.get('error', 'unknown')}")
                                             except Exception as e:
@@ -445,6 +452,9 @@ def run_email_processing_loop(
                                                 if tag_success:
                                                     logger.info(f"Successfully created Obsidian note for email UID {email_uid}: {note_result.get('note_path')}")
                                                     
+                                                    # V2: Track notes_created metric (Task 11)
+                                                    analytics['notes_created'] += 1
+                                                    
                                                     # V2: Collect email data for changelog (Task 10)
                                                     note_path = note_result.get('note_path', '')
                                                     # Extract just the filename from the full path
@@ -463,6 +473,10 @@ def run_email_processing_loop(
                                             else:
                                                 # Failure - tag with NoteCreationFailed
                                                 logger.warning(f"Note creation failed for email UID {email_uid}: {note_result.get('error')}")
+                                                
+                                                # V2: Track note_creation_failures metric (Task 11)
+                                                analytics['note_creation_failures'] += 1
+                                                
                                                 tag_success = tag_email_note_failed(
                                                     imap,
                                                     email_uid,
@@ -476,6 +490,10 @@ def run_email_processing_loop(
                                     except Exception as e:
                                         # Graceful degradation - tag as failed and continue
                                         logger.error(f"Error creating Obsidian note for email UID {email_uid}: {e}", exc_info=True)
+                                        
+                                        # V2: Track note_creation_failures metric for exceptions (Task 11)
+                                        analytics['note_creation_failures'] += 1
+                                        
                                         try:
                                             logger.debug(f"Attempting to tag email UID {email_uid} as failed after exception")
                                             with safe_imap_operation(
