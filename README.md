@@ -4,7 +4,7 @@
 
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
-**Current Status:** V1 (Email Tagging) is complete. We are now working on **V2 (Obsidian Integration)** - automatically creating structured Markdown notes in Obsidian vaults for processed emails.
+**Current Status:** Both **V1 (Email Tagging)** and **V2 (Obsidian Integration)** are complete. The agent can now automatically create structured Markdown notes in Obsidian vaults for processed emails.
 
 ---
 
@@ -19,13 +19,14 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **Error Handling**: Robust error handling with retry logic and graceful degradation
 - **TDD-Based**: Test-driven development with comprehensive test coverage
 
-### V2 Features (In Progress)
+### V2 Features (Complete)
 - **Obsidian Integration**: Automatically creates structured Markdown notes in Obsidian vaults
 - **YAML Frontmatter**: Rich metadata in note files for Obsidian linking and filtering
 - **Email Body Conversion**: Converts HTML emails to clean Markdown format
 - **Conditional Summarization**: AI-powered summaries for emails with specific tags (cost-effective)
 - **Flexible IMAP Queries**: Configurable email selection queries beyond just UNSEEN
 - **Changelog Tracking**: Audit log of all processed emails in Markdown format
+- **Configurable IMAP Query Filtering**: Customizable tag exclusions for idempotency (Task 16)
 
 ---
 
@@ -163,22 +164,39 @@ The prompt file contains the instructions sent to the AI for email classificatio
 
 ## How It Works
 
+### V1 Workflow (Email Tagging)
 1. **Email Fetching**: Connects to IMAP server and fetches unprocessed emails (excluding those with `AIProcessed` flag)
 2. **AI Processing**: Sends email content (truncated to `max_body_chars`) to OpenRouter API for classification
 3. **Tagging**: Maps AI response keywords (`urgent`, `neutral`, `spam`) to IMAP tags and applies them
 4. **Logging**: Logs all operations to file and console, generates analytics summaries
-5. **Error Handling**: Isolates per-email errors, retries transient failures, marks failed emails
 
-### Processing Flow
+### V2 Workflow (Obsidian Integration)
+1. **Email Fetching**: Uses configurable IMAP queries to fetch emails (excluding processed emails via configurable tags)
+2. **AI Classification**: Classifies emails using OpenRouter API (same as V1)
+3. **Tagging**: Applies classification tags to emails
+4. **Conditional Summarization**: For emails with specific tags (configurable), generates AI summaries
+5. **Obsidian Note Creation**: Creates structured Markdown notes with YAML frontmatter in Obsidian vault
+6. **Changelog Tracking**: Records all processed emails in a Markdown changelog file
+7. **Idempotency**: Tags emails with `ObsidianNoteCreated` or `NoteCreationFailed` to prevent reprocessing
+
+### Complete Processing Flow (V2)
 
 ```
-Start → Load Config → Connect IMAP → Fetch Emails
+Start → Load Config → Connect IMAP → Fetch Emails (with configurable query)
   ↓
 For each email:
   ↓
-Truncate body → Send to AI → Extract keyword → Map to tag
+Truncate body → Send to AI → Extract keyword → Map to tag → Apply IMAP flags
   ↓
-Apply IMAP flags (tag + AIProcessed) → Log result
+If email has summarization tag:
+  ↓
+Generate AI summary → Create Obsidian note (YAML + summary + body)
+  ↓
+Else:
+  ↓
+Create Obsidian note (YAML + body only)
+  ↓
+Tag email (ObsidianNoteCreated/NoteCreationFailed) → Append to changelog
   ↓
 Generate analytics summary → Exit
 ```
@@ -188,7 +206,7 @@ Generate analytics summary → Exit
 ## Documentation
 
 - **[Product Design Doc V1 (PDD)](pdd.md)** — V1 project strategy, requirements, roadmap (✅ Complete)
-- **[Product Design Doc V2 (PDD)](pdd_v2.md)** — V2 project strategy, requirements, roadmap (🚧 In Progress)
+- **[Product Design Doc V2 (PDD)](pdd_v2.md)** — V2 project strategy, requirements, roadmap (✅ Complete)
 - **[Logging System](docs/logging-system.md)** — Logger, analytics, config, test patterns
 - **[IMAP Email Fetching](docs/imap-fetching.md)** — IMAP workflow, error handling, FLAGS vs KEYWORDS
 - **[Prompt Loader](docs/prompts.md)** — How AI prompts are loaded and managed
@@ -318,7 +336,7 @@ python scripts/test_imap_flags.py
 > **Start here:** [README-AI.md](README-AI.md) - Optimized entry point with complete project structure, architecture, and development context.
 > 
 > Then:
-> 1. Read [pdd_v2.md](pdd_v2.md) for current V2 requirements
+> 1. Review [pdd_v2.md](pdd_v2.md) for V2 implementation details
 > 2. Run `task-master list` and `task-master next` to see project state/tasks
 > 3. Review module docs in `docs/` as needed
 
@@ -330,7 +348,7 @@ python scripts/test_imap_flags.py
 
 *Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
 
-**Note:** V1 (Email Tagging) is complete. Current focus is V2 (Obsidian Integration) - see [pdd_v2.md](pdd_v2.md) for details.
+**Note:** Both V1 (Email Tagging) and V2 (Obsidian Integration) are complete. See [pdd_v2.md](pdd_v2.md) for V2 implementation details.
 
 ---
 
@@ -346,7 +364,7 @@ A: Use the `--limit N` flag to override the config value, or use `--continuous` 
 A: Thunderbird's "Schlagworte" view only shows KEYWORDS extension tags. The flags are still applied and searchable via IMAP. See [docs/imap-keywords-vs-flags.md](docs/imap-keywords-vs-flags.md).
 
 **Q: How do I restart the agent after a break?**  
-A: Simply run `python main.py` again. The agent automatically excludes emails with the `AIProcessed` flag.
+A: Simply run `python main.py` again. The agent automatically excludes emails with processed tags (`AIProcessed`, `ObsidianNoteCreated`, or `NoteCreationFailed` by default, configurable via `imap_query_exclusions`).
 
 **Q: What if an email fails to process?**  
 A: Failed emails are marked with `AIProcessingFailed` flag and logged. The agent continues processing other emails.
