@@ -57,7 +57,7 @@ Testing will occur at multiple stages to ensure the cleanup doesn't break existi
    - Create a summary report comparing before/after metrics (code size, test coverage, build time)
 
 # Subtasks:
-## 1. Perform Static Code Analysis and Generate Cleanup Report [pending]
+## 1. Perform Static Code Analysis and Generate Cleanup Report [done]
 ### Dependencies: None
 ### Description: Analyze the entire codebase to identify unused code, unreachable functions, dead imports, and other issues requiring cleanup. Create a comprehensive report documenting all findings with recommendations.
 ### Details:
@@ -83,7 +83,7 @@ Testing approach:
 - Have another developer review the report for completeness
 - Ensure all src/ files were included in the analysis
 
-## 2. Implement Code Cleanup Based on Analysis Report [pending]
+## 2. Implement Code Cleanup Based on Analysis Report [in-progress]
 ### Dependencies: 17.1
 ### Description: Execute the cleanup recommendations from the analysis report by removing unused code, fixing imports, eliminating dead code, and addressing all identified issues.
 ### Details:

@@ -33,16 +33,15 @@ class IMAPFetchError(Exception):
     pass
 
 
-class IMAPKeywordsNotSupportedError(Exception):
-    """
-    Raised when IMAP server doesn't support KEYWORDS capability.
-    
-    Note: This exception is deprecated as the codebase now uses FLAGS
-    instead of KEYWORDS for better compatibility.
-    """
-    pass
+"""
+IMAP connection and email fetching utilities.
 
-# ... existing functions (connect_imap, load_imap_queries, etc.) ...
+This module provides:
+- IMAP connection management with SSL/TLS support
+- Email search and fetching with configurable query exclusions
+- Email parsing and flag/tag management
+- Safe IMAP operations with retry logic
+"""
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
     """
@@ -74,6 +73,11 @@ def connect_imap(host: str, user: str, password: str, port: int = 993):
 def load_imap_queries(config_path: str = "config/config.yaml"):
     """
     Load IMAP search queries from configuration file.
+    
+    .. deprecated:: V2
+        This function is deprecated. Use `ConfigManager.get_imap_query()` instead.
+        This function is kept for backward compatibility and test support only.
+        It will be removed in a future version.
     
     Args:
         config_path: Path to the YAML configuration file
@@ -363,11 +367,6 @@ def fetch_emails(
                 )
                 emails = fetch_and_parse_emails(imap, ids)
                 logging.info(f"Fetched and parsed {len(emails)} emails.")
-                
-                # Optional: Filter by sent date in code if SENTSINCE didn't work reliably
-                # This is a fallback for when IMAP server doesn't handle SENTSINCE correctly
-                # For now, we'll return all fetched emails and let the user configure the query
-                # If needed, we can add date filtering here based on email['date']
                 
                 return emails
             finally:

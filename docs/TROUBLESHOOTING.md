@@ -171,19 +171,12 @@ IMAPConnectionError: IMAP connection failed: ...
 - Ensure `port: 143` in config for STARTTLS servers
 - The code will detect and use STARTTLS automatically
 
-### Server Doesn't Support KEYWORDS
+### Server Flag Support
 
-**Error:**
-```
-IMAPKeywordsNotSupportedError: Server does not support KEYWORDS
-```
+**Note:** The codebase uses IMAP FLAGS (which all IMAP servers support) instead of the KEYWORDS extension for better compatibility. Custom flags work the same way as keywords.
 
-**Note:** This error is deprecated. The codebase now uses FLAGS instead of KEYWORDS for better compatibility. If you see this error, update to the latest version.
-
-**Solution:**
-- The code automatically uses FLAGS (which all IMAP servers support)
-- Custom flags work the same way as keywords
-- See [docs/imap-keywords-vs-flags.md](imap-keywords-vs-flags.md) for details
+**For more information:**
+- See [docs/imap-keywords-vs-flags.md](imap-keywords-vs-flags.md) for details on FLAGS vs KEYWORDS
 
 ---
 

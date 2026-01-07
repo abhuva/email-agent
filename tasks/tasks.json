@@ -1101,7 +1101,7 @@
           "description": "Analyze the entire codebase to identify unused code, unreachable functions, dead imports, and other issues requiring cleanup. Create a comprehensive report documenting all findings with recommendations.",
           "dependencies": [],
           "details": "Implementation steps:\n1. Set up and configure static analysis tools (ESLint for JavaScript, Pylint for Python)\n2. Run static analysis on all Python files in src/ directory\n3. Identify and document:\n   - Unused variables, functions, and classes\n   - Unreachable code paths through dependency analysis\n   - Dead imports and unused dependencies\n   - Commented-out code blocks\n   - Duplicate code segments\n   - Deprecated API usage\n4. Create a detailed report with:\n   - List of all issues found, categorized by severity (critical, major, minor)\n   - Line numbers and file locations for each issue\n   - Specific recommendations for addressing each issue\n   - Potential risks associated with each cleanup action\n5. Prioritize issues based on severity and impact\n\nTesting approach:\n- Verify report accuracy by manually checking a sample of identified issues\n- Have another developer review the report for completeness\n- Ensure all src/ files were included in the analysis",
-          "status": "in-progress",
+          "status": "done",
           "parentTaskId": 17
         },
         {
@@ -1112,7 +1112,7 @@
             1
           ],
           "details": "Implementation steps:\n1. Create a new branch for cleanup changes from the main branch\n2. Address issues in order of severity, starting with critical issues:\n   - Remove unused variables, functions, and classes\n   - Eliminate unreachable code paths\n   - Clean up dead imports and unused dependencies\n   - Remove commented-out code blocks\n   - Refactor duplicate code segments\n   - Update deprecated API usage\n3. Commit changes in logical, atomic units with descriptive commit messages\n4. For each significant change, add comments explaining the rationale\n5. Standardize code formatting across the codebase\n6. Update import statements and dependencies as needed\n7. Maintain a detailed changelog of all modifications\n\nTesting approach:\n- Run unit tests after each significant change to catch immediate issues\n- Perform manual testing of affected components\n- Review changes with another developer before proceeding to full test verification",
-          "status": "pending",
+          "status": "in-progress",
           "parentTaskId": 17
         },
         {
