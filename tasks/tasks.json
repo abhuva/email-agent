@@ -1084,6 +1084,60 @@
           "parentTaskId": 16
         }
       ]
+    },
+    {
+      "id": 17,
+      "title": "Codebase Cleanup and Documentation Consolidation",
+      "description": "Analyze the codebase to identify and remove unused code while consolidating duplicate documentation files to improve maintainability and developer experience.",
+      "details": "This task consists of three main phases:\n\n1. **Analysis Phase**:\n   - Use static code analysis tools (e.g., ESLint for JavaScript, Pylint for Python) to identify unused variables, functions, and classes\n   - Perform dependency analysis to find unreachable code paths\n   - Check for duplicate code blocks and opportunities for refactoring\n   - Identify deprecated API usage\n   - Create a detailed report documenting all findings with recommendations for each issue\n   - Categorize issues by severity (critical, major, minor)\n\n2. **Implementation Phase**:\n   - Create a branch for cleanup changes\n   - Address issues in order of severity, starting with critical issues\n   - Commit changes in logical, atomic units with descriptive messages\n   - For each significant change, add comments explaining the rationale\n   - Update import statements and dependencies as needed\n   - Remove commented-out code blocks that are no longer needed\n   - Standardize code formatting across the codebase\n\n3. **Documentation Consolidation**:\n   - Compare COMPLETE_GUIDE.md and MAIN_DOCS.md to identify unique and overlapping content\n   - Create a new unified documentation structure that preserves all important information\n   - Include a section on architectural decisions and implementation history\n   - Update all internal documentation links\n   - Archive the original files with clear notes about the consolidation\n   - Update any references to the old documentation files in the codebase\n\nThroughout the process, maintain a detailed changelog of all modifications for review.",
+      "testStrategy": "Testing will occur at multiple stages to ensure the cleanup doesn't break existing functionality:\n\n1. **Pre-Implementation Testing**:\n   - Run the full test suite before making any changes to establish a baseline\n   - Document test coverage metrics and identify areas with insufficient coverage\n   - Add tests for critical areas with poor coverage before proceeding\n\n2. **Incremental Testing**:\n   - After each logical group of changes, run relevant unit and integration tests\n   - Perform manual testing of affected features\n   - Use git bisect if any regressions are discovered to identify the problematic change\n\n3. **Final Verification**:\n   - Run the complete test suite including unit, integration, and end-to-end tests\n   - Compare test results with the baseline to ensure no regressions\n   - Verify all CI/CD pipelines complete successfully\n   - Conduct peer code review of all changes\n   - Test documentation links to ensure they correctly point to the new consolidated docs\n   - Have another team member follow the consolidated documentation to verify clarity and completeness\n   - Create a summary report comparing before/after metrics (code size, test coverage, build time)",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Perform Static Code Analysis and Generate Cleanup Report",
+          "description": "Analyze the entire codebase to identify unused code, unreachable functions, dead imports, and other issues requiring cleanup. Create a comprehensive report documenting all findings with recommendations.",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Set up and configure static analysis tools (ESLint for JavaScript, Pylint for Python)\n2. Run static analysis on all Python files in src/ directory\n3. Identify and document:\n   - Unused variables, functions, and classes\n   - Unreachable code paths through dependency analysis\n   - Dead imports and unused dependencies\n   - Commented-out code blocks\n   - Duplicate code segments\n   - Deprecated API usage\n4. Create a detailed report with:\n   - List of all issues found, categorized by severity (critical, major, minor)\n   - Line numbers and file locations for each issue\n   - Specific recommendations for addressing each issue\n   - Potential risks associated with each cleanup action\n5. Prioritize issues based on severity and impact\n\nTesting approach:\n- Verify report accuracy by manually checking a sample of identified issues\n- Have another developer review the report for completeness\n- Ensure all src/ files were included in the analysis",
+          "status": "pending",
+          "parentTaskId": 17
+        },
+        {
+          "id": 2,
+          "title": "Implement Code Cleanup Based on Analysis Report",
+          "description": "Execute the cleanup recommendations from the analysis report by removing unused code, fixing imports, eliminating dead code, and addressing all identified issues.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a new branch for cleanup changes from the main branch\n2. Address issues in order of severity, starting with critical issues:\n   - Remove unused variables, functions, and classes\n   - Eliminate unreachable code paths\n   - Clean up dead imports and unused dependencies\n   - Remove commented-out code blocks\n   - Refactor duplicate code segments\n   - Update deprecated API usage\n3. Commit changes in logical, atomic units with descriptive commit messages\n4. For each significant change, add comments explaining the rationale\n5. Standardize code formatting across the codebase\n6. Update import statements and dependencies as needed\n7. Maintain a detailed changelog of all modifications\n\nTesting approach:\n- Run unit tests after each significant change to catch immediate issues\n- Perform manual testing of affected components\n- Review changes with another developer before proceeding to full test verification",
+          "status": "pending",
+          "parentTaskId": 17
+        },
+        {
+          "id": 3,
+          "title": "Verify Codebase Functionality with Comprehensive Testing",
+          "description": "Run the full test suite to ensure that the cleanup changes haven't broken any functionality and that the codebase remains stable.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation steps:\n1. Ensure all test dependencies are installed and up-to-date\n2. Run the complete test suite on the cleanup branch\n3. Document any test failures in detail\n4. For each test failure:\n   - Determine if it's related to the cleanup changes\n   - Fix issues while maintaining the cleanup goals\n   - Re-run failed tests to verify fixes\n5. Perform integration testing to ensure components work together correctly\n6. Run performance tests to ensure cleanup didn't negatively impact performance\n7. Create a test verification report documenting:\n   - Test coverage statistics\n   - Any issues found and resolved\n   - Confirmation of passing tests\n\nTesting approach:\n- Use automated test runners to execute all unit, integration, and system tests\n- Perform manual testing of critical user flows\n- Compare test results with pre-cleanup baseline\n- Verify edge cases are still handled correctly",
+          "status": "pending",
+          "parentTaskId": 17
+        },
+        {
+          "id": 4,
+          "title": "Consolidate and Modernize Documentation",
+          "description": "Review all documentation files, identify and merge duplicates, preserve important historical context, and remove outdated information while maintaining decision rationale.",
+          "dependencies": [
+            3
+          ],
+          "details": "Implementation steps:\n1. Review all documentation files in the docs/ directory\n2. Identify duplicate documentation (specifically COMPLETE_GUIDE.md and MAIN_DOCS.md)\n3. Create a documentation consolidation plan:\n   - Map overlapping content between files\n   - Identify unique content in each file\n   - Design a new unified documentation structure\n4. Implement the consolidation:\n   - Create new consolidated documentation files\n   - Preserve important historical context and implementation decisions\n   - Maintain rationale for architectural and design decisions\n   - Remove outdated or redundant information\n   - Update all internal documentation links\n5. Archive original files with clear notes about the consolidation\n6. Update any references to old documentation files in the codebase\n7. Create a documentation changelog detailing what was consolidated and why\n\nTesting approach:\n- Have team members review the consolidated documentation for clarity and completeness\n- Verify all internal links work correctly\n- Check that all important historical context and decision rationale is preserved\n- Ensure the documentation accurately reflects the current state of the codebase after cleanup",
+          "status": "pending",
+          "parentTaskId": 17
+        }
+      ]
     }
   ],
   "metadata": {
