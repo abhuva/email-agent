@@ -325,7 +325,7 @@
       "id": 6,
       "title": "Implement conditional summarization logic",
       "description": "Create the system to conditionally generate summaries based on email tags",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1,
         2
@@ -346,7 +346,7 @@
           "id": 2,
           "title": "Implement email tag checking logic",
           "description": "Create a function that checks if an email's tags intersect with summarization_tags.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -356,7 +356,7 @@
           "id": 3,
           "title": "Implement prompt file loading with error handling",
           "description": "Create a function to load the summarization prompt from the configured file path with comprehensive error handling.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Read prompt file from configured path using filesystem API. Catch FileNotFoundError, PermissionError, and other IO exceptions. Return None on any file error and log specific error message. Validate loaded content is non-empty string."
         },
@@ -376,7 +376,7 @@
           "id": 5,
           "title": "Integrate into email processing pipeline with graceful degradation",
           "description": "Add the conditional summarization logic to the main email processing flow with comprehensive logging.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -400,7 +400,7 @@
           "id": 1,
           "title": "Create prompt template for email summarization",
           "description": "Design and implement a structured prompt template that combines the loaded prompt with email content to generate concise summaries focusing on key points and action items.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Load the existing prompt configuration. Create a prompt formatter using f-strings or a templating library (e.g., Jinja2) that injects email fields: subject, sender, body, date. Structure the prompt to explicitly request: 1) 2-3 sentence summary of main content, 2) bullet-point list of action items, 3) priority level (low/medium/high). Test template rendering with sample email data to ensure proper formatting and token limits."
         },
@@ -439,7 +439,7 @@
           "id": 5,
           "title": "Add logging, monitoring, and integration wrapper",
           "description": "Implement production-ready logging, metrics, and a complete wrapper function that integrates all previous subtasks with proper error boundaries.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

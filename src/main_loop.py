@@ -18,6 +18,7 @@ from src.openrouter_client import OpenRouterClient, send_email_prompt_for_keywor
 from src.email_tagging import process_email_with_ai_tags
 from src.email_truncation import truncate_email_body, get_max_truncation_length
 from src.summarization import check_summarization_required
+from src.email_summarization import generate_email_summary
 
 logger = logging.getLogger(__name__)
 
@@ -259,11 +260,38 @@ def run_email_processing_loop(
                                     try:
                                         summarization_result = check_summarization_required(email_with_tags, config)
                                         
-                                        # Store summarization result in email dict for later use (Task 7, 8)
+                                        # Store summarization result in email dict for later use (Task 8)
                                         email['summarization'] = summarization_result
                                         
                                         if summarization_result['summarize']:
                                             logger.info(f"Summarization required for email UID {email_uid} (tags: {content_tags})")
+                                            
+                                            # V2: Generate summary using LLM (Task 7)
+                                            try:
+                                                summary_result = generate_email_summary(
+                                                    email,
+                                                    client,
+                                                    config,
+                                                    summarization_result
+                                                )
+                                                
+                                                # Store summary result in email dict for note creation (Task 8)
+                                                email['summary'] = summary_result
+                                                
+                                                if summary_result['success']:
+                                                    logger.info(f"Successfully generated summary for email UID {email_uid}")
+                                                else:
+                                                    logger.warning(f"Summary generation failed for email UID {email_uid}: {summary_result.get('error', 'unknown')}")
+                                            except Exception as e:
+                                                # Graceful degradation - log but continue
+                                                logger.error(f"Error generating summary for email UID {email_uid}: {e}", exc_info=True)
+                                                email['summary'] = {
+                                                    'success': False,
+                                                    'summary': '',
+                                                    'action_items': [],
+                                                    'priority': 'medium',
+                                                    'error': f'summary_generation_error: {str(e)}'
+                                                }
                                         else:
                                             reason = summarization_result.get('reason', 'unknown')
                                             logger.debug(f"Summarization not required for email UID {email_uid}: {reason}")
