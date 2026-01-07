@@ -1,3 +1,13 @@
+"""
+IMAP connection and email fetching utilities.
+
+This module provides:
+- IMAP connection management with SSL/TLS support
+- Email search and fetching with configurable query exclusions
+- Email parsing and flag/tag management
+- Safe IMAP operations with retry logic
+"""
+
 import imaplib
 import os
 import logging
@@ -32,16 +42,6 @@ class IMAPFetchError(Exception):
     """
     pass
 
-
-"""
-IMAP connection and email fetching utilities.
-
-This module provides:
-- IMAP connection management with SSL/TLS support
-- Email search and fetching with configurable query exclusions
-- Email parsing and flag/tag management
-- Safe IMAP operations with retry logic
-"""
 
 def connect_imap(host: str, user: str, password: str, port: int = 993):
     """
