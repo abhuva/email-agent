@@ -11,6 +11,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - [Logging System](logging-system.md)
 - [IMAP Fetching](imap-fetching.md)
 - [Prompt Pipeline / Markdown Management](prompts.md)
+- [Conditional Summarization System](summarization.md) (V2)
 - [Task Master Project Management](../README-task-master.md)
 
 ## Onboarding / Loading AI Context

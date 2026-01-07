@@ -10,6 +10,7 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 
 ## Features
 
+### V1 Features (Complete)
 - **IMAP Email Fetching**: Secure connection to IMAP servers with STARTTLS/SSL support
 - **AI Classification**: Uses OpenRouter API to classify emails as Urgent, Neutral, or Spam
 - **Non-Destructive Tagging**: Adds IMAP flags to emails without modifying content
@@ -17,6 +18,14 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **Configurable Limits**: Control processing limits per run and email body truncation
 - **Error Handling**: Robust error handling with retry logic and graceful degradation
 - **TDD-Based**: Test-driven development with comprehensive test coverage
+
+### V2 Features (In Progress)
+- **Obsidian Integration**: Automatically creates structured Markdown notes in Obsidian vaults
+- **YAML Frontmatter**: Rich metadata in note files for Obsidian linking and filtering
+- **Email Body Conversion**: Converts HTML emails to clean Markdown format
+- **Conditional Summarization**: AI-powered summaries for emails with specific tags (cost-effective)
+- **Flexible IMAP Queries**: Configurable email selection queries beyond just UNSEEN
+- **Changelog Tracking**: Audit log of all processed emails in Markdown format
 
 ---
 
@@ -183,6 +192,7 @@ Generate analytics summary → Exit
 - **[Logging System](docs/logging-system.md)** — Logger, analytics, config, test patterns
 - **[IMAP Email Fetching](docs/imap-fetching.md)** — IMAP workflow, error handling, FLAGS vs KEYWORDS
 - **[Prompt Loader](docs/prompts.md)** — How AI prompts are loaded and managed
+- **[Conditional Summarization](docs/summarization.md)** — V2 summarization system for tagged emails
 - **[Main Documentation Map](docs/MAIN_DOCS.md)** — Centralized documentation index
 - **[Task Master Workflow](README-task-master.md)** — AI-driven task/project management
 
