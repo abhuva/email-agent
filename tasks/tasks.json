@@ -261,7 +261,7 @@
       "id": 5,
       "title": "Develop email body sanitization and Markdown conversion",
       "description": "Create functionality to clean and convert email body content to Markdown format",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3
       ],
@@ -281,7 +281,7 @@
           "id": 2,
           "title": "Build HTML to Markdown conversion core",
           "description": "Convert sanitized HTML to Markdown, preserving essential formatting like headings, paragraphs, emphasis, and links.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -291,7 +291,7 @@
           "id": 3,
           "title": "Add list and structural element conversion",
           "description": "Handle complex structural elements including lists, blockquotes, and code blocks during HTML to Markdown conversion.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -301,7 +301,7 @@
           "id": 4,
           "title": "Implement plain text to Markdown enhancement",
           "description": "Convert plain text emails to enhanced Markdown, detecting and converting natural formatting patterns.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -338,7 +338,7 @@
           "id": 1,
           "title": "Implement tag matching configuration access",
           "description": "Create a function to safely access the summarization_tags configuration and validate its structure.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Read the summarization_tags from the configuration file/system. Add validation to ensure it's a non-empty list of strings. Return empty list if config is missing or invalid. Log warning message for invalid config but do not raise exceptions."
         },
@@ -364,7 +364,7 @@
           "id": 4,
           "title": "Create main conditional summarization decision function",
           "description": "Implement the core function that orchestrates tag checking and prompt loading to determine if summarization should proceed.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

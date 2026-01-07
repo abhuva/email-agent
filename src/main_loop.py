@@ -17,6 +17,7 @@ from src.imap_connection import fetch_emails, safe_imap_operation, IMAPFetchErro
 from src.openrouter_client import OpenRouterClient, send_email_prompt_for_keywords, extract_keywords_from_openrouter_response, OpenRouterAPIError
 from src.email_tagging import process_email_with_ai_tags
 from src.email_truncation import truncate_email_body, get_max_truncation_length
+from src.summarization import check_summarization_required
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +244,37 @@ def run_email_processing_loop(
                                         analytics['tag_breakdown'][keyword] = 0
                                     analytics['tag_breakdown'][keyword] += 1
                                     logger.info(f"Successfully processed and tagged email UID {email_uid} ({total_processed_this_run}/{max_emails_to_process if max_emails_to_process else '∞'})")
+                                    
+                                    # V2: Check if summarization is required (Task 6)
+                                    # Get applied tags (excluding processed_tag for summarization check)
+                                    applied_tags = result.get('applied_tags', [])
+                                    # Filter out processed_tag and AIProcessingFailed for summarization check
+                                    content_tags = [tag for tag in applied_tags 
+                                                   if tag not in [config.processed_tag, AI_PROCESSING_FAILED_FLAG]]
+                                    
+                                    # Create email dict with tags for summarization check
+                                    email_with_tags = {**email, 'tags': content_tags}
+                                    
+                                    # Check if summarization is required
+                                    try:
+                                        summarization_result = check_summarization_required(email_with_tags, config)
+                                        
+                                        # Store summarization result in email dict for later use (Task 7, 8)
+                                        email['summarization'] = summarization_result
+                                        
+                                        if summarization_result['summarize']:
+                                            logger.info(f"Summarization required for email UID {email_uid} (tags: {content_tags})")
+                                        else:
+                                            reason = summarization_result.get('reason', 'unknown')
+                                            logger.debug(f"Summarization not required for email UID {email_uid}: {reason}")
+                                    except Exception as e:
+                                        # Graceful degradation - never let summarization check break the pipeline
+                                        logger.warning(f"Error checking summarization requirement for email UID {email_uid}: {e}", exc_info=True)
+                                        email['summarization'] = {
+                                            'summarize': False,
+                                            'prompt': None,
+                                            'reason': f'check_error: {str(e)}'
+                                        }
                                     
                                     # Check if we've hit the limit after this email
                                     if max_emails_to_process and total_processed_this_run >= max_emails_to_process:
