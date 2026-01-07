@@ -997,7 +997,93 @@
       "dependencies": [
         2
       ],
-      "priority": "low"
+      "priority": "low",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update ConfigManager with IMAP Query Exclusion Settings",
+          "description": "Add a new configuration section for IMAP query exclusions with options to customize tag exclusions and disable idempotency checks.",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Add a new 'imap_query_exclusions' section to the ConfigManager class\n2. Create the following configuration options:\n   - exclude_tags: List of tags to exclude (default to ['Obsidian-Note-Created', 'Note-Creation-Failed', 'AIProcessed'])\n   - additional_exclude_tags: List of additional tags to exclude (default to empty list)\n   - disable_idempotency: Boolean flag to disable all tag exclusions (default to False)\n3. Implement validation logic to ensure exclude_tags is a list of strings\n4. Add methods to get the combined list of exclude_tags (base + additional)\n5. Update config loading and validation functions\n\nTesting approach:\n- Unit test the ConfigManager with various valid and invalid configurations\n- Test that default values are correctly applied when not specified\n- Verify validation catches improper configuration types\n\n<info added on 2026-01-07T17:29:56.868Z>\nCorrection to default tag names:\n- The default exclude_tags should be ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed'] as IMAP servers don't allow hyphens in flag names\n- When implementing validation logic, add a check to ensure no tag contains hyphens or spaces\n- Add a helper method to sanitize tag names by removing hyphens and converting to camelCase\n- Consider adding a warning log when a user tries to configure tags with invalid characters\n- Update documentation to clarify that IMAP flags must follow RFC3501 specifications (alphanumeric characters, underscores, and periods only)\n</info added on 2026-01-07T17:29:56.868Z>",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 2,
+          "title": "Create Flexible IMAP Query Builder Function",
+          "description": "Implement a new function that builds IMAP queries with configurable exclusion tags and supports disabling idempotency checks.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a new function `build_imap_query_with_exclusions()` in imap_connection.py that takes:\n   - user_query: The base query string\n   - exclude_tags: List of tags to exclude\n   - disable_idempotency: Flag to bypass tag exclusions\n2. Implement logic to build IMAP query with NOT KEYWORD clauses for each exclude tag\n3. Handle special cases:\n   - Empty exclude_tags list\n   - When disable_idempotency is True (return user_query directly)\n   - When user_query is empty or None\n4. Ensure proper IMAP syntax with parentheses and operators\n\nTesting approach:\n- Unit test with various combinations of inputs\n- Verify correct IMAP query syntax is generated\n- Test edge cases (empty lists, None values, etc.)\n- Benchmark query generation performance",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 3,
+          "title": "Refactor search_emails_excluding_processed() Function",
+          "description": "Update the existing search function to use the new query builder while maintaining backward compatibility.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation steps:\n1. Refactor search_emails_excluding_processed() to accept a list parameter 'exclude_tags' instead of individual tag parameters\n2. Add a 'disable_idempotency' parameter with default value False\n3. Use the new build_imap_query_with_exclusions() function internally\n4. Maintain backward compatibility by setting default values that match current behavior\n5. Update function documentation to reflect new parameters\n6. Ensure error handling is consistent\n\nTesting approach:\n- Unit test the refactored function with various parameter combinations\n- Verify backward compatibility with existing code\n- Test that queries are correctly passed to the IMAP connection\n- Test error handling scenarios",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 4,
+          "title": "Update fetch_emails() Function Signature and Implementation",
+          "description": "Modify the fetch_emails() function to accept and pass through the new configuration parameters.",
+          "dependencies": [
+            3
+          ],
+          "details": "Implementation steps:\n1. Update the fetch_emails() function signature to accept:\n   - exclude_tags parameter (default to None to use system defaults)\n   - disable_idempotency parameter (default to False)\n2. Pass these parameters to search_emails_excluding_processed() call\n3. Update function documentation to explain the new parameters\n4. Ensure backward compatibility with existing code\n5. Add parameter validation if needed\n\nTesting approach:\n- Unit test with various parameter combinations\n- Verify parameters are correctly passed to search_emails_excluding_processed()\n- Test backward compatibility\n- Integration test with mock IMAP server",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 5,
+          "title": "Update main_loop.py to Use Configurable Query Parameters",
+          "description": "Modify the main application loop to pass configuration values to the email fetching functions.",
+          "dependencies": [
+            1,
+            4
+          ],
+          "details": "Implementation steps:\n1. Update the email processing code in main_loop.py to read the new configuration values\n2. Pass config.exclude_tags and config.disable_idempotency to fetch_emails() calls\n3. Ensure proper error handling if configuration is invalid\n4. Add logging for which exclusion tags are being used\n5. Consider adding a startup validation to warn about potentially problematic configurations\n\nTesting approach:\n- Integration test with different configuration settings\n- Verify configuration values are correctly passed to fetch_emails()\n- Test error handling for invalid configurations\n- Test logging output",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 6,
+          "title": "Implement Comprehensive Testing Suite",
+          "description": "Create a suite of unit and integration tests to verify the new query filtering system works correctly.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "Implementation steps:\n1. Create unit tests for the new build_imap_query_with_exclusions() function\n   - Test various combinations of queries and exclusion tags\n   - Test edge cases (empty lists, None values)\n   - Test disable_idempotency flag behavior\n2. Create unit tests for the updated search_emails_excluding_processed() function\n   - Test backward compatibility\n   - Test with custom exclude_tags\n3. Create integration tests that verify:\n   - Default behavior matches current system\n   - Custom configurations work as expected\n   - Performance impact is acceptable\n4. Test error handling and validation\n5. Create test fixtures for different configuration scenarios\n\nTesting approach:\n- Use pytest for all tests\n- Create mock IMAP server responses for integration tests\n- Measure and compare performance with different configurations\n- Test with large tag lists to ensure performance",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 7,
+          "title": "Update Documentation and Configuration Examples",
+          "description": "Update user documentation and configuration examples to explain the new query filtering options.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "Implementation steps:\n1. Update config.yaml.example with the new imap_query_exclusions section\n   - Include commented examples of different configurations\n   - Explain default values\n2. Update COMPLETE_GUIDE.md with:\n   - Explanation of the new configuration options\n   - Examples of common use cases\n   - Migration notes for existing users\n3. Add inline code documentation for all new and modified functions\n4. Create a specific section in the docs explaining the query filtering system\n5. Add examples of how to use the system for different scenarios\n6. Document any performance considerations\n\nTesting approach:\n- Review documentation for clarity and completeness\n- Verify all examples are correct and work as described\n- Have another team member review the documentation\n- Ensure backward compatibility is clearly explained",
+          "status": "pending",
+          "parentTaskId": 16
+        }
+      ]
     }
   ],
   "metadata": {
