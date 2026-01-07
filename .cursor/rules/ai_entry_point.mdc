@@ -1,0 +1,46 @@
+---
+description: AI agent entry point and project structure reference
+globs: **/*
+alwaysApply: true
+---
+
+# AI Agent Entry Point
+
+**For AI agents working on this project, always start with [README-AI.md](mdc:README-AI.md).**
+
+## Required Reading Order
+
+1. **[README-AI.md](mdc:README-AI.md)** - Complete project structure, architecture, and development context (optimized for AI agents)
+2. **[pdd_v2.md](mdc:pdd_v2.md)** - Current product requirements and V2 features
+3. **Task Master:** Run `task-master next` to see current task context
+4. **Module docs:** Review relevant docs in `docs/` as needed
+
+## Key Files for AI Agents
+
+- **[README-AI.md](mdc:README-AI.md)** - Primary entry point (project structure, architecture, key concepts)
+- **[pdd_v2.md](mdc:pdd_v2.md)** - Product requirements (current focus: V2)
+- **[docs/MAIN_DOCS.md](mdc:docs/MAIN_DOCS.md)** - Documentation index
+- **[tasks/tasks.json](mdc:tasks/tasks.json)** - Current task state
+
+## Development Rules
+
+- **Always commit tasks.json after status changes** - See [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc)
+- **Commit after each subtask** - See [git_commits.mdc](mdc:.cursor/rules/git_commits.mdc)
+- **Use Task Master tools** - See [taskmaster.mdc](mdc:.cursor/rules/taskmaster.mdc)
+
+## Project Status
+
+- **V1:** Complete (Email Tagging)
+- **V2:** In Progress (Obsidian Integration)
+- **Current Task:** Check `tasks/tasks.json` or run `task-master next`
+
+## Important Patterns
+
+- **Error Handling:** Use `log_error_with_context()` from `src/error_handling.py`
+- **IMAP Operations:** Use `safe_imap_operation()` context manager
+- **Configuration:** Access via `ConfigManager` instance
+- **Testing:** 334 tests total, all passing
+
+---
+
+**Note:** README.md is for human users. README-AI.md is optimized for AI agents with complete project structure and context.

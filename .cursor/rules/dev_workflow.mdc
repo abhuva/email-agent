@@ -1,0 +1,22 @@
+---
+description: Enforce updating Task Master after EVERY subtask and parent task completion, with a required commit before proceeding.
+globs: *
+alwaysApply: true
+---
+
+- **After completing ANY subtask or parent task:**
+ - Update task status via Task Master (e.g., `task-master set-status --id=5.1 --status=done`).
+ - Immediately stage (`git add tasks/tasks.json`) and commit (`git commit`) the updated tasks file before ANY further development, testing, or refactoring.
+- **Rationale:** This maintains the project as a true source of progress, prevents drift, and always enables instant context-resume for both human and AI contributors.
+- **Sample workflow:**
+ ```sh
+ task-master set-status --id=5.1 --status=done
+ git add tasks/tasks.json
+ git commit -m "chore(tasks): Mark OpenRouter client subtask 5.1 complete"
+ ```
+- Never continue to the next code or doc change until new status is marked and versioned in git.
+
+- **For AI Agents Starting Work:**
+ - Always read [README-AI.md](mdc:README-AI.md) first for complete project context
+ - Then review [pdd_v2.md](mdc:pdd_v2.md) for current requirements
+ - Check task status with `task-master next` or review `tasks/tasks.json`
