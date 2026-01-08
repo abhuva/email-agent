@@ -7,7 +7,7 @@ as specified in pdd.md Section 3.1.
 All configuration parameters must match the PDD specification exactly.
 """
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 import os
 
 
@@ -31,9 +31,10 @@ class ImapConfig(BaseModel):
     @field_validator('password_env')
     @classmethod
     def validate_password_env(cls, v: str) -> str:
-        """Validate password environment variable is set."""
-        if not os.environ.get(v):
-            raise ValueError(f"Environment variable '{v}' must be set (security requirement)")
+        """Validate password environment variable name is provided."""
+        if not v or not v.strip():
+            raise ValueError("password_env must be specified (security requirement)")
+        # Note: Actual env var value is validated when accessed via settings.get_imap_password()
         return v
 
 
@@ -99,9 +100,10 @@ class OpenRouterConfig(BaseModel):
     @field_validator('api_key_env')
     @classmethod
     def validate_api_key_env(cls, v: str) -> str:
-        """Validate API key environment variable is set."""
-        if not os.environ.get(v):
-            raise ValueError(f"Environment variable '{v}' must be set (security requirement)")
+        """Validate API key environment variable name is provided."""
+        if not v or not v.strip():
+            raise ValueError("api_key_env must be specified (security requirement)")
+        # Note: Actual env var value is validated when accessed via settings.get_openrouter_api_key()
         return v
 
 
@@ -141,10 +143,10 @@ class V3ConfigSchema(BaseModel):
     openrouter: OpenRouterConfig
     processing: ProcessingConfig
 
-    class Config:
-        """Pydantic model configuration."""
-        extra = "forbid"  # Reject any extra fields not in schema
-        validate_assignment = True  # Validate on assignment
+    model_config = ConfigDict(
+        extra="forbid",  # Reject any extra fields not in schema
+        validate_assignment=True  # Validate on assignment
+    )
 
     @model_validator(mode='after')
     def validate_paths_exist(self) -> 'V3ConfigSchema':
