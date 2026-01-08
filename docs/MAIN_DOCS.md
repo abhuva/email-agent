@@ -4,8 +4,8 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Essential System Docs
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
-- [pdd.md](../pdd.md) — Product Design Document V1 (✅ Complete), including business context, acceptance criteria, and non-technical requirements.
-- [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (🚧 In Progress), outlining Obsidian integration and note creation features.
+- [pdd.md](../pdd.md) — Product Design Document V3 (✅ In Progress), foundational upgrade with score-based classification, CLI controls, and templating.
+- [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete), outlining Obsidian integration and note creation features.
 
 ## User Guides
 - **[Complete Guide](COMPLETE_GUIDE.md)** — Comprehensive user guide covering installation, configuration, usage, Obsidian integration, troubleshooting, and deployment (for end users).
@@ -18,6 +18,12 @@ This is the top-level guide for all docs, implementation details, and project st
 - [Conditional Summarization System](summarization.md) (V2)
 - [Task Master Project Management](../README-task-master.md)
 
+## V3 Module Documentation
+- **[V3 Configuration Guide](v3-configuration.md)** — V3 configuration system, schema, and settings facade
+- **[V3 Migration Guide](v3-migration-guide.md)** — Migrating from V2 to V3 configuration patterns
+- **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6)
+- **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds
+
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:
 - [Refactoring Flags Plan](refactoring-flags-plan.md) — Historical refactoring plan for IMAP flags
@@ -29,14 +35,15 @@ The following documents provide historical context and implementation decisions:
 
 ## Onboarding / Loading AI Context
 1. Read the [README](../README.md) for system structure and tasking.
-2. Open [pdd_v2.md](../pdd_v2.md) for current V2 requirements and roadmap (we're working on V2 now).
+2. Open [pdd.md](../pdd.md) for current V3 requirements and roadmap (we're working on V3 now).
 3. Use Task Master CLI: `task-master list`, `task-master next` for current project todo/context state.
 4. Browse module docs for implementation specifics and quick code/testing examples.
 
 > **For Cursor or AI Agents:**
 > - Always load this file and README.md first!
-> - Then, review the PDD V2 and module docs as needed.
-> - **Current Focus:** V2 (Obsidian Integration) - see [pdd_v2.md](../pdd_v2.md)
+> - Then, review the PDD V3 and module docs as needed.
+> - **Current Focus:** V3 (Foundational Upgrade) - see [pdd.md](../pdd.md)
+> - **V3 Status:** Tasks 1-6 complete (Configuration, CLI, IMAP, LLM, Prompts, Decision Logic)
 
 > **For End Users:**
 > - Start with the [Complete Guide](COMPLETE_GUIDE.md) for installation and usage
