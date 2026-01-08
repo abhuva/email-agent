@@ -28,6 +28,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6)
 - **[V3 Note Generator](v3-note-generator.md)** — Jinja2 templating system for Markdown note generation (Tasks 7-8)
 - **[V3 Logging Integration](v3-logging-integration.md)** — Dual logging system (operational logs + structured analytics) (Task 9)
+- **[V3 Force-Reprocess](v3-force-reprocess.md)** — Force-reprocess capability for reprocessing already-processed emails (Task 12)
 
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:
