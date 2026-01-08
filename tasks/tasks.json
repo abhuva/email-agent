@@ -1216,7 +1216,7 @@
           "id": "18.7",
           "title": "Implement integration tests for cleanup-flags command",
           "description": "Create integration tests for the cleanup-flags command, testing its interaction with the IMAP system and verification mechanisms.",
-          "status": "pending",
+          "status": "done",
           "priority": "medium"
         },
         {
