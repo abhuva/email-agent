@@ -16,6 +16,10 @@ imap:
   query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
                                        # The processed_tag exclusion is automatically added
   processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
+  application_flags:                   # Application-specific flags for cleanup command (Task 13)
+    - 'AIProcessed'                    # Flags managed by this application (safe to remove)
+    - 'ObsidianNoteCreated'            # These flags can be cleaned up using cleanup-flags command
+    - 'NoteCreationFailed'              # Default includes all V1/V2 processing flags
 
 # File and Directory Paths
 # All paths relative to project root unless absolute path specified

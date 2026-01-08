@@ -792,7 +792,7 @@
       "id": 13,
       "title": "Create cleanup-flags command",
       "description": "Implement a safeguarded command to remove application-specific flags from the mail server.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2,
         3
@@ -805,7 +805,7 @@
           "id": 1,
           "title": "Define configuration structure for application-specific IMAP flags",
           "description": "Create a configuration schema to define which IMAP flags are considered application-specific and should be managed by the cleanup command",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Implement a configuration section in the application's config file that allows users to define which IMAP flags are considered application-specific. The configuration should include: 1) A list of flag patterns to match (e.g., 'MyApp/*'), 2) Optional exclusion patterns, 3) Documentation on the format and impact of these settings. Ensure the configuration is validated when loaded and provide helpful error messages for invalid configurations. Use the settings.py facade to access these configuration values."
         },
@@ -813,7 +813,7 @@
           "id": 2,
           "title": "Implement flag scanning functionality",
           "description": "Create a module to scan and identify application-specific flags on emails based on the configuration",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -823,7 +823,7 @@
           "id": 3,
           "title": "Implement dry-run functionality",
           "description": "Create a command option and supporting code to preview flag removal operations without making changes",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -833,7 +833,7 @@
           "id": 4,
           "title": "Implement flag removal functionality with confirmation prompt",
           "description": "Create the core functionality to remove identified flags with a mandatory confirmation step as required by the PDD",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -843,7 +843,7 @@
           "id": 5,
           "title": "Implement detailed logging and integrate command into CLI",
           "description": "Add comprehensive logging of operations and integrate the new subcommand into the application's CLI structure",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4

@@ -231,21 +231,42 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
 
 
 @cli.command()
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    default=False,
+    help='Preview which flags would be removed without actually removing them.'
+)
 @click.pass_context
-def cleanup_flags(ctx: click.Context):
+def cleanup_flags(ctx: click.Context, dry_run: bool):
     """
-    Maintenance command to clean up IMAP processed flags.
+    Maintenance command to clean up application-specific IMAP flags.
     
-    This command removes the processed_tag from emails in the IMAP server.
-    Use this command if you need to reset the processing state.
+    This command removes only application-specific flags (as defined in configuration)
+    from emails in the IMAP server. Use this command if you need to reset the
+    processing state or clean up flags.
     
-    WARNING: This will mark all emails as unprocessed, which may cause
-    them to be reprocessed on the next run.
+    WARNING: This will remove application-specific flags from emails, which may
+    cause them to be reprocessed on the next run. This action cannot be undone.
     
-    This command requires explicit confirmation before execution.
+    This command requires explicit confirmation before execution (security requirement).
     """
     # Initialize config (lazy loading)
     _ensure_config_initialized(ctx)
+    
+    # Initialize logging
+    try:
+        from src.logger import LoggerFactory
+        log_file = settings.get_log_file()
+        logger_instance = LoggerFactory.create_logger(
+            name='email_agent',
+            level='INFO',
+            log_file=log_file,
+            console=True
+        )
+        logging.getLogger('email_agent').info("Logging initialized for cleanup-flags command")
+    except Exception as e:
+        click.echo(f"Warning: Could not initialize logging: {e}", err=True)
     
     # Create structured options object
     options = CleanupFlagsOptions(
@@ -256,36 +277,98 @@ def cleanup_flags(ctx: click.Context):
     # Store in context for potential use by other functions
     ctx.obj['cleanup_options'] = options
     
+    # Get application flags from settings
+    try:
+        application_flags = settings.get_imap_application_flags()
+        flags_list = ', '.join(application_flags)
+    except Exception as e:
+        click.echo(f"Error: Failed to load application flags configuration: {e}", err=True)
+        sys.exit(1)
+    
     # Display warning message
     click.echo("\n" + "=" * 70, err=True)
-    click.echo("WARNING: This command will remove processed flags from ALL emails", err=True)
+    click.echo("WARNING: This command will remove application-specific flags from emails", err=True)
     click.echo("in your IMAP mailbox. This action cannot be undone.", err=True)
     click.echo("=" * 70 + "\n", err=True)
     
-    # Get processed tag name from settings
-    try:
-        processed_tag = settings.get_imap_processed_tag()
-        click.echo(f"This will remove the '{processed_tag}' flag from all emails.")
-    except Exception:
-        click.echo("This will remove the processed flag from all emails.")
-    
+    click.echo(f"Application-specific flags to remove: {flags_list}")
     click.echo("\nThis may cause emails to be reprocessed on the next run.")
     
+    if dry_run:
+        click.echo("\n[DRY RUN MODE] No flags will actually be removed.")
+    
     # Mandatory confirmation prompt (PDD requirement)
-    confirmation = click.prompt(
-        "\nType 'yes' to confirm and proceed, or anything else to cancel",
-        type=str,
-        default='no'
-    )
+    if not dry_run:
+        confirmation = click.prompt(
+            "\nType 'yes' to confirm and proceed, or anything else to cancel",
+            type=str,
+            default='no'
+        )
+        
+        if confirmation.lower().strip() != 'yes':
+            click.echo("\nOperation cancelled. No flags were modified.", err=True)
+            sys.exit(0)
     
-    if confirmation.lower().strip() != 'yes':
-        click.echo("\nOperation cancelled. No flags were modified.", err=True)
-        sys.exit(0)
-    
-    # Confirmation received - proceed with cleanup
-    # TODO: This will be connected to IMAP client in Task 3
-    click.echo("\n[INFO] Cleanup logic will be implemented in Task 3 (IMAP client)")
-    click.echo("Confirmation received. Ready to proceed with flag cleanup.")
+    # Perform cleanup operation
+    try:
+        from src.cleanup_flags import CleanupFlags
+        
+        cleanup = CleanupFlags()
+        cleanup.connect()
+        
+        try:
+            # Scan for flags
+            click.echo("\nScanning emails for application-specific flags...")
+            scan_results = cleanup.scan_flags(dry_run=dry_run)
+            
+            if not scan_results:
+                click.echo("\nNo emails with application-specific flags found.")
+                cleanup.disconnect()
+                return options
+            
+            # Display scan results
+            formatted_results = cleanup.format_scan_results(scan_results)
+            click.echo(formatted_results)
+            
+            # Remove flags
+            if dry_run:
+                click.echo("\n[DRY RUN] Preview of what would be removed:")
+            else:
+                click.echo("\nRemoving application-specific flags...")
+            
+            summary = cleanup.remove_flags(scan_results, dry_run=dry_run)
+            
+            # Display summary
+            click.echo("\n" + "=" * 70)
+            click.echo("Cleanup Summary:")
+            click.echo(f"  Emails scanned: {summary.total_emails_scanned}")
+            click.echo(f"  Emails with flags: {summary.emails_with_flags}")
+            click.echo(f"  Flags removed: {summary.total_flags_removed}")
+            click.echo(f"  Emails modified: {summary.emails_modified}")
+            if summary.errors > 0:
+                click.echo(f"  Errors: {summary.errors}", err=True)
+            click.echo("=" * 70)
+            
+            if dry_run:
+                click.echo("\n[DRY RUN] No flags were actually removed.")
+            else:
+                click.echo("\nCleanup complete!")
+            
+            cleanup.disconnect()
+            
+            # Exit with error code if there were errors
+            if summary.errors > 0:
+                sys.exit(1)
+            
+        except Exception as e:
+            cleanup.disconnect()
+            raise
+        
+    except Exception as e:
+        click.echo(f"\nError during cleanup operation: {e}", err=True)
+        logger = logging.getLogger(__name__)
+        logger.error(f"Cleanup flags command failed: {e}", exc_info=True)
+        sys.exit(1)
     
     # Return options for programmatic use
     return options

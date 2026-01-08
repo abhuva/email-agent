@@ -131,6 +131,11 @@ class Settings:
         self._ensure_initialized()
         return self._config.imap.processed_tag
     
+    def get_imap_application_flags(self) -> list[str]:
+        """Get list of application-specific IMAP flags for cleanup command."""
+        self._ensure_initialized()
+        return self._config.imap.application_flags
+    
     # Paths Configuration Getters
     
     def get_template_file(self) -> str:

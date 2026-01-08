@@ -19,6 +19,11 @@ class ImapConfig(BaseModel):
     password_env: str = Field(default="IMAP_PASSWORD", description="Environment variable name for IMAP password")
     query: str = Field(default="ALL", description="IMAP search query")
     processed_tag: str = Field(default="AIProcessed", description="IMAP flag name for processed emails")
+    # Application-specific flags for cleanup command (Task 13)
+    application_flags: list[str] = Field(
+        default=["AIProcessed", "ObsidianNoteCreated", "NoteCreationFailed"],
+        description="List of application-specific IMAP flags that can be cleaned up. These flags are managed by this application and safe to remove."
+    )
 
     @field_validator('port')
     @classmethod
@@ -35,6 +40,20 @@ class ImapConfig(BaseModel):
         if not v or not v.strip():
             raise ValueError("password_env must be specified (security requirement)")
         # Note: Actual env var value is validated when accessed via settings.get_imap_password()
+        return v
+
+    @field_validator('application_flags')
+    @classmethod
+    def validate_application_flags(cls, v: list[str]) -> list[str]:
+        """Validate application flags list is not empty and contains valid flag names."""
+        if not v:
+            raise ValueError("application_flags cannot be empty (must specify at least one flag)")
+        # Validate flag names (IMAP flags should not contain spaces or special chars)
+        for flag in v:
+            if not flag or not flag.strip():
+                raise ValueError(f"Application flag cannot be empty: {v}")
+            if ' ' in flag or '\t' in flag:
+                raise ValueError(f"Application flag cannot contain spaces: {flag}")
         return v
 
 
