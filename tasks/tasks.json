@@ -277,7 +277,7 @@
       "id": 5,
       "title": "Design and implement score-based classification prompt",
       "description": "Create an effective LLM prompt that produces numerical scores for email importance and spam likelihood.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         4
       ],
@@ -289,7 +289,7 @@
           "id": 1,
           "title": "Define scoring criteria for email importance and spam detection",
           "description": "Create detailed criteria for scoring email importance (0-10) and spam likelihood (0-10)",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Research and define specific factors that determine email importance (e.g., sender relationship, urgency indicators, content relevance) and spam likelihood (e.g., suspicious links, keyword patterns, solicitation language). For each factor, specify how it contributes to the numerical score. Document these criteria in a structured format that can be incorporated into the prompt. Include edge cases and examples for each scoring level (0-10) to ensure consistent evaluation. Reference the PDD thresholds (processing.importance_threshold: 8, processing.spam_threshold: 5) to ensure alignment."
         },
@@ -297,7 +297,7 @@
           "id": 2,
           "title": "Draft initial LLM prompt template with scoring instructions",
           "description": "Create the core prompt that instructs the LLM how to analyze emails and generate numerical scores",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -307,7 +307,7 @@
           "id": 3,
           "title": "Implement configuration file structure for prompt customization",
           "description": "Design and implement a configuration file format that allows for easy prompt modification",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -317,7 +317,7 @@
           "id": 4,
           "title": "Develop prompt rendering function with configuration integration",
           "description": "Create a function that generates the final prompt by combining the template with configuration values",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -328,7 +328,7 @@
           "id": 5,
           "title": "Test and refine the prompt with sample emails",
           "description": "Evaluate the prompt's effectiveness with diverse email samples and refine as needed",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
