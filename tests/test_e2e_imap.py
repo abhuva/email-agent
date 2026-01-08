@@ -57,11 +57,34 @@ def has_imap_credentials() -> bool:
         if not config_path.exists() or not env_path.exists():
             return False
         
-        config = ConfigManager(str(config_path), str(env_path))
-        password_env_key = config.yaml['imap'].get('password_env', 'IMAP_PASSWORD')
-        password = os.getenv(password_env_key)
-        
-        return bool(password and config.yaml.get('imap', {}).get('server'))
+        # Try V3 Settings first
+        try:
+            settings = Settings()
+            settings.initialize(str(config_path), str(env_path))
+            password = settings.get_imap_password()
+            server = settings.get_imap_server()
+            # Reset settings instance
+            Settings._instance = None
+            Settings._config = None
+            return bool(password and server)
+        except Exception:
+            # Fall back to checking config file directly
+            import yaml
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Check if V3 format
+            if 'paths' in config and 'processing' in config:
+                password_env_key = config['imap'].get('password_env', 'IMAP_PASSWORD')
+                password = os.getenv(password_env_key)
+                server = config['imap'].get('server')
+                return bool(password and server)
+            else:
+                # V2 format - use ConfigManager
+                config_mgr = ConfigManager(str(config_path), str(env_path))
+                password_env_key = config_mgr.yaml['imap'].get('password_env', 'IMAP_PASSWORD')
+                password = os.getenv(password_env_key)
+                return bool(password and config_mgr.yaml.get('imap', {}).get('server'))
     except Exception:
         return False
 
@@ -72,11 +95,13 @@ def live_imap_config():
     if not has_imap_credentials():
         pytest.skip("IMAP credentials not available - skipping live E2E tests")
     
+    # For E2E tests, we use Settings (V3) directly
+    # ConfigManager is only used for credential checking
     config_path = project_root / 'config' / 'config.yaml'
     env_path = project_root / '.env'
-    config = ConfigManager(str(config_path), str(env_path))
     
-    return config
+    # Return the paths for Settings initialization
+    return {'config_path': str(config_path), 'env_path': str(env_path)}
 
 
 @pytest.fixture(scope="module")
@@ -113,7 +138,7 @@ def live_settings(live_imap_config):
 def test_email_uid(live_imap_client) -> Optional[str]:
     """Get a test email UID for testing (first unprocessed email)."""
     try:
-        emails = live_imap_client.get_unprocessed_emails(limit=1)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=1)
         if emails:
             return emails[0]['uid']
         return None
@@ -166,13 +191,13 @@ class TestE2EEmailRetrieval:
     
     def test_get_unprocessed_emails_returns_list(self, live_imap_client):
         """Test that get_unprocessed_emails returns a list."""
-        emails = live_imap_client.get_unprocessed_emails(limit=5)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=5)
         assert isinstance(emails, list)
         # May be empty if no unprocessed emails, which is OK
     
     def test_get_unprocessed_emails_structure(self, live_imap_client):
         """Test that retrieved emails have correct structure."""
-        emails = live_imap_client.get_unprocessed_emails(limit=1)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=1)
         
         if emails:
             email = emails[0]
@@ -189,8 +214,8 @@ class TestE2EEmailRetrieval:
             assert isinstance(email['from'], str)
     
     def test_get_unprocessed_emails_respects_limit(self, live_imap_client):
-        """Test that limit parameter is respected."""
-        emails = live_imap_client.get_unprocessed_emails(limit=3)
+        """Test that max_emails parameter is respected."""
+        emails = live_imap_client.get_unprocessed_emails(max_emails=3)
         assert len(emails) <= 3
     
     def test_get_email_by_uid(self, live_imap_client, test_email_uid):
@@ -265,14 +290,14 @@ class TestE2EFlagManagement:
             # First set the flag
             live_imap_client.set_flag(test_email_uid, test_flag)
             
-            # Then remove it
-            result = live_imap_client.remove_flag(test_email_uid, test_flag)
+            # Then remove it (using clear_flag method)
+            result = live_imap_client.clear_flag(test_email_uid, test_flag)
             assert result is True
             
         except Exception as e:
             # Cleanup on error
             try:
-                live_imap_client.remove_flag(test_email_uid, test_flag)
+                live_imap_client.clear_flag(test_email_uid, test_flag)
             except Exception:
                 pass
             raise
@@ -441,7 +466,7 @@ class TestE2EEmailTypes:
     
     def test_plain_text_email(self, live_imap_client):
         """Test retrieving and processing plain text emails."""
-        emails = live_imap_client.get_unprocessed_emails(limit=10)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
         
         # Find a plain text email (if available)
         plain_text_email = None
@@ -460,7 +485,7 @@ class TestE2EEmailTypes:
     
     def test_html_email(self, live_imap_client):
         """Test retrieving HTML emails."""
-        emails = live_imap_client.get_unprocessed_emails(limit=10)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
         
         # Find an HTML email (if available)
         html_email = None
@@ -479,7 +504,7 @@ class TestE2EEmailTypes:
     
     def test_email_with_attachments(self, live_imap_client):
         """Test retrieving emails with attachments."""
-        emails = live_imap_client.get_unprocessed_emails(limit=10)
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
         
         # Find an email with attachments (if available)
         # Note: Attachment detection may require parsing email structure

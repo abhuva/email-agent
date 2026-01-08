@@ -1,40 +1,30 @@
-# Example configuration for email-agent
 imap:
-  server: 'nica-network.netcup-mail.de'
+  server: nica-network.netcup-mail.de
   port: 143
-  username: 'marc.bielert@nica.network'
-  password_env: 'IMAP_PASSWORD'
-# IMAP search queries (list of IMAP search criteria)
-# Default: ['UNSEEN'] - fetches unread emails
-# The processed_tag exclusion is automatically added
-imap_queries:
-  - 'UNSEEN'
-prompt_file: 'config/prompt.md'
-tag_mapping:
-  urgent: 'Urgent'
-  neutral: 'Neutral'
-  spam: 'Spam'
-processed_tag: 'AIProcessed'
-max_body_chars: 4000
-max_emails_per_run: 15
-log_file: 'logs/agent.log'
-log_level: 'INFO'
-analytics_file: 'logs/analytics.jsonl'
+  username: marc.bielert@nica.network
+  password_env: IMAP_PASSWORD
+  query: ALL
+  processed_tag: AIProcessed
+  application_flags:
+  - AIProcessed
+  - ObsidianNoteCreated
+  - NoteCreationFailed
+paths:
+  template_file: config/note_template.md.j2
+  obsidian_vault: C:/Users/Marc Bielert/Nextcloud2/8. Emails
+  log_file: logs/agent.log
+  analytics_file: logs/analytics.jsonl
+  changelog_path: logs/email_changelog.md
+  prompt_file: config/prompt.md
 openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'
-  api_url: 'https://openrouter.ai/api/v1'
-  # model: 'openai/gpt-3.5-turbo'  # default fallback
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
-obsidian_vault_path: 'C:/Users/Marc Bielert/Nextcloud2/8. Emails'
-# Optional - only if you want summarization
-summarization_tags:
-  - 'Urgent'  # Or other tags you use
-summarization_prompt_path: 'config/summarization_prompt.md'
-
-# Optional - changelog tracking
-changelog_path: 'logs/email_changelog.md'
-
-# V2: Primary IMAP query (what emails to process)
-# No UNSEEN restriction - get all emails, then filter by sent date in code
-# Code-level filtering ensures only emails sent today or later are processed
-imap_query: 'ALL'  # Get all emails, date filtering happens in code
+  api_key_env: OPENROUTER_API_KEY
+  api_url: https://openrouter.ai/api/v1
+  model: google/gemini-2.5-flash-lite-preview-09-2025
+  temperature: 0.2
+  retry_attempts: 3
+  retry_delay_seconds: 5
+processing:
+  importance_threshold: 8
+  spam_threshold: 5
+  max_body_chars: 4000
+  max_emails_per_run: 15
