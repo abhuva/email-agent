@@ -112,6 +112,9 @@ class ClassificationResult:
             tags.append("important")
         if self.is_spam:
             tags.append("spam")
+        # Add #process_error tag for error status (Task 10)
+        if self.status == ClassificationStatus.ERROR:
+            tags.append("#process_error")
         return tags
     
     def to_imap_tags(self) -> list:

@@ -608,7 +608,7 @@
           "id": 1,
           "title": "Implement retry mechanism for LLM API calls",
           "description": "Create a configurable retry system for LLM API calls that handles temporary failures",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Develop a retry mechanism with exponential backoff that attempts to reconnect to the LLM API when failures occur. Include configurable parameters for maximum retry attempts, initial delay, and maximum delay between retries. Implement proper logging for each retry attempt with relevant error information. Use the settings.py facade to access retry configuration (settings.get_openrouter_retry_attempts() and settings.get_openrouter_retry_delay_seconds())."
         },
@@ -626,7 +626,7 @@
           "id": 3,
           "title": "Implement error note creation with detailed error information",
           "description": "Create a system to generate detailed error notes with the #process_error tag",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
