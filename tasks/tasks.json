@@ -1153,7 +1153,6 @@
       "testStrategy": "The documentation audit should be validated through the following methods:\n\n1. Create a documentation coverage matrix that maps each V3 feature to its corresponding documentation\n2. Perform a peer review where at least two team members who didn't write the original documentation verify its accuracy\n3. Execute all code examples in an isolated environment to confirm they work as documented\n4. Use automated link checkers to verify all internal and external links are valid\n5. Have a new team member attempt to use the documentation to perform specific tasks, noting any points of confusion\n6. Validate MAIN_DOCS.md navigation by ensuring every documentation file is accessible through its links\n7. Create a checklist of common documentation issues (inconsistent terminology, outdated screenshots, etc.) and verify each document against this list\n8. Compare API documentation against actual implementation using automated tools or manual inspection of the codebase\n9. Test the documentation on different devices and browsers to ensure readability and proper formatting\n10. Document any issues found during testing in a separate report, categorized by severity and type",
       "status": "pending",
       "dependencies": [
-        16,
         "18"
       ],
       "priority": "medium"
