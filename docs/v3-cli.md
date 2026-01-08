@@ -15,6 +15,7 @@ The V3 CLI module implements a command-line interface using the `click` library 
 ```bash
 python main.py process [OPTIONS]        # Process emails
 python main.py cleanup-flags [OPTIONS]  # Clean up IMAP flags
+python main.py backfill [OPTIONS]       # Process historical emails (backfill)
 ```
 
 ### Process Command
@@ -76,6 +77,47 @@ python main.py cleanup-flags
 ```
 
 **See Also:** [V3 Cleanup Flags Documentation](v3-cleanup-flags.md) for complete details.
+
+### Backfill Command
+
+The `backfill` command processes all historical emails with the new V3 classification system:
+
+```bash
+python main.py backfill [OPTIONS]
+```
+
+**Options:**
+- `--start-date <YYYY-MM-DD>`: Start date for date range filter
+- `--end-date <YYYY-MM-DD>`: End date for date range filter
+- `--folder <FOLDER>`: IMAP folder to process (default: INBOX)
+- `--force-reprocess`: Reprocess emails even if already processed (default: True)
+- `--dry-run`: Preview mode without side effects
+- `--max-emails <N>`: Maximum number of emails to process
+- `--calls-per-minute <N>`: Maximum API calls per minute for throttling
+
+**Examples:**
+```bash
+# Process all emails
+python main.py backfill
+
+# Process emails from a date range
+python main.py backfill --start-date 2024-01-01 --end-date 2024-12-31
+
+# Process specific folder with limit
+python main.py backfill --folder "Sent" --max-emails 100
+
+# Test with dry-run
+python main.py backfill --dry-run --max-emails 10
+```
+
+**Features:**
+- Date range filtering
+- Folder selection
+- Progress tracking with ETA
+- API throttling to prevent rate limiting
+- Comprehensive logging and summary statistics
+
+**See Also:** [V3 Backfill Documentation](v3-backfill.md) for complete details.
 
 ## Configuration Options
 
