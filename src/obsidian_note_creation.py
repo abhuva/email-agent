@@ -104,7 +104,8 @@ def write_obsidian_note(
     note_content: str,
     email_subject: str,
     vault_path: str,
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[datetime] = None,
+    overwrite: bool = False
 ) -> str:
     """
     Write Obsidian note to disk with proper filename and path resolution.
@@ -114,6 +115,7 @@ def write_obsidian_note(
         email_subject: Email subject for filename generation
         vault_path: Base path to Obsidian vault directory
         timestamp: Optional timestamp for filename (uses current time if None)
+        overwrite: If True, overwrite existing file. If False, find unique path.
     
     Returns:
         Full path to the created note file
@@ -152,7 +154,7 @@ def write_obsidian_note(
         actual_path = safe_write_file(
             content=note_content,
             file_path=filename,
-            overwrite=False  # Don't overwrite, find unique path if exists
+            overwrite=overwrite  # Overwrite if force-reprocess, otherwise find unique path
         )
         
         logger.info(f"Successfully wrote Obsidian note: {actual_path}")
@@ -299,7 +301,8 @@ def tag_email_note_failed(
 def create_obsidian_note_for_email(
     email: Dict[str, Any],
     config,
-    summary_result: Optional[Dict[str, Any]] = None
+    summary_result: Optional[Dict[str, Any]] = None,
+    overwrite: bool = False
 ) -> Dict[str, Any]:
     """
     Complete workflow to create an Obsidian note for an email.
@@ -340,7 +343,8 @@ def create_obsidian_note_for_email(
         note_path = write_obsidian_note(
             note_content=note_content,
             email_subject=email_subject,
-            vault_path=vault_path
+            vault_path=vault_path,
+            overwrite=overwrite
         )
         
         logger.info(f"Successfully created Obsidian note for email UID {uid_str}: {note_path}")

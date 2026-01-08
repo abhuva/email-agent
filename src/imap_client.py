@@ -284,14 +284,16 @@ class ImapClient:
             logger.warning(f"Error decoding header '{header_value}': {e}")
             return str(header_value)
     
-    def get_unprocessed_emails(self, max_emails: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False) -> List[Dict[str, Any]]:
         """
         Retrieve all unprocessed emails from the IMAP server.
         
         Emails are considered unprocessed if they don't have the processed_tag flag.
+        When force_reprocess=True, includes all emails regardless of processed status.
         
         Args:
             max_emails: Maximum number of emails to retrieve (None = all)
+            force_reprocess: If True, include processed emails (for reprocessing)
             
         Returns:
             List of email dictionaries (same format as get_email_by_uid)
@@ -308,11 +310,15 @@ class ImapClient:
             processed_tag = settings.get_imap_processed_tag()
             max_emails_per_run = max_emails or settings.get_max_emails_per_run()
             
-            logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
-            
-            # Build search query excluding processed emails
-            # Use NOT KEYWORD to exclude emails with the processed tag
-            search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
+            if force_reprocess:
+                logger.info(f"Searching for emails (force-reprocess mode, query: {user_query})")
+                # In force-reprocess mode, don't exclude processed emails
+                search_query = user_query
+            else:
+                logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
+                # Build search query excluding processed emails
+                # Use NOT KEYWORD to exclude emails with the processed tag
+                search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
             
             # Search for UIDs (use UID SEARCH, not SEARCH)
             typ, data = self._imap.uid('SEARCH', None, search_query)
@@ -334,10 +340,10 @@ class ImapClient:
             uids = [uid.strip() for uid in uid_str.split() if uid.strip()]
             
             if not uids:
-                logger.info("No unprocessed emails found")
+                logger.info("No emails found" if force_reprocess else "No unprocessed emails found")
                 return []
             
-            logger.info(f"Found {len(uids)} unprocessed email(s)")
+            logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
             
             # Limit number of emails if specified
             if max_emails_per_run and len(uids) > max_emails_per_run:
@@ -525,9 +531,12 @@ class ImapClient:
         processed_tag = settings.get_imap_processed_tag()
         return self.set_flag(uid, processed_tag)
     
-    def get_next_unprocessed_email(self) -> Optional[Dict[str, Any]]:
+    def get_next_unprocessed_email(self, force_reprocess: bool = False) -> Optional[Dict[str, Any]]:
         """
         Get the next unprocessed email (convenience method).
+        
+        Args:
+            force_reprocess: If True, include processed emails (for reprocessing)
         
         Returns:
             Email dictionary if found, None otherwise
@@ -536,5 +545,36 @@ class ImapClient:
             IMAPFetchError: If search or fetch fails
             IMAPConnectionError: If not connected
         """
-        emails = self.get_unprocessed_emails(max_emails=1)
+        emails = self.get_unprocessed_emails(max_emails=1, force_reprocess=force_reprocess)
         return emails[0] if emails else None
+    
+    def get_email_for_processing(self, uid: Optional[str] = None, force_reprocess: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        Get email(s) for processing, supporting both single UID and batch modes.
+        
+        Args:
+            uid: Specific email UID to retrieve (None = get unprocessed emails)
+            force_reprocess: If True, include processed emails (for reprocessing)
+        
+        Returns:
+            Email dictionary if uid provided, or list of emails if uid is None
+            Returns None if email not found or no emails available
+            
+        Raises:
+            IMAPFetchError: If search or fetch fails
+            IMAPConnectionError: If not connected
+        """
+        if uid:
+            # Single email by UID
+            try:
+                email_data = self.get_email_by_uid(uid)
+                # Check if already processed (unless force_reprocess)
+                if not force_reprocess and self.is_processed(uid):
+                    logger.info(f"Email UID {uid} already processed, skipping (use --force-reprocess to override)")
+                    return None
+                return email_data
+            except IMAPFetchError:
+                return None
+        else:
+            # Get unprocessed emails
+            return self.get_next_unprocessed_email(force_reprocess=force_reprocess)

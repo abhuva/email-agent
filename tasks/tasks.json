@@ -726,7 +726,7 @@
       "id": 12,
       "title": "Implement force-reprocess capability",
       "description": "Add functionality to reprocess already processed emails when explicitly requested.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2,
         3,
@@ -740,7 +740,7 @@
           "id": 1,
           "title": "Add command-line flag for force-reprocessing",
           "description": "Implement the --force-reprocess command-line flag in the application's click-based argument parser",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Modify the click-based argument parser to accept a new boolean flag '--force-reprocess'. Update the help documentation to explain that this flag allows reprocessing of emails that have already been processed. Store this flag value in the application configuration or context object so it can be accessed by the email processing logic. Implement this as part of the 'process' subcommand as specified in the PDD."
         },
@@ -748,7 +748,7 @@
           "id": 2,
           "title": "Modify email processing logic to check force-reprocess flag",
           "description": "Update the email processing decision logic to consider the force-reprocess flag when determining whether to process an email",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -758,7 +758,7 @@
           "id": 3,
           "title": "Implement output file handling for reprocessed emails",
           "description": "Add logic to handle existing output files when reprocessing emails",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -768,7 +768,7 @@
           "id": 4,
           "title": "Update IMAP flag handling for reprocessed emails",
           "description": "Ensure IMAP flags are correctly updated after reprocessing an email",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -778,7 +778,7 @@
           "id": 5,
           "title": "Enhance logging for reprocessing events",
           "description": "Add distinct logging for email reprocessing events to both logging systems",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,

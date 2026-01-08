@@ -1,6 +1,6 @@
 # Task ID: 12
 # Title: Implement force-reprocess capability
-# Status: pending
+# Status: done
 # Dependencies: 2, 3, 6
 # Priority: medium
 # Description: Add functionality to reprocess already processed emails when explicitly requested.
@@ -11,31 +11,31 @@ Implement the --force-reprocess flag functionality that allows reprocessing of e
 Test reprocessing of already processed emails with and without the flag. Verify files are overwritten when reprocessing. Check that IMAP flags are updated correctly. Verify log entries reflect reprocessing events.
 
 # Subtasks:
-## 1. Add command-line flag for force-reprocessing [pending]
+## 1. Add command-line flag for force-reprocessing [done]
 ### Dependencies: None
 ### Description: Implement the --force-reprocess command-line flag in the application's click-based argument parser
 ### Details:
 Modify the click-based argument parser to accept a new boolean flag '--force-reprocess'. Update the help documentation to explain that this flag allows reprocessing of emails that have already been processed. Store this flag value in the application configuration or context object so it can be accessed by the email processing logic. Implement this as part of the 'process' subcommand as specified in the PDD.
 
-## 2. Modify email processing logic to check force-reprocess flag [pending]
+## 2. Modify email processing logic to check force-reprocess flag [done]
 ### Dependencies: 12.1
 ### Description: Update the email processing decision logic to consider the force-reprocess flag when determining whether to process an email
 ### Details:
 Locate the code that checks whether an email has already been processed (likely using IMAP flags). Modify this logic to override the normal skip behavior when the --force-reprocess flag is active. The updated logic should process the email even if it has the processed tag (settings.get_imap_processed_tag()) if force-reprocess is enabled. Use the settings.py facade to access any configuration values needed.
 
-## 3. Implement output file handling for reprocessed emails [pending]
+## 3. Implement output file handling for reprocessed emails [done]
 ### Dependencies: 12.2
 ### Description: Add logic to handle existing output files when reprocessing emails
 ### Details:
 When reprocessing an email that was previously processed, there may be existing output files. Implement logic to detect these files and overwrite them with the new processing results. This may involve checking for file existence before writing and ensuring proper cleanup of old files if the new processing generates different filenames. Use the settings.py facade to access any file path configuration values needed.
 
-## 4. Update IMAP flag handling for reprocessed emails [pending]
+## 4. Update IMAP flag handling for reprocessed emails [done]
 ### Dependencies: 12.2
 ### Description: Ensure IMAP flags are correctly updated after reprocessing an email
 ### Details:
 After successfully reprocessing an email, the IMAP flags may need to be updated. This could involve temporarily removing the processed tag (settings.get_imap_processed_tag()) before reprocessing and then re-adding it afterward, or implementing a more sophisticated flagging system that tracks reprocessing events. Ensure the flags accurately reflect the email's processing status after reprocessing. Use the settings.py facade to access the processed tag name.
 
-## 5. Enhance logging for reprocessing events [pending]
+## 5. Enhance logging for reprocessing events [done]
 ### Dependencies: 12.2, 12.3, 12.4
 ### Description: Add distinct logging for email reprocessing events to both logging systems
 ### Details:

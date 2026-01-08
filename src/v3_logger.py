@@ -351,6 +351,53 @@ class EmailLogger:
             f"Classification for UID {uid}: "
             f"Importance={importance_score}/10, Spam={spam_score}/10{classification_str}"
         )
+    
+    def log_email_reprocessed(
+        self,
+        uid: str,
+        status: str = 'success',
+        importance_score: int = -1,
+        spam_score: int = -1,
+        subject: Optional[str] = None,
+        error_message: Optional[str] = None
+    ) -> None:
+        """
+        Log email reprocessing event to both logging systems.
+        
+        This method is specifically for reprocessing events (when --force-reprocess is used).
+        It logs to both operational logs and structured analytics with a clear indication
+        that this is a reprocessing event.
+        
+        Args:
+            uid: Email UID
+            status: Processing status ('success' or 'error')
+            importance_score: Importance score (0-10, or -1 for errors)
+            spam_score: Spam score (0-10, or -1 for errors)
+            subject: Email subject (optional, for operational logs)
+            error_message: Error message if status is 'error' (optional)
+        """
+        # Write to structured analytics (required for every email)
+        # Note: We still use the same analytics format, but the operational log
+        # will clearly indicate this is a reprocessing event
+        self._analytics.write_email_processing(
+            uid=uid,
+            status=status,
+            importance_score=importance_score,
+            spam_score=spam_score
+        )
+        
+        # Write to unstructured operational logs with reprocessing indicator
+        subject_str = f" '{subject}'" if subject else ""
+        if status == 'success':
+            self._op_logger.info(
+                f"Email REPROCESSED: UID {uid}{subject_str} | "
+                f"Importance: {importance_score}/10, Spam: {spam_score}/10"
+            )
+        else:
+            error_str = f": {error_message}" if error_message else ""
+            self._op_logger.error(
+                f"Email reprocessing failed: UID {uid}{subject_str}{error_str}"
+            )
 
 
 class LogQuery:
