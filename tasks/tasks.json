@@ -1195,7 +1195,7 @@
           "id": "18.4",
           "title": "Develop test infrastructure components",
           "description": "Create the necessary test fixtures and helpers identified in the coverage analysis: V3 config fixtures, mock IMAP server, mock LLM API, test email data, and dry-run helpers.",
-          "status": "pending",
+          "status": "done",
           "priority": "high"
         },
         {
