@@ -74,7 +74,7 @@
           "id": 7,
           "title": "Refactor existing codebase to use `settings.py` facade",
           "description": "Update all code to access configuration through the settings facade rather than directly",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             6
           ],
