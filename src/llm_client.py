@@ -87,8 +87,8 @@ class LLMClient:
         Format prompt to request structured JSON response.
         
         Args:
-            email_content: The email content to analyze
-            user_prompt: Optional user-provided prompt (from prompt file)
+            email_content: The email content to analyze (may be empty if already in user_prompt)
+            user_prompt: Optional user-provided prompt (from prompt file, may already contain email data)
             
         Returns:
             Formatted prompt string requesting JSON response
@@ -96,6 +96,20 @@ class LLMClient:
         # Use user prompt if provided, otherwise use default
         if user_prompt:
             base_prompt = user_prompt
+            # If user_prompt is provided and email_content is empty, the prompt already contains email data
+            # Don't add the separator and email_content section
+            if not email_content or email_content.strip() == "":
+                # Prompt already contains email content, just add JSON instructions
+                json_instructions = (
+                    "\n\n"
+                    "IMPORTANT: You must respond with ONLY a valid JSON object containing exactly these two fields:\n"
+                    "- spam_score: An integer from 0-10 where 0 is definitely not spam and 10 is definitely spam\n"
+                    "- importance_score: An integer from 0-10 where 0 is not important and 10 is very important\n\n"
+                    "Example response format:\n"
+                    '{"spam_score": 2, "importance_score": 8}\n\n'
+                    "Do not include any explanation, markdown formatting, or additional text. Only the JSON object."
+                )
+                return f"{base_prompt}{json_instructions}"
         else:
             base_prompt = (
                 "Analyze the following email and provide a classification score. "
@@ -114,7 +128,13 @@ class LLMClient:
             "Do not include any explanation, markdown formatting, or additional text. Only the JSON object."
         )
         
-        full_prompt = f"{base_prompt}\n\n---\n{email_content}\n---{json_instructions}"
+        # If email_content is provided, wrap it with separators
+        if email_content and email_content.strip():
+            full_prompt = f"{base_prompt}\n\n---\n{email_content}\n---{json_instructions}"
+        else:
+            # No email content to add, just append JSON instructions
+            full_prompt = f"{base_prompt}{json_instructions}"
+        
         return full_prompt
     
     def _make_api_request(self, prompt: str) -> Dict[str, Any]:
@@ -257,6 +277,45 @@ class LLMClient:
         except Exception as e:
             raise LLMResponseParseError(f"Unexpected error parsing response: {e}") from e
     
+    def _write_debug_prompt(self, prompt: str, uid: Optional[str] = None) -> None:
+        """
+        Write the formatted prompt to a debug file.
+        
+        Args:
+            prompt: The formatted prompt that will be sent to the LLM
+            uid: Optional email UID for filename
+        """
+        try:
+            from pathlib import Path
+            from datetime import datetime
+            
+            # Create logs directory if it doesn't exist
+            logs_dir = Path("logs")
+            logs_dir.mkdir(exist_ok=True)
+            
+            # Generate filename with timestamp and UID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            uid_part = f"_uid_{uid}" if uid else ""
+            debug_file = logs_dir / f"debug_prompt_{timestamp}{uid_part}.txt"
+            
+            # Write prompt to file
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                f.write("=" * 80 + "\n")
+                f.write(f"DEBUG: Classification Prompt\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                if uid:
+                    f.write(f"Email UID: {uid}\n")
+                f.write("=" * 80 + "\n\n")
+                f.write(prompt)
+                f.write("\n\n" + "=" * 80 + "\n")
+                f.write("END OF PROMPT\n")
+                f.write("=" * 80 + "\n")
+            
+            logger.info(f"Debug prompt written to: {debug_file}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to write debug prompt file: {e}")
+    
     def _calculate_backoff_delay(self, attempt: int) -> float:
         """
         Calculate exponential backoff delay with jitter.
@@ -277,7 +336,9 @@ class LLMClient:
         self,
         email_content: str,
         user_prompt: Optional[str] = None,
-        max_chars: Optional[int] = None
+        max_chars: Optional[int] = None,
+        debug_prompt: bool = False,
+        debug_uid: Optional[str] = None
     ) -> LLMResponse:
         """
         Classify an email using LLM API with retry logic.
@@ -292,6 +353,8 @@ class LLMClient:
             email_content: The email content to classify
             user_prompt: Optional user-provided prompt (from prompt file)
             max_chars: Maximum characters to send (truncates if needed)
+            debug_prompt: If True, write the formatted prompt to a debug file
+            debug_uid: Optional email UID for debug filename
             
         Returns:
             LLMResponse object with spam_score and importance_score
@@ -315,6 +378,10 @@ class LLMClient:
         
         # Format prompt
         prompt = self._format_prompt_for_json(email_content, user_prompt)
+        
+        # Write debug prompt to file if enabled
+        if debug_prompt:
+            self._write_debug_prompt(prompt, debug_uid)
         
         # Retry logic
         last_error = None

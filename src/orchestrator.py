@@ -87,10 +87,14 @@ class ProcessOptions:
         uid: Optional email UID to process (None = process all unprocessed)
         force_reprocess: If True, reprocess emails even if already marked as processed
         dry_run: If True, don't write files or set flags (preview mode)
+        max_emails: Optional maximum number of emails to process (overrides config)
+        debug_prompt: If True, write classification prompts to debug files
     """
     uid: Optional[str]
     force_reprocess: bool
     dry_run: bool
+    max_emails: Optional[int] = None
+    debug_prompt: bool = False
 
 
 @dataclass
@@ -207,7 +211,10 @@ class Pipeline:
         start_time = time.time()
         results: List[ProcessingResult] = []
         
-        logger.info(f"Starting email processing pipeline (dry_run={options.dry_run}, force_reprocess={options.force_reprocess})")
+        logger.info(f"Starting email processing pipeline (dry_run={options.dry_run}, force_reprocess={options.force_reprocess}, debug_prompt={options.debug_prompt})")
+        
+        # Store debug_prompt flag for use in classification
+        self._debug_prompt = options.debug_prompt
         
         try:
             # Connect to IMAP
@@ -409,12 +416,13 @@ class Pipeline:
                 
                 try:
                     # Get configuration from settings facade
-                    max_emails = settings.get_max_emails_per_run()
+                    # Use CLI-provided max_emails if available, otherwise use config
+                    max_emails = options.max_emails if options.max_emails is not None else settings.get_max_emails_per_run()
                     processed_tag = settings.get_imap_processed_tag()
                     user_query = settings.get_imap_query()
                     
                     logger.debug(f"IMAP query: {user_query}")
-                    logger.debug(f"Max emails per run: {max_emails}")
+                    logger.debug(f"Max emails per run: {max_emails} {'(from CLI)' if options.max_emails is not None else '(from config)'}")
                     logger.debug(f"Processed tag: {processed_tag}")
                     logger.debug(f"Force reprocess: {options.force_reprocess}")
                     
@@ -557,13 +565,24 @@ class Pipeline:
             body = body[:max_chars] + "... [truncated]"
             logger.debug(f"Truncated email body from {original_body_length} to {max_chars} characters")
         
-        # Build prompt
-        prompt = self._build_classification_prompt(subject, from_addr, body)
+        # Build prompt (this renders the template with email data)
+        rendered_prompt = self._build_classification_prompt(subject, from_addr, body)
         
         # Call LLM with error handling
+        # The rendered_prompt already contains the email content via Jinja2 template,
+        # so we pass it as user_prompt and pass empty string as email_content
+        # (the LLM client will still format it for JSON response)
         try:
             logger.debug("Calling LLM API for classification")
-            llm_response = self.llm_client.classify_email(prompt)
+            # Get debug_prompt from options if available (passed through from CLI)
+            debug_prompt = getattr(self, '_debug_prompt', False)
+            # Pass rendered prompt as user_prompt since it already contains email data
+            llm_response = self.llm_client.classify_email(
+                email_content="",  # Empty since email is already in rendered_prompt
+                user_prompt=rendered_prompt,
+                debug_prompt=debug_prompt,
+                debug_uid=uid
+            )
             
             logger.info(
                 f"LLM classification successful for UID {uid}: "
@@ -761,7 +780,7 @@ class Pipeline:
             email_data = {
                 'subject': subject,
                 'from': from_addr,
-                'body': body
+                'email_content': body  # Template expects 'email_content', not 'body'
             }
             prompt = render_email_prompt(email_data)
             return prompt

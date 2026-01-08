@@ -14,6 +14,7 @@ import logging
 from typing import Optional, Dict, Any
 from pathlib import Path
 from dataclasses import dataclass
+from datetime import datetime
 
 from src.settings import settings
 from src.config import ConfigError
@@ -118,8 +119,19 @@ def _ensure_config_initialized(ctx: click.Context) -> None:
     default=False,
     help='Output to console instead of writing files or setting IMAP flags. Useful for testing.'
 )
+@click.option(
+    '--max-emails',
+    type=int,
+    help='Maximum number of emails to process (overrides config max_emails_per_run). Useful for testing with a limited number of emails.'
+)
+@click.option(
+    '--debug-prompt',
+    is_flag=True,
+    default=False,
+    help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
+)
 @click.pass_context
-def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_run: bool):
+def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_run: bool, max_emails: Optional[int], debug_prompt: bool):
     """
     Main command for bulk or single email processing.
     
@@ -131,6 +143,8 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
         python main.py process --uid 12345       # Process specific email
         python main.py process --force-reprocess # Reprocess all emails
         python main.py process --dry-run         # Test without side effects
+        python main.py process --max-emails 5    # Process only 5 emails
+        python main.py process --uid 400 --debug-prompt  # Write prompt to debug file
     """
     # Initialize config (lazy loading)
     _ensure_config_initialized(ctx)
@@ -192,7 +206,9 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
         pipeline_options = PipelineProcessOptions(
             uid=uid,
             force_reprocess=force_reprocess,
-            dry_run=dry_run
+            dry_run=dry_run,
+            max_emails=max_emails,
+            debug_prompt=debug_prompt
         )
         
         # Create and run pipeline

@@ -1,19 +1,149 @@
+# Email Scoring and Classification
+
+You are an expert email analyst. Your task is to analyze the provided email and assign two numerical scores:
+
+1. **importance_score** (0-10): How important or actionable is this email?
+2. **spam_score** (0-10): How likely is this email to be spam or unwanted?
+
+## Scoring Criteria
+
+### Importance Score (0-10)
+
+**High Importance (7-10):**
+- **10 (Critical/Urgent):** Direct action required with explicit deadlines, time-sensitive business decisions, security alerts, personal emergencies, legal/financial deadlines, from important contacts with urgent content
+- **9 (Very Important):** Action required within 24-48 hours, important project updates, meeting invitations, financial transactions requiring confirmation
+- **8 (Important):** Action required within a week, work-related tasks, important updates from subscribed services, personal correspondence requiring response
+- **7 (Moderately Important):** Action required but not urgent, informational updates from important sources
+
+**Medium Importance (4-6):**
+- **6 (Somewhat Important):** Informational content from known sources, updates from services you occasionally use
+- **5 (Neutral/Standard):** Standard transactional emails, routine notifications, general newsletters, personal correspondence with no action required
+- **4 (Low Importance):** Automated notifications, marketing emails from brands you've interacted with, general updates
+
+**Low Importance (0-3):**
+- **3-0: Very low to no importance** - Automated system messages, bulk marketing, irrelevant content
+
+**Key Factors for Importance:**
+- Sender relationship (known contacts = higher importance)
+- Actionability (clear tasks or requests = higher importance)
+- Urgency indicators (deadlines, time-sensitive language)
+- Content relevance to recipient
+- Personal vs. automated nature
+
+### Spam Score (0-10)
+
+**High Spam Likelihood (7-10):**
+- **10 (Definite Spam):** Obvious phishing attempts, scams, malicious attachments, suspicious sender domains, excessive spam trigger words, poor grammar typical of spam
+- **9 (Very Likely Spam):** Aggressive marketing with multiple spam indicators, suspicious links, unusual sender addresses, excessive capitalization
+- **8 (Likely Spam):** Marketing emails with multiple red flags, sender doesn't match expected identity, suspicious subject lines, unusual formatting
+- **7 (Probably Spam):** Marketing emails with some suspicious characteristics, sender from unknown service, generic content
+
+**Medium Spam Likelihood (4-6):**
+- **6 (Possibly Spam):** Marketing emails from services you may have signed up for, generic promotional content
+- **5 (Neutral/Uncertain):** Marketing emails from known brands, newsletters you may have subscribed to, transactional emails
+- **4 (Probably Legitimate):** Marketing emails from brands you've interacted with, newsletters from subscribed sources
+
+**Low Spam Likelihood (0-3):**
+- **3-0: Likely to definitely legitimate** - Emails from known contacts, transactional emails from trusted services, personal correspondence, work-related emails
+
+**Key Factors for Spam Detection:**
+- Sender domain reputation and address format
+- Spam trigger words ("FREE", "URGENT", "WINNER", "CLICK NOW")
+- Suspicious links (shortened URLs, mismatched domains)
+- Poor grammar and spelling
+- Excessive capitalization and punctuation
+- Generic greetings vs. personalized content
+- Requests for personal information or passwords
+- Technical indicators (missing headers, unusual HTML structure)
+
+## Output Format
+
+You MUST respond with a valid JSON object containing exactly these fields:
+
+```json
+{
+  "importance_score": <integer 0-10>,
+  "spam_score": <integer 0-10>
+}
+```
+
+## Examples
+
+### Example 1: Important Work Email
+**Email:** From known colleague, subject "Project deadline moved to tomorrow - action needed", clear action items with deadline
+**Expected Output:**
+```json
+{
+  "importance_score": 9,
+  "spam_score": 0
+}
+```
+
+### Example 2: Newsletter
+**Email:** From subscribed newsletter service, subject "Weekly Newsletter - Issue #123", informational content
+**Expected Output:**
+```json
+{
+  "importance_score": 4,
+  "spam_score": 2
+}
+```
+
+### Example 3: Phishing Attempt
+**Email:** From "noreply@paypall.com" (typo), subject "URGENT: Verify your account NOW", suspicious link, requests password
+**Expected Output:**
+```json
+{
+  "importance_score": 1,
+  "spam_score": 10
+}
+```
+
+### Example 4: Marketing Email
+**Email:** From known brand you've purchased from, subject "Special offer - 20% off today only", promotional content with legitimate links
+**Expected Output:**
+```json
+{
+  "importance_score": 3,
+  "spam_score": 3
+}
+```
+
+## Important Guidelines
+
+1. **Be Consistent:** Apply the scoring criteria consistently across similar emails
+2. **Consider Context:** Sender relationship and content relevance matter significantly
+3. **Conservative Spam Scoring:** When uncertain about spam, err on the side of lower scores to avoid false positives
+4. **Actionability Matters:** Emails requiring action should generally have higher importance scores
+5. **Multiple Indicators:** When multiple spam indicators are present, the spam score should reflect the cumulative risk
+6. **Edge Cases:** 
+   - Empty or near-empty emails: importance_score 0-1
+   - Emails with only attachments: score based on sender and subject
+   - Forwarded emails: score based on forwarder and their added context
+   - Reply chains: score based on latest message
+
+## Thresholds
+
+The system uses these thresholds for classification:
+- **Importance Threshold:** 8 (emails with importance_score >= 8 are considered "important")
+- **Spam Threshold:** 5 (emails with spam_score >= 5 are considered likely spam)
+
+Keep these thresholds in mind when scoring, but do not artificially adjust scores to match thresholds. Score honestly based on the email content.
+
 ---
-title: Email Classification Prompt
-description: Prompt for AI to classify emails into categories
-version: 1.0
----
 
-# Email Classification
+## Email to Analyze
 
-Analyze the following email and classify it into one of these categories:
+Analyze the following email and return ONLY the JSON object with importance_score and spam_score:
 
-- **urgent**: Work-related, important, has clear due dates or tasks
-- **neutral**: Default category for most emails
-- **spam**: Only tag if you are really sure it's spam (low false positive rate is important)
+**Subject:** {{subject}}
+**From:** {{from}}
+**To:** {{to}}
+**Date:** {{date}}
 
-Reply with a single keyword only: `urgent`, `neutral`, or `spam`.
+**Content:**
+{{email_content}}
 
 ---
 
-Email content:
+**Remember:** Return ONLY a valid JSON object with "importance_score" and "spam_score" fields. No additional text or explanation.

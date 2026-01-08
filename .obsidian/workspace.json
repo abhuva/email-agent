@@ -1,0 +1,198 @@
+{
+  "main": {
+    "id": "381dd03c1e8740e7",
+    "type": "split",
+    "children": [
+      {
+        "id": "1c02db009a2a4018",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "162eae1dc50dd300",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/TROUBLESHOOTING.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "TROUBLESHOOTING"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "dcd6abf8bb7ce96f",
+    "type": "split",
+    "children": [
+      {
+        "id": "571b549f24bf0d68",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ce7a3cce440e059e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Dateiexplorer"
+            }
+          },
+          {
+            "id": "6f13c96ad5667366",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "code-cleanup",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Suchen"
+            }
+          },
+          {
+            "id": "2722dc8e580be94e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Lesezeichen"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "57eec9babc93e0d3",
+    "type": "split",
+    "children": [
+      {
+        "id": "9943104461d4e033",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "25c3420928c9b420",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/code-cleanup-assessment-2026.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rückverweise für code-cleanup-assessment-2026"
+            }
+          },
+          {
+            "id": "0610387bc5f7e151",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/code-cleanup-assessment-2026.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Ausgehende Links von code-cleanup-assessment-2026 öffnen"
+            }
+          },
+          {
+            "id": "c334091c93d3069e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "411cab3e8b28375b",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Alle Eigenschaften"
+            }
+          },
+          {
+            "id": "9978f1d30e9508a6",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/code-cleanup-assessment-2026.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Gliederung von code-cleanup-assessment-2026"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Schnellauswahl öffnen": false,
+      "graph:Graph-Ansicht öffnen": false,
+      "canvas:Neuen Canvas erstellen": false,
+      "daily-notes:Heutige Notiz öffnen": false,
+      "templates:Vorlage einfügen": false,
+      "command-palette:Befehlspalette öffnen": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "162eae1dc50dd300",
+  "lastOpenFiles": [
+    "logs/debug_prompt_20260108_174754_uid_400.txt",
+    "logs/debug_prompt_20260108_174442_uid_400.txt",
+    "config/prompt_config.yaml",
+    "docs/COMPLETE_GUIDE.md",
+    "docs/MAIN_DOCS.md",
+    "docs/v3-note-generator.md",
+    "config/prompt.md",
+    "config/summarization_prompt.md",
+    "docs/code-cleanup-assessment-2026.md"
+  ]
+}

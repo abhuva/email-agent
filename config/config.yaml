@@ -16,6 +16,7 @@ paths:
   analytics_file: logs/analytics.jsonl
   changelog_path: logs/email_changelog.md
   prompt_file: config/prompt.md
+  summarization_prompt_path: 'config/summarization_prompt.md'
 openrouter:
   api_key_env: OPENROUTER_API_KEY
   api_url: https://openrouter.ai/api/v1
@@ -28,3 +29,6 @@ processing:
   spam_threshold: 5
   max_body_chars: 4000
   max_emails_per_run: 15
+# Optional - only if you want summarization
+  summarization_tags:
+    - 'Urgent'  # Or other tags you use
