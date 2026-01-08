@@ -374,6 +374,176 @@ def cleanup_flags(ctx: click.Context, dry_run: bool):
     return options
 
 
+@cli.command()
+@click.option(
+    '--start-date',
+    type=click.DateTime(formats=['%Y-%m-%d']),
+    help='Start date for backfill (YYYY-MM-DD). If not provided, processes all emails from the beginning.'
+)
+@click.option(
+    '--end-date',
+    type=click.DateTime(formats=['%Y-%m-%d']),
+    help='End date for backfill (YYYY-MM-DD). If not provided, processes all emails up to now.'
+)
+@click.option(
+    '--folder',
+    type=str,
+    help='IMAP folder to process (default: INBOX). Use folder names like "INBOX", "Sent", etc.'
+)
+@click.option(
+    '--force-reprocess',
+    is_flag=True,
+    default=True,
+    help='Reprocess emails even if already marked as processed (default: True for backfill).'
+)
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    default=False,
+    help='Preview mode: process emails but don\'t write files or set IMAP flags.'
+)
+@click.option(
+    '--max-emails',
+    type=int,
+    help='Maximum number of emails to process (useful for testing). If not provided, processes all matching emails.'
+)
+@click.option(
+    '--calls-per-minute',
+    type=int,
+    help='Maximum API calls per minute for throttling (default: from settings or 60).'
+)
+@click.pass_context
+def backfill(
+    ctx: click.Context,
+    start_date: Optional[datetime],
+    end_date: Optional[datetime],
+    folder: Optional[str],
+    force_reprocess: bool,
+    dry_run: bool,
+    max_emails: Optional[int],
+    calls_per_minute: Optional[int]
+):
+    """
+    Process all historical emails with the new classification system.
+    
+    This command processes all emails in the target mailbox, regardless of their
+    current flag status. Useful for backfilling historical emails with the new
+    V3 classification system.
+    
+    Supports date range filtering, folder selection, progress tracking, and
+    API throttling to prevent rate limiting.
+    
+    Examples:
+        python main.py backfill                                    # Process all emails
+        python main.py backfill --start-date 2024-01-01            # From Jan 1, 2024
+        python main.py backfill --start-date 2024-01-01 --end-date 2024-12-31  # Date range
+        python main.py backfill --folder "Sent"                    # Specific folder
+        python main.py backfill --max-emails 100                   # Limit to 100 emails
+        python main.py backfill --dry-run                           # Preview mode
+    """
+    # Initialize config (lazy loading)
+    _ensure_config_initialized(ctx)
+    
+    # Initialize logging
+    try:
+        from src.logger import LoggerFactory
+        log_file = settings.get_log_file()
+        logger_instance = LoggerFactory.create_logger(
+            name='email_agent',
+            level='INFO',
+            log_file=log_file,
+            console=True
+        )
+        logging.getLogger('email_agent').info("Logging initialized for backfill command")
+    except Exception as e:
+        click.echo(f"Warning: Could not initialize logging: {e}", err=True)
+    
+    # Convert datetime to date if provided
+    start_date_obj = start_date.date() if start_date else None
+    end_date_obj = end_date.date() if end_date else None
+    
+    # Validate date range
+    if start_date_obj and end_date_obj and start_date_obj > end_date_obj:
+        click.echo(f"Error: Start date ({start_date_obj}) must be before end date ({end_date_obj})", err=True)
+        sys.exit(1)
+    
+    # Display backfill configuration
+    click.echo("\n" + "=" * 70)
+    click.echo("BACKFILL OPERATION")
+    click.echo("=" * 70)
+    click.echo(f"Start date: {start_date_obj or 'All time'}")
+    click.echo(f"End date: {end_date_obj or 'All time'}")
+    click.echo(f"Folder: {folder or 'Default (INBOX)'}")
+    click.echo(f"Force reprocess: {force_reprocess}")
+    click.echo(f"Dry run: {dry_run}")
+    click.echo(f"Max emails: {max_emails or 'Unlimited'}")
+    click.echo(f"Throttling: {calls_per_minute or 'From settings'}")
+    click.echo("=" * 70 + "\n")
+    
+    if dry_run:
+        click.echo("[DRY RUN MODE] No files will be written and no IMAP flags will be set.\n")
+    
+    # Confirm before proceeding (for large backfills)
+    if not dry_run and (not max_emails or max_emails > 100):
+        click.echo("Warning: This will process all matching emails, which may take a long time.")
+        confirmation = click.prompt(
+            "Type 'yes' to proceed, or anything else to cancel",
+            type=str,
+            default='no'
+        )
+        
+        if confirmation.lower().strip() != 'yes':
+            click.echo("\nOperation cancelled.", err=True)
+            sys.exit(0)
+    
+    # Perform backfill operation
+    try:
+        from src.backfill import BackfillProcessor
+        
+        processor = BackfillProcessor(calls_per_minute=calls_per_minute)
+        
+        summary = processor.backfill_emails(
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            folder=folder,
+            force_reprocess=force_reprocess,
+            dry_run=dry_run,
+            max_emails=max_emails
+        )
+        
+        # Display summary
+        click.echo("\n" + "=" * 70)
+        click.echo("BACKFILL SUMMARY")
+        click.echo("=" * 70)
+        click.echo(f"Total emails found: {summary.total_emails}")
+        click.echo(f"  ✓ Successfully processed: {summary.processed}")
+        click.echo(f"  ✗ Failed: {summary.failed}")
+        click.echo(f"  ⊘ Skipped: {summary.skipped}")
+        click.echo(f"Total time: {summary.total_time:.2f}s")
+        click.echo(f"Average time per email: {summary.average_time:.2f}s")
+        if summary.processed > 0:
+            success_rate = (summary.processed / summary.total_emails) * 100
+            click.echo(f"Success rate: {success_rate:.1f}%")
+        click.echo(f"Start time: {summary.start_time}")
+        click.echo(f"End time: {summary.end_time}")
+        click.echo("=" * 70)
+        
+        if dry_run:
+            click.echo("\n[DRY RUN] No files were written and no IMAP flags were set.")
+        else:
+            click.echo("\nBackfill complete!")
+        
+        # Exit with error code if there were failures
+        if summary.failed > 0:
+            sys.exit(1)
+        
+    except Exception as e:
+        click.echo(f"\nError during backfill operation: {e}", err=True)
+        logger = logging.getLogger(__name__)
+        logger.error(f"Backfill command failed: {e}", exc_info=True)
+        sys.exit(1)
+
+
 def get_process_options(ctx: click.Context) -> ProcessOptions:
     """
     Extract process command options from click context.
