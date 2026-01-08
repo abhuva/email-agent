@@ -1,0 +1,124 @@
+# Prompt Configuration for V3 Score-Based Classification
+# This file allows customization of the scoring prompt without changing code
+
+# Base prompt template path
+# The prompt template should be a markdown file with Jinja2-style variables
+prompt_template_path: "config/prompt_v3.md"
+
+# Scoring criteria customization
+scoring_criteria:
+  # Importance score factors and weights (can be adjusted for fine-tuning)
+  importance_factors:
+    sender_relationship_weight: 1.5
+    actionability_weight: 2.0
+    urgency_indicators_weight: 1.8
+    content_relevance_weight: 1.2
+    personal_vs_automated_weight: 1.0
+  
+  # Spam score factors and weights
+  spam_factors:
+    sender_domain_reputation_weight: 2.0
+    spam_trigger_words_weight: 1.5
+    suspicious_links_weight: 2.5
+    grammar_and_spelling_weight: 1.2
+    technical_indicators_weight: 1.8
+    generic_vs_personalized_weight: 1.0
+  
+  # Threshold values (aligned with processing thresholds in config.yaml)
+  thresholds:
+    importance_threshold: 8  # Emails with importance_score >= 8 are "important"
+    spam_threshold: 5        # Emails with spam_score >= 5 are likely spam
+  
+  # Scoring guidelines
+  guidelines:
+    # When uncertain about spam, err on the side of lower scores
+    conservative_spam_scoring: true
+    # Consider sender relationship when scoring
+    consider_sender_relationship: true
+    # Multiple spam indicators compound the score
+    compound_spam_indicators: true
+
+# Prompt customization options
+prompt_options:
+  # Include detailed scoring examples in the prompt
+  include_examples: true
+  
+  # Include threshold information in the prompt
+  include_thresholds: true
+  
+  # Level of detail in scoring criteria explanation
+  # Options: "detailed", "moderate", "brief"
+  criteria_detail_level: "detailed"
+  
+  # Include edge case handling instructions
+  include_edge_cases: true
+
+# Template variables
+# These variables will be substituted in the prompt template
+template_variables:
+  # Email metadata fields that will be available in the template
+  available_fields:
+    - subject
+    - from
+    - to
+    - date
+    - email_content
+  
+  # Default values if fields are missing
+  defaults:
+    subject: "[No Subject]"
+    from: "[Unknown Sender]"
+    to: "[Unknown Recipient]"
+    date: "[Unknown Date]"
+    email_content: "[No Content]"
+
+# Output format specification
+output_format:
+  # Required JSON fields
+  required_fields:
+    - importance_score
+    - spam_score
+  
+  # Field constraints
+  field_constraints:
+    importance_score:
+      type: "integer"
+      min: 0
+      max: 10
+      description: "Email importance score (0-10)"
+    spam_score:
+      type: "integer"
+      min: 0
+      max: 10
+      description: "Email spam likelihood score (0-10)"
+  
+  # JSON schema validation
+  json_schema:
+    type: "object"
+    required: ["importance_score", "spam_score"]
+    properties:
+      importance_score:
+        type: "integer"
+        minimum: 0
+        maximum: 10
+      spam_score:
+        type: "integer"
+        minimum: 0
+        maximum: 10
+
+# Advanced customization
+advanced:
+  # Custom scoring rules (optional)
+  # These can be used to override default scoring behavior
+  custom_rules: []
+  
+  # Prompt versioning
+  version: "3.0"
+  
+  # Enable/disable specific prompt sections
+  sections:
+    scoring_criteria: true
+    examples: true
+    guidelines: true
+    edge_cases: true
+    thresholds: true
