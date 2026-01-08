@@ -1,6 +1,7 @@
 pytest
 python-dotenv
 pyyaml
+pydantic>=2.0.0
 requests
 beautifulsoup4
 html2text
