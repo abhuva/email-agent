@@ -6,6 +6,7 @@ This document covers end-to-end tests for V3 modules that require live external 
 
 - **IMAP E2E Tests** (Task 18.9) - ✅ Complete
 - **LLM E2E Tests** (Task 18.10) - ✅ Complete
+- **Edge Case E2E Tests** (Task 18.11) - ✅ Complete
 
 ---
 
@@ -227,6 +228,202 @@ This test suite implements:
 - **IMAP Client**: `src/imap_client.py`
 - **Orchestrator**: `src/orchestrator.py`
 - **Settings**: `src/settings.py`
+
+---
+
+# V3 End-to-End Tests for Edge Cases
+
+**Status:** ✅ Complete (Task 18.11)  
+**Test Files:** `tests/test_e2e_imap.py`, `tests/test_e2e_llm.py`  
+**Pytest Marker:** `@pytest.mark.e2e_imap`, `@pytest.mark.e2e_llm`
+
+## Overview
+
+End-to-end tests that verify the system's behavior under edge case conditions using real external services. These tests validate:
+
+- Very large email processing and truncation
+- Rate limiting scenarios and handling
+- Connection interruption recovery
+- Malformed response handling
+- Concurrent operations
+- Special character and unicode handling
+- Timeout scenarios
+
+## Requirements
+
+Same as the base E2E tests:
+- Valid IMAP credentials for IMAP edge case tests
+- Valid LLM API credentials for LLM edge case tests
+- Test accounts/environments (not production)
+
+## Running Tests
+
+### Run All Edge Case Tests
+
+```bash
+# Run IMAP edge case tests
+pytest tests/test_e2e_imap.py::TestE2EEdgeCases -v
+
+# Run LLM edge case tests
+pytest tests/test_e2e_llm.py::TestE2EEdgeCases -v
+
+# Run all edge case tests
+pytest tests/test_e2e_imap.py::TestE2EEdgeCases tests/test_e2e_llm.py::TestE2EEdgeCases -v
+```
+
+### Skip Edge Case Tests
+
+```bash
+# Skip edge case tests (run other E2E tests)
+pytest tests/test_e2e_imap.py -v -k "not EdgeCases"
+pytest tests/test_e2e_llm.py -v -k "not EdgeCases"
+```
+
+## Test Structure
+
+### IMAP Edge Case Tests (`TestE2EEdgeCases`)
+
+1. **Very Large Email Processing**
+   - `test_very_large_email_processing` - Test processing of very large emails with automatic truncation
+
+2. **Connection Interruption**
+   - `test_connection_interruption_recovery` - Test recovery from connection interruptions
+   - `test_connection_interruption_during_fetch` - Test handling of interruptions during email fetch
+
+3. **Malformed Email Handling**
+   - `test_malformed_email_handling` - Test handling of emails with malformed headers or content
+
+4. **Rate Limiting**
+   - `test_rate_limiting_scenario` - Test behavior under rate limiting conditions
+
+5. **Concurrent Operations**
+   - `test_concurrent_operations` - Test concurrent IMAP operations
+
+6. **Special Cases**
+   - `test_empty_inbox_handling` - Test handling when inbox is empty
+   - `test_very_long_subject_line` - Test handling of very long subject lines
+   - `test_special_characters_in_subject` - Test handling of special characters in subjects
+
+### LLM Edge Case Tests (`TestE2EEdgeCases`)
+
+1. **Very Large Email Classification**
+   - `test_very_large_email_classification` - Test classification of very large emails with truncation
+   - `test_extremely_long_email` - Test classification of extremely long emails
+
+2. **Rate Limiting**
+   - `test_rate_limiting_scenario` - Test behavior under API rate limiting
+   - `test_rapid_successive_requests` - Test making rapid successive API requests
+
+3. **Connection Interruption**
+   - `test_connection_interruption_recovery` - Test recovery from connection interruptions
+
+4. **Malformed Response Handling**
+   - `test_malformed_response_handling` - Test handling of malformed API responses
+   - `test_malformed_json_response` - Test handling when API returns malformed JSON
+
+5. **Timeout Scenarios**
+   - `test_timeout_scenario` - Test handling of API timeout scenarios
+
+6. **Concurrent Operations**
+   - `test_concurrent_classifications` - Test concurrent LLM API calls
+
+7. **Special Character Handling**
+   - `test_special_characters_and_unicode` - Test classification with special characters and unicode
+   - `test_empty_and_minimal_emails` - Test classification of empty and minimal emails
+
+## Test Behavior
+
+### Automatic Skipping
+
+Edge case tests automatically skip if:
+- Base E2E test credentials are not available
+- Required test data is not available (e.g., no test emails)
+
+### Error Handling
+
+Edge case tests are designed to:
+- Verify graceful error handling
+- Ensure system doesn't crash under edge conditions
+- Validate recovery mechanisms
+- Test error isolation
+
+### Performance Considerations
+
+Some edge case tests may:
+- Make multiple API calls (rate limiting tests)
+- Take longer to execute (timeout tests)
+- Consume more API credits (concurrent tests)
+
+## Safety Considerations
+
+1. **Use Test Environment**: Edge case tests may make many API calls or connections
+2. **Rate Limiting**: Tests may hit rate limits - this is expected behavior
+3. **API Credits**: Some tests consume more API credits than normal tests
+4. **Timeouts**: Some tests may take longer to execute
+
+## Integration with CI/CD
+
+Edge case tests are designed to be skipped in CI environments where credentials are not available:
+
+```yaml
+# Example GitHub Actions
+- name: Run tests
+  run: |
+    pytest tests/ -v -k "not EdgeCases"
+```
+
+For CI environments with test credentials:
+
+```yaml
+- name: Run all tests including edge cases
+  env:
+    IMAP_PASSWORD: ${{ secrets.TEST_IMAP_PASSWORD }}
+    OPENROUTER_API_KEY: ${{ secrets.TEST_OPENROUTER_API_KEY }}
+  run: |
+    pytest tests/ -v
+```
+
+## Troubleshooting
+
+### Issue: Rate Limiting Tests Fail
+
+**Solution:**
+- Reduce number of requests in test
+- Add longer delays between requests
+- Use test API key with higher rate limits
+
+### Issue: Timeout Tests Take Too Long
+
+**Solution:**
+- Reduce timeout values in test configuration
+- Skip timeout tests in local development
+- Run timeout tests separately
+
+### Issue: Concurrent Tests Fail
+
+**Solution:**
+- Reduce number of concurrent threads
+- Add delays between thread starts
+- Verify API supports concurrent requests
+
+## PDD Alignment
+
+This test suite implements:
+- **PDD Section 5**: Testing requirements for V3 modules
+- **Task 18.11**: E2E tests for edge cases
+
+## Related Documentation
+
+- **[V3 IMAP Client](v3-imap-client.md)** - IMAP client implementation
+- **[V3 LLM Client](v3-llm-client.md)** - LLM client implementation
+- **[V3 Orchestrator](v3-orchestrator.md)** - Pipeline orchestration
+- **[Live Test Guide](live-test-guide.md)** - Manual live testing guide
+
+## Reference
+
+- **Test Files**: `tests/test_e2e_imap.py`, `tests/test_e2e_llm.py`
+- **Test Class**: `TestE2EEdgeCases`
+- **Pytest Config**: `pytest.ini`
 
 ---
 

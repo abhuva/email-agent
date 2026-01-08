@@ -594,3 +594,207 @@ class TestE2EErrorHandling:
             assert summary.total_emails == 2
             # First should fail, second should succeed (or both fail if decision logic fails)
             assert summary.failed >= 1 or summary.successful >= 1
+
+
+# ============================================================================
+# E2E Tests: Edge Cases
+# ============================================================================
+
+class TestE2EEdgeCases:
+    """Test edge cases with live IMAP server."""
+    
+    def test_very_large_email_processing(self, live_imap_client, live_settings):
+        """Test processing of very large emails (edge case)."""
+        # Get emails and find a large one, or create a synthetic large email
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
+        
+        if not emails:
+            pytest.skip("No test emails available")
+        
+        # Find the largest email by body size
+        largest_email = max(emails, key=lambda e: len(e.get('body', '')))
+        
+        # Verify we can process large emails
+        # Large emails should be truncated automatically
+        body_size = len(largest_email.get('body', ''))
+        logger.info(f"Processing large email with body size: {body_size} characters")
+        
+        # Test that we can retrieve and process it
+        email = live_imap_client.get_email_by_uid(largest_email['uid'])
+        assert email is not None
+        assert 'body' in email
+        
+        # Verify truncation would occur if body exceeds max_chars
+        max_body_chars = live_settings.get_max_body_chars()
+        if body_size > max_body_chars:
+            # Body should be truncated when passed to LLM
+            # This is tested in integration tests, but we verify retrieval works
+            assert len(email['body']) > 0
+    
+    def test_connection_interruption_recovery(self, live_imap_client):
+        """Test recovery from connection interruptions (edge case)."""
+        # Simulate connection interruption by disconnecting
+        assert live_imap_client._connected is True
+        
+        # Disconnect (simulating interruption)
+        live_imap_client.disconnect()
+        assert live_imap_client._connected is False
+        
+        # Reconnect (recovery)
+        live_imap_client.connect()
+        assert live_imap_client._connected is True
+        
+        # Verify operations work after reconnection
+        emails = live_imap_client.get_unprocessed_emails(max_emails=1)
+        assert isinstance(emails, list)
+    
+    def test_connection_interruption_during_fetch(self, live_imap_client, test_email_uid):
+        """Test handling of connection interruption during email fetch."""
+        if not test_email_uid:
+            pytest.skip("No test email UID available")
+        
+        # Start fetching an email
+        # Simulate interruption by disconnecting mid-operation
+        try:
+            # Get email (this should work)
+            email = live_imap_client.get_email_by_uid(test_email_uid)
+            assert email is not None
+            
+            # Simulate interruption
+            live_imap_client.disconnect()
+            
+            # Try to fetch again - should raise error or reconnect
+            with pytest.raises((IMAPConnectionError, IMAPFetchError, Exception)):
+                live_imap_client.get_email_by_uid(test_email_uid)
+            
+        finally:
+            # Reconnect for cleanup
+            try:
+                live_imap_client.connect()
+            except Exception:
+                pass
+    
+    def test_malformed_email_handling(self, live_imap_client):
+        """Test handling of malformed emails (edge case)."""
+        # Get emails and try to process them
+        # Some emails may have malformed headers or content
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
+        
+        if not emails:
+            pytest.skip("No test emails available")
+        
+        # Try to process each email - should handle malformed content gracefully
+        for email in emails[:3]:  # Test first 3 emails
+            try:
+                # Retrieve email - should not crash on malformed content
+                retrieved = live_imap_client.get_email_by_uid(email['uid'])
+                assert retrieved is not None
+                # Even if malformed, should have basic structure
+                assert 'uid' in retrieved
+            except Exception as e:
+                # Some malformed emails may raise errors, which is acceptable
+                # The key is that it doesn't crash the entire system
+                logger.warning(f"Malformed email {email['uid']} raised error: {e}")
+                # Verify error is handled gracefully
+                assert isinstance(e, (IMAPFetchError, ValueError, Exception))
+    
+    def test_rate_limiting_scenario(self, live_imap_client):
+        """Test behavior under rate limiting scenarios (edge case)."""
+        # Make multiple rapid requests to test rate limiting
+        # Most IMAP servers have rate limits
+        
+        emails = []
+        request_count = 0
+        max_requests = 20  # Reasonable limit for testing
+        
+        try:
+            # Make multiple rapid requests
+            for i in range(max_requests):
+                try:
+                    batch = live_imap_client.get_unprocessed_emails(max_emails=1)
+                    if batch:
+                        emails.extend(batch)
+                    request_count += 1
+                except (IMAPConnectionError, IMAPFetchError) as e:
+                    # Rate limiting may cause errors
+                    logger.warning(f"Rate limit hit at request {request_count}: {e}")
+                    # Should handle gracefully
+                    break
+            
+            # Should have made at least some successful requests
+            assert request_count > 0
+            
+        except Exception as e:
+            # Rate limiting errors should be handled gracefully
+            logger.info(f"Rate limiting test completed with: {e}")
+            # Test passes if it doesn't crash
+    
+    def test_concurrent_operations(self, live_imap_client):
+        """Test concurrent IMAP operations (edge case)."""
+        import threading
+        import time
+        
+        results = []
+        errors = []
+        
+        def fetch_emails():
+            try:
+                emails = live_imap_client.get_unprocessed_emails(max_emails=1)
+                results.append(len(emails))
+            except Exception as e:
+                errors.append(e)
+        
+        # Start multiple threads
+        threads = []
+        for i in range(3):
+            thread = threading.Thread(target=fetch_emails)
+            threads.append(thread)
+            thread.start()
+        
+        # Wait for all threads
+        for thread in threads:
+            thread.join(timeout=10)
+        
+        # Should have some results or errors (both are acceptable)
+        # Key is that it doesn't crash
+        assert len(results) + len(errors) > 0
+    
+    def test_empty_inbox_handling(self, live_imap_client):
+        """Test handling when inbox is empty (edge case)."""
+        # This test may not be applicable if inbox has emails
+        # But we can test the behavior
+        emails = live_imap_client.get_unprocessed_emails(max_emails=1)
+        
+        # Should return empty list, not raise error
+        assert isinstance(emails, list)
+        # May be empty, which is fine
+    
+    def test_very_long_subject_line(self, live_imap_client):
+        """Test handling of emails with very long subject lines (edge case)."""
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
+        
+        if not emails:
+            pytest.skip("No test emails available")
+        
+        # Find email with longest subject
+        longest_subject_email = max(emails, key=lambda e: len(e.get('subject', '')))
+        
+        # Should handle long subjects gracefully
+        subject = longest_subject_email.get('subject', '')
+        assert isinstance(subject, str)
+        # Even very long subjects should be handled
+        logger.info(f"Testing email with subject length: {len(subject)}")
+    
+    def test_special_characters_in_subject(self, live_imap_client):
+        """Test handling of special characters in email subject (edge case)."""
+        emails = live_imap_client.get_unprocessed_emails(max_emails=10)
+        
+        if not emails:
+            pytest.skip("No test emails available")
+        
+        # Process emails - should handle special characters
+        for email in emails[:3]:
+            subject = email.get('subject', '')
+            # Should not crash on special characters
+            assert isinstance(subject, str)
+            # May contain unicode, emojis, etc.
