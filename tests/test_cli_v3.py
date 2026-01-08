@@ -10,6 +10,7 @@ from pathlib import Path
 import tempfile
 import yaml
 import os
+from unittest.mock import patch, MagicMock
 
 from src.cli_v3 import cli, ProcessOptions, CleanupFlagsOptions
 
@@ -109,43 +110,92 @@ def test_process_command_help(runner):
     assert '--dry-run' in result.output
 
 
-def test_process_command_defaults(runner, temp_config_file, test_env_vars):
+@patch('src.orchestrator.Pipeline')
+def test_process_command_defaults(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with default options."""
+    # Mock the pipeline and its return value
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 0
+    mock_summary.successful = 0
+    mock_summary.failed = 0
+    mock_summary.total_time = 0.1
+    mock_summary.average_time = 0.0
+    mock_pipeline.process_emails.return_value = mock_summary
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process'
     ])
     assert result.exit_code == 0
-    assert 'Process command called' in result.output
-    assert '(all unprocessed)' in result.output
-    assert 'Force reprocess: False' in result.output
-    assert 'Dry run: False' in result.output
+    assert 'Processing complete' in result.output or 'successful' in result.output.lower()
 
 
-def test_process_command_with_uid(runner, temp_config_file, test_env_vars):
+@patch('src.orchestrator.Pipeline')
+def test_process_command_with_uid(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --uid option."""
+    # Mock the pipeline and its return value
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 1
+    mock_summary.successful = 1
+    mock_summary.failed = 0
+    mock_summary.total_time = 0.1
+    mock_summary.average_time = 0.1
+    mock_pipeline.process_emails.return_value = mock_summary
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process',
         '--uid', '12345'
     ])
     assert result.exit_code == 0
-    assert 'UID: 12345' in result.output
+    # Verify pipeline was called with correct UID
+    call_args = mock_pipeline.process_emails.call_args[0][0]
+    assert call_args.uid == '12345'
 
 
-def test_process_command_force_reprocess(runner, temp_config_file, test_env_vars):
+@patch('src.orchestrator.Pipeline')
+def test_process_command_force_reprocess(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --force-reprocess flag."""
+    # Mock the pipeline and its return value
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 0
+    mock_summary.successful = 0
+    mock_summary.failed = 0
+    mock_summary.total_time = 0.1
+    mock_summary.average_time = 0.0
+    mock_pipeline.process_emails.return_value = mock_summary
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process',
         '--force-reprocess'
     ])
     assert result.exit_code == 0
-    assert 'Force reprocess: True' in result.output
+    # Verify pipeline was called with force_reprocess=True
+    call_args = mock_pipeline.process_emails.call_args[0][0]
+    assert call_args.force_reprocess is True
 
 
-def test_process_command_dry_run(runner, temp_config_file, test_env_vars):
+@patch('src.orchestrator.Pipeline')
+def test_process_command_dry_run(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --dry-run flag."""
+    # Mock the pipeline and its return value
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 0
+    mock_summary.successful = 0
+    mock_summary.failed = 0
+    mock_summary.total_time = 0.1
+    mock_summary.average_time = 0.0
+    mock_pipeline.process_emails.return_value = mock_summary
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process',
@@ -153,11 +203,25 @@ def test_process_command_dry_run(runner, temp_config_file, test_env_vars):
     ])
     assert result.exit_code == 0
     assert '[DRY RUN MODE]' in result.output
-    assert 'Dry run: True' in result.output
+    # Verify pipeline was called with dry_run=True
+    call_args = mock_pipeline.process_emails.call_args[0][0]
+    assert call_args.dry_run is True
 
 
-def test_process_command_all_flags(runner, temp_config_file, test_env_vars):
+@patch('src.orchestrator.Pipeline')
+def test_process_command_all_flags(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with all flags."""
+    # Mock the pipeline and its return value
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 1
+    mock_summary.successful = 1
+    mock_summary.failed = 0
+    mock_summary.total_time = 0.1
+    mock_summary.average_time = 0.1
+    mock_pipeline.process_emails.return_value = mock_summary
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process',
@@ -166,9 +230,12 @@ def test_process_command_all_flags(runner, temp_config_file, test_env_vars):
         '--dry-run'
     ])
     assert result.exit_code == 0
-    assert 'UID: 67890' in result.output
-    assert 'Force reprocess: True' in result.output
-    assert 'Dry run: True' in result.output
+    assert '[DRY RUN MODE]' in result.output
+    # Verify pipeline was called with all flags
+    call_args = mock_pipeline.process_emails.call_args[0][0]
+    assert call_args.uid == '67890'
+    assert call_args.force_reprocess is True
+    assert call_args.dry_run is True
 
 
 def test_cleanup_flags_command_help(runner):

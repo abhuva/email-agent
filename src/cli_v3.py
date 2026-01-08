@@ -186,10 +186,10 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
     
     # Create pipeline and process emails
     try:
-        from src.orchestrator import Pipeline, ProcessOptions
+        from src.orchestrator import Pipeline, ProcessOptions as PipelineProcessOptions
         
         # Create pipeline options
-        pipeline_options = ProcessOptions(
+        pipeline_options = PipelineProcessOptions(
             uid=uid,
             force_reprocess=force_reprocess,
             dry_run=dry_run

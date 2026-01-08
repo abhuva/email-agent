@@ -1,0 +1,204 @@
+# V3 Orchestrator Module
+
+**Status:** ✅ Complete (Task 14.1)  
+**Module:** `src/orchestrator.py`  
+**Integration:** `src/cli_v3.py`
+
+## Overview
+
+The V3 orchestrator module provides high-level business logic orchestration for the email processing pipeline. It coordinates all components (IMAP, LLM, decision logic, note generation, logging) into a cohesive end-to-end processing flow.
+
+## Architecture
+
+The orchestrator implements a **Pipeline** class that coordinates:
+
+1. **Email Retrieval** - Fetches emails from IMAP (by UID or all unprocessed)
+2. **LLM Classification** - Sends emails to LLM for spam/importance scoring
+3. **Decision Logic** - Applies thresholds to determine email categorization
+4. **Note Generation** - Generates Markdown notes using Jinja2 templates
+5. **File Writing** - Writes notes to Obsidian vault
+6. **IMAP Flag Setting** - Marks emails as processed
+7. **Logging** - Records processing results to both logging systems
+
+### Key Components
+
+- **Pipeline**: Main orchestration class
+- **ProcessOptions**: Configuration for pipeline execution (UID, force_reprocess, dry_run)
+- **ProcessingResult**: Result of processing a single email
+- **PipelineSummary**: Summary statistics for a pipeline execution
+
+## Usage
+
+### Command-Line
+
+```bash
+# Process all unprocessed emails
+python main.py process
+
+# Process specific email by UID
+python main.py process --uid 12345
+
+# Force reprocess (ignore processed flags)
+python main.py process --force-reprocess
+
+# Dry-run mode (preview without side effects)
+python main.py process --dry-run
+```
+
+### Programmatic Usage
+
+```python
+from src.orchestrator import Pipeline, ProcessOptions
+from src.settings import settings
+
+# Initialize settings
+settings.initialize('config/config.yaml', '.env')
+
+# Create pipeline
+pipeline = Pipeline()
+
+# Process emails
+options = ProcessOptions(
+    uid=None,  # Process all unprocessed emails
+    force_reprocess=False,
+    dry_run=False
+)
+summary = pipeline.process_emails(options)
+
+print(f"Processed {summary.successful} emails successfully")
+print(f"Failed: {summary.failed}")
+print(f"Total time: {summary.total_time:.2f}s")
+```
+
+## Pipeline Flow
+
+### Email Processing Stages
+
+1. **Retrieval** (`_retrieve_emails`)
+   - Single email by UID, or
+   - All unprocessed emails (respects `max_emails_per_run`)
+   - Supports `force_reprocess` to ignore processed flags
+
+2. **Classification** (`_classify_email`)
+   - Extracts email content (subject, from, body)
+   - Truncates body if needed (`max_body_chars`)
+   - Builds prompt using prompt renderer
+   - Calls LLM client for classification
+
+3. **Decision Logic** (`decision_logic.classify`)
+   - Applies thresholds (`importance_threshold`, `spam_threshold`)
+   - Generates classification result
+
+4. **Note Generation** (`_generate_note`)
+   - Uses note generator with Jinja2 template
+   - Includes email data and classification results
+
+5. **File Writing** (`_write_note`)
+   - Writes to Obsidian vault
+   - Generates unique, timestamped filenames
+   - Respects dry-run mode
+
+6. **IMAP Flag Setting** (`_set_imap_flags`)
+   - Sets processed tag on successful processing
+   - Respects dry-run mode
+
+7. **Logging** (`_log_email_processed`)
+   - Logs to operational logs (agent.log)
+   - Logs to structured analytics (analytics.jsonl)
+   - Records success/failure with scores
+
+## Error Handling
+
+The pipeline implements **per-email error isolation**:
+
+- Errors in processing one email don't affect others
+- Each email's processing result is tracked independently
+- Failures are logged with error details
+- Pipeline continues processing remaining emails
+
+### Error Types
+
+- **IMAPClientError**: IMAP connection or operation failures
+- **LLMClientError**: LLM API failures (handled with retry logic)
+- **TemplateRenderError**: Note generation failures
+- **ConfigError**: Configuration loading failures
+
+## Performance
+
+The pipeline is designed to meet performance requirements:
+
+- **Local operations < 1s**: File operations and local processing are optimized
+- **No memory leaks**: Proper resource cleanup (IMAP disconnection, etc.)
+- **Batch processing**: Handles multiple emails efficiently
+
+## Configuration
+
+All configuration access is through the `settings.py` facade:
+
+- `settings.get_max_emails_per_run()` - Limit emails per execution
+- `settings.get_max_body_chars()` - Body truncation limit
+- `settings.get_importance_threshold()` - Importance threshold
+- `settings.get_spam_threshold()` - Spam threshold
+- `settings.get_obsidian_vault()` - Obsidian vault path
+- `settings.get_imap_processed_tag()` - Processed flag name
+
+## Integration Points
+
+### CLI Integration (`src/cli_v3.py`)
+
+The CLI command `process` creates a Pipeline instance and calls `process_emails()`:
+
+```python
+from src.orchestrator import Pipeline, ProcessOptions as PipelineProcessOptions
+
+pipeline_options = PipelineProcessOptions(
+    uid=uid,
+    force_reprocess=force_reprocess,
+    dry_run=dry_run
+)
+pipeline = Pipeline()
+summary = pipeline.process_emails(pipeline_options)
+```
+
+### Module Dependencies
+
+- **IMAP Client** (`src/imap_client.py`): Email retrieval and flag management
+- **LLM Client** (`src/llm_client.py`): Email classification
+- **Decision Logic** (`src/decision_logic.py`): Threshold-based classification
+- **Note Generator** (`src/note_generator.py`): Markdown note generation
+- **V3 Logger** (`src/v3_logger.py`): Dual logging system
+- **Dry Run** (`src/dry_run.py`): Dry-run mode support
+
+## Testing
+
+Tests mock the Pipeline class to avoid actual IMAP/LLM connections:
+
+```python
+@patch('src.orchestrator.Pipeline')
+def test_process_command(mock_pipeline_class, runner, temp_config_file):
+    mock_pipeline = MagicMock()
+    mock_pipeline_class.return_value = mock_pipeline
+    mock_summary = MagicMock()
+    mock_summary.total_emails = 0
+    mock_summary.successful = 0
+    mock_pipeline.process_emails.return_value = mock_summary
+    
+    result = runner.invoke(cli, ['--config', temp_config_file, 'process'])
+    assert result.exit_code == 0
+```
+
+## Future Enhancements
+
+- Progress indicators for long-running operations
+- Parallel email processing (with rate limiting)
+- Enhanced error recovery strategies
+- Performance metrics and profiling
+
+---
+
+**See Also:**
+- [V3 CLI](v3-cli.md) - Command-line interface
+- [V3 IMAP Client](v3-imap-client.md) - Email retrieval
+- [V3 LLM Client](v3-llm-client.md) - AI classification
+- [V3 Decision Logic](v3-decision-logic.md) - Classification logic
+- [V3 Note Generator](v3-note-generator.md) - Note generation
