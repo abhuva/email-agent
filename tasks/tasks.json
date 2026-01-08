@@ -996,6 +996,265 @@
           "details": "Build a user interface that allows configuration of all backfill parameters: date range selection with calendar controls, folder selection with a folder browser, throttling settings, and logging options. Include validation to prevent invalid configurations. Display the progress indicator during operation and show the summary report upon completion. Add the ability to cancel an in-progress backfill operation. Ensure the UI remains responsive during long-running backfill operations by using background processing. Use the settings.py facade to access any configuration values needed for the UI."
         }
       ]
+    },
+    {
+      "id": 16,
+      "title": "Comprehensive Code Cleanup and Refactoring for V3 Modules",
+      "description": "Systematically remove unused code, deprecated functions, and legacy V1/V2 code while improving overall code organization and ensuring consistent patterns across V3 modules.",
+      "details": "This task involves a thorough cleanup of the codebase with the following specific actions:\n\n1. Identify and remove all unused code by analyzing import statements and function calls\n2. Remove all deprecated functions that have been superseded by newer implementations\n3. Eliminate all legacy V1/V2 code that is no longer required for the current system\n4. Clean up import statements by removing unused imports and organizing them according to project conventions\n5. Remove or document all commented-out code (if documentation is needed, move comments to appropriate documentation files)\n6. Identify duplicate functionality across modules and consolidate into shared utilities\n7. Reorganize code structure to improve readability and maintainability\n8. Ensure all V3 modules follow consistent naming conventions, error handling patterns, and architectural approaches\n9. Update any documentation that references removed code\n10. Maintain a log of all removed code sections in case reference is needed later\n\nBefore making changes, create a feature branch from the main development branch. Commit changes in logical, discrete units to facilitate code review. Consider using automated tools like linters, dead code analyzers, and import organizers where applicable.",
+      "testStrategy": "Testing should verify that functionality remains intact while ensuring code quality improvements. Follow these steps:\n\n1. Run the full test suite before beginning refactoring to establish a baseline\n2. After each significant change, run relevant unit and integration tests to verify no functionality was broken\n3. After all changes are complete, run the full test suite again to ensure overall system integrity\n4. Perform static code analysis using tools like ESLint, SonarQube, or similar to verify improved code quality metrics\n5. Conduct manual testing of key user flows that might be affected by the refactoring\n6. Verify that all CI/CD pipelines complete successfully\n7. Have another developer perform a thorough code review focusing on:\n   - Confirming no necessary code was accidentally removed\n   - Validating that all references are properly updated\n   - Ensuring no orphaned code remains\n   - Checking that V3 modules now follow consistent patterns\n8. Document before/after metrics such as lines of code, cyclomatic complexity, and test coverage to demonstrate improvements\n9. Deploy to a staging environment and verify application behavior matches production",
+      "status": "pending",
+      "dependencies": [
+        "18"
+      ],
+      "priority": "medium",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set up code analysis tools and establish refactoring guidelines",
+          "description": "Configure and set up automated tools for code analysis, establish refactoring guidelines, and create a feature branch for the cleanup work.",
+          "dependencies": [],
+          "details": "1. Create a feature branch named 'v3-code-cleanup' from the main development branch.\n2. Set up and configure linters (e.g., ESLint, Pylint) with appropriate rules for detecting unused code.\n3. Install and configure dead code analyzers (e.g., Vulture for Python, ts-prune for TypeScript).\n4. Set up import organizers (e.g., isort for Python, import-sort for JavaScript/TypeScript).\n5. Create a document outlining refactoring guidelines including naming conventions, error handling patterns, and architectural approaches for V3 modules.\n6. Establish a logging system to track all code removals for future reference.\n7. Test the analysis tools on a small section of code to ensure they work as expected.\n8. Create a template for commit messages to ensure consistent documentation of changes.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 2,
+          "title": "Analyze and document code dependencies across V3 modules",
+          "description": "Perform a comprehensive analysis of dependencies between modules to identify unused code and understand the impact of removing components.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create a dependency graph of all V3 modules (settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, backfill).\n2. Document function calls between modules to understand which functions are actually used.\n3. Identify entry points for each module and trace execution paths.\n4. Mark functions and code blocks that appear to be unused based on static analysis.\n5. Document all deprecated functions that have been superseded by newer implementations.\n6. Identify legacy V1/V2 code sections that remain in the codebase.\n7. Create a spreadsheet or document that lists all code sections marked for potential removal.\n8. Validate findings with team members who have historical knowledge of the codebase.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 3,
+          "title": "Create comprehensive test suite for V3 modules before refactoring",
+          "description": "Develop unit tests for all V3 modules to ensure functionality is preserved during the cleanup process.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Create unit tests for each V3 module: settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, and backfill.\n2. Ensure test coverage for all critical paths and functions that will remain after cleanup.\n3. Implement integration tests using the --dry-run flag to verify system behavior without making external calls.\n4. Create end-to-end tests with mocked IMAP and LLM services.\n5. Document test coverage and identify any gaps.\n6. Ensure tests pass on the current codebase before any refactoring begins.\n7. Set up CI/CD pipeline to run tests automatically on commits.\n8. Create baseline performance metrics to compare against after refactoring.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 4,
+          "title": "Clean up import statements and remove unused imports",
+          "description": "Systematically review and clean up import statements across all V3 modules.",
+          "dependencies": [
+            3
+          ],
+          "details": "1. Run import organizers on each file to automatically sort and group imports according to project conventions.\n2. Manually review each file to identify and remove unused imports that automated tools might miss.\n3. Standardize import patterns across all modules (e.g., absolute vs. relative imports).\n4. Update import paths if any files will be moved during reorganization.\n5. Verify that all imports resolve correctly after changes.\n6. Run the test suite to ensure no functionality was broken.\n7. Document any significant changes or patterns discovered.\n8. Commit changes with clear messages describing the cleanup performed on each module.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 5,
+          "title": "Remove deprecated functions and replace with modern implementations",
+          "description": "Identify and remove deprecated functions, replacing calls to them with their modern equivalents.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Using the documentation from subtask 2, identify all deprecated functions.\n2. For each deprecated function, identify its modern replacement.\n3. Update all calls to deprecated functions to use the modern implementations.\n4. Remove the deprecated function implementations.\n5. Update any documentation or comments that reference the deprecated functions.\n6. Run the test suite to ensure functionality is preserved.\n7. Document all replacements made for future reference.\n8. Commit changes with detailed descriptions of what was replaced and why.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 6,
+          "title": "Eliminate legacy V1/V2 code from V3 modules",
+          "description": "Remove all legacy V1/V2 code that is no longer required for the current system.",
+          "dependencies": [
+            3,
+            5
+          ],
+          "details": "1. Using the documentation from subtask 2, identify all legacy V1/V2 code sections.\n2. Verify that each identified section is truly not needed for V3 functionality.\n3. Remove the legacy code sections one module at a time.\n4. Update any V3 code that might have referenced the removed code.\n5. Run the test suite after each module cleanup to ensure functionality is preserved.\n6. Document all removed code sections in the removal log.\n7. Update any documentation that references the removed code.\n8. Commit changes with clear descriptions of what was removed from each module.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 7,
+          "title": "Remove or document commented-out code",
+          "description": "Review all commented-out code and either remove it or move important comments to appropriate documentation.",
+          "dependencies": [
+            6
+          ],
+          "details": "1. Scan all files for commented-out code blocks.\n2. For each commented-out code block, determine if it contains valuable information.\n3. If the commented code is obsolete or redundant, remove it completely.\n4. If the commented code contains valuable information or explanations, extract that information to appropriate documentation files.\n5. Create or update documentation files as needed to preserve important context.\n6. Run the test suite to ensure no functionality was affected.\n7. Document all significant decisions about commented code in the removal log.\n8. Commit changes with descriptions of what was removed or moved to documentation.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 8,
+          "title": "Identify and consolidate duplicate functionality",
+          "description": "Find duplicate or similar functionality across modules and consolidate into shared utilities.",
+          "dependencies": [
+            5,
+            6,
+            7
+          ],
+          "details": "1. Analyze the codebase to identify functions with similar purposes or implementations.\n2. Create shared utility modules for common functionality.\n3. Refactor duplicate code to use the shared utilities.\n4. Ensure proper error handling and consistent patterns in the shared utilities.\n5. Update import statements to reference the new shared utilities.\n6. Run the test suite to verify that functionality is preserved.\n7. Document the consolidated utilities and their intended use cases.\n8. Commit changes with explanations of what was consolidated and why.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 9,
+          "title": "Reorganize code structure for improved maintainability",
+          "description": "Restructure code organization to improve readability and maintainability while ensuring logical grouping of related functionality.",
+          "dependencies": [
+            8
+          ],
+          "details": "1. Review the current file and directory structure of V3 modules.\n2. Design an improved structure that groups related functionality logically.\n3. Move files and code sections according to the new structure.\n4. Update import paths and references to reflect the new structure.\n5. Ensure consistent file naming and module organization.\n6. Run the test suite to verify that functionality is preserved.\n7. Update any documentation that references file paths or module structure.\n8. Commit changes with detailed explanations of the restructuring decisions.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 10,
+          "title": "Standardize error handling and logging across V3 modules",
+          "description": "Implement consistent error handling patterns and logging approaches across all V3 modules.",
+          "dependencies": [
+            9
+          ],
+          "details": "1. Review current error handling and logging practices across V3 modules.\n2. Define standardized error handling patterns based on the refactoring guidelines.\n3. Update all modules to follow the standardized error handling patterns.\n4. Implement consistent logging levels and formats across all modules.\n5. Ensure appropriate error messages and logging for all error scenarios.\n6. Run the test suite with focus on error scenarios to verify correct behavior.\n7. Document the standardized error handling and logging patterns.\n8. Commit changes with explanations of the standardization implemented.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 11,
+          "title": "Conduct comprehensive testing of refactored codebase",
+          "description": "Perform thorough testing of the refactored codebase, including unit tests, integration tests, and end-to-end tests.",
+          "dependencies": [
+            10
+          ],
+          "details": "1. Run the complete unit test suite for all V3 modules.\n2. Conduct integration tests using the --dry-run flag to verify system behavior.\n3. Perform live end-to-end tests with real IMAP and LLM services in a test environment.\n4. Test edge cases and error scenarios to ensure proper handling.\n5. Conduct performance tests and compare against baseline metrics.\n6. Fix any issues discovered during testing.\n7. Document test results and any remaining concerns.\n8. Update test documentation to reflect the current state of the codebase.",
+          "status": "pending",
+          "parentTaskId": 16
+        },
+        {
+          "id": 12,
+          "title": "Update documentation and finalize code cleanup",
+          "description": "Update all documentation to reflect the cleaned-up codebase and prepare for merging the changes back to the main branch.",
+          "dependencies": [
+            11
+          ],
+          "details": "1. Update README files and developer documentation to reflect the new code structure.\n2. Ensure all API documentation is current and accurate.\n3. Update any user-facing documentation that might reference removed code or changed functionality.\n4. Finalize the removal log with all code sections that were removed.\n5. Create a summary report of the cleanup process, including metrics on code reduction and improvements.\n6. Conduct a final code review with team members.\n7. Prepare a pull request with a detailed description of all changes made.\n8. After approval, merge the feature branch back to the main development branch.",
+          "status": "pending",
+          "parentTaskId": 16
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Comprehensive Documentation Audit and Consolidation for V3 Features",
+      "description": "Perform a thorough review of all project documentation to ensure completeness, accuracy, and consistency with the V3 implementation, while removing outdated content and consolidating duplicate information.",
+      "details": "This task involves a systematic review of all documentation files in the project repository with the following specific actions:\n\n1. Create an inventory of all existing documentation files and their purposes\n2. Cross-reference all V3 features with their documentation coverage, identifying any gaps\n3. Remove or update any references to deprecated features or outdated examples\n4. Verify all code snippets and examples against the current codebase to ensure they work as documented\n5. Check API references for accuracy, ensuring parameter names, types, and descriptions match implementation\n6. Identify and consolidate duplicate documentation across different files\n7. Update MAIN_DOCS.md to serve as a comprehensive entry point with proper navigation to all documentation sections\n8. Ensure consistent formatting, terminology, and style across all documentation\n9. Add version information where appropriate to help users understand which features apply to their version\n10. Check for broken links or references within the documentation\n11. Verify that installation instructions, prerequisites, and configuration steps are current\n12. Update troubleshooting guides to address common issues with the V3 implementation",
+      "testStrategy": "The documentation audit should be validated through the following methods:\n\n1. Create a documentation coverage matrix that maps each V3 feature to its corresponding documentation\n2. Perform a peer review where at least two team members who didn't write the original documentation verify its accuracy\n3. Execute all code examples in an isolated environment to confirm they work as documented\n4. Use automated link checkers to verify all internal and external links are valid\n5. Have a new team member attempt to use the documentation to perform specific tasks, noting any points of confusion\n6. Validate MAIN_DOCS.md navigation by ensuring every documentation file is accessible through its links\n7. Create a checklist of common documentation issues (inconsistent terminology, outdated screenshots, etc.) and verify each document against this list\n8. Compare API documentation against actual implementation using automated tools or manual inspection of the codebase\n9. Test the documentation on different devices and browsers to ensure readability and proper formatting\n10. Document any issues found during testing in a separate report, categorized by severity and type",
+      "status": "pending",
+      "dependencies": [
+        16,
+        "18"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": 18,
+      "title": "Implement Comprehensive V3 Test Suite with Unit, Integration, and E2E Coverage",
+      "description": "Develop a complete test suite for all V3 modules covering unit tests with mocks, integration tests with --dry-run, and live end-to-end tests for the entire pipeline.",
+      "details": "Create a structured test suite organized by module and test type, focusing on filling the identified coverage gaps:\n\n1. **Unit Tests**:\n   - EXISTING COVERAGE: CLI, Config, IMAP Client, LLM Client, Decision Logic, Note Generator, Error Handling, Logger, Prompt Renderer\n   - MISSING COVERAGE (PRIORITY):\n     - Complete test_orchestrator.py (CRITICAL - core coordination logic) - build upon partially completed work\n     - Create test_backfill.py for backfill functionality\n     - Create test_cleanup_flags.py for cleanup flags command\n\n2. **Integration Tests**:\n   - Create test_integration_v3_workflow.py for end-to-end V3 workflow with --dry-run\n   - Implement integration tests for force-reprocess functionality\n   - Implement integration tests for cleanup-flags command\n   - Implement integration tests for backfill command\n   - Test orchestrator's coordination of multiple modules\n   - Test pipeline execution with simulated inputs\n\n3. **End-to-End Tests**:\n   - Create tests with real IMAP connections to test accounts\n   - Test with actual LLM API calls (consider using a staging API key)\n   - Test full pipeline execution with various email types:\n     - Simple emails\n     - Emails with attachments\n     - Thread emails\n     - Emails in different languages\n     - Emails with unusual formatting\n   - Test edge cases:\n     - Very large emails\n     - Rate limiting scenarios\n     - Connection interruptions\n     - Malformed responses\n\n4. **Test Infrastructure**:\n   - Develop V3 config fixtures (with proper structure)\n   - Create mock IMAP server fixtures\n   - Create mock LLM API fixtures\n   - Prepare test email data fixtures\n   - Implement dry-run test helpers\n\nImplement test fixtures and helpers to facilitate testing. Create a CI-compatible test suite that can run automatically, with appropriate mocking for external dependencies in CI environments.",
+      "testStrategy": "Verify implementation using the following approach:\n\n1. **Test Coverage Metrics**:\n   - Ensure at least 80% code coverage across all modules\n   - Use Jest's coverage reporting to identify gaps\n   - Verify all critical paths have test coverage\n   - Focus on filling the identified gaps in test coverage\n\n2. **Test Validation**:\n   - Unit tests should run quickly (<30 seconds total) and not depend on external services\n   - Integration tests should verify correct module interactions\n   - E2E tests should confirm the system works with real dependencies\n\n3. **Specific Test Cases to Verify**:\n   - Orchestrator: Test the complete processing pipeline and coordination logic (CRITICAL)\n   - Backfill: Test functionality for processing historical emails\n   - Cleanup-flags: Test command for managing processing flags\n   - Force-reprocess: Test reprocessing of previously processed emails\n   - Integration: Test end-to-end workflow with --dry-run mode\n   - E2E: Test with real services and edge cases\n\n4. **Test Environment**:\n   - Create a dedicated test environment with test email accounts\n   - Set up test fixtures that can be reset between test runs\n   - Implement test helpers for common operations\n   - Develop the identified test infrastructure needs\n\n5. **CI Integration**:\n   - Ensure tests can run in CI environment\n   - Set up appropriate mocking for external dependencies in CI\n   - Configure test reporting for easy identification of failures",
+      "status": "pending",
+      "dependencies": [
+        15
+      ],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": "18.1",
+          "title": "Complete test_orchestrator.py unit tests",
+          "description": "Finish the partially completed orchestrator tests, focusing on core coordination logic, module interactions, and error handling paths.",
+          "status": "done",
+          "priority": "critical"
+        },
+        {
+          "id": "18.2",
+          "title": "Create test_backfill.py unit tests",
+          "description": "Develop comprehensive unit tests for the backfill functionality, including command parsing, execution logic, and error handling.",
+          "status": "done",
+          "priority": "high"
+        },
+        {
+          "id": "18.3",
+          "title": "Create test_cleanup_flags.py unit tests",
+          "description": "Implement unit tests for the cleanup-flags command, covering flag identification, removal logic, and safety mechanisms.",
+          "status": "done",
+          "priority": "high"
+        },
+        {
+          "id": "18.4",
+          "title": "Develop test infrastructure components",
+          "description": "Create the necessary test fixtures and helpers identified in the coverage analysis: V3 config fixtures, mock IMAP server, mock LLM API, test email data, and dry-run helpers.",
+          "status": "pending",
+          "priority": "high"
+        },
+        {
+          "id": "18.5",
+          "title": "Implement test_integration_v3_workflow.py",
+          "description": "Create integration tests for the end-to-end V3 workflow using --dry-run mode to verify module interactions without external dependencies.",
+          "status": "pending",
+          "priority": "medium"
+        },
+        {
+          "id": "18.6",
+          "title": "Implement integration tests for force-reprocess functionality",
+          "description": "Develop integration tests for the force-reprocess feature, verifying it correctly identifies and reprocesses previously handled emails.",
+          "status": "pending",
+          "priority": "medium"
+        },
+        {
+          "id": "18.7",
+          "title": "Implement integration tests for cleanup-flags command",
+          "description": "Create integration tests for the cleanup-flags command, testing its interaction with the IMAP system and verification mechanisms.",
+          "status": "pending",
+          "priority": "medium"
+        },
+        {
+          "id": "18.8",
+          "title": "Implement integration tests for backfill command",
+          "description": "Develop integration tests for the backfill command, verifying its ability to process historical emails according to specified parameters.",
+          "status": "pending",
+          "priority": "medium"
+        },
+        {
+          "id": "18.9",
+          "title": "Create E2E tests with live IMAP connections",
+          "description": "Implement end-to-end tests using real IMAP connections to test accounts, verifying email retrieval, processing, and flag management.",
+          "status": "pending",
+          "priority": "low"
+        },
+        {
+          "id": "18.10",
+          "title": "Create E2E tests with live LLM API",
+          "description": "Develop end-to-end tests using actual LLM API calls (with staging API key), verifying prompt construction, response handling, and error recovery.",
+          "status": "pending",
+          "priority": "low"
+        },
+        {
+          "id": "18.11",
+          "title": "Implement E2E tests for edge cases",
+          "description": "Create specialized end-to-end tests for edge cases: very large emails, rate limiting scenarios, connection interruptions, and malformed responses.",
+          "status": "pending",
+          "priority": "low"
+        },
+        {
+          "id": "18.12",
+          "title": "Configure CI integration for test suite",
+          "description": "Set up the test suite to run in CI environments with appropriate mocking for external dependencies and clear reporting of test results.",
+          "status": "pending",
+          "priority": "medium"
+        }
+      ]
     }
   ],
   "metadata": {
