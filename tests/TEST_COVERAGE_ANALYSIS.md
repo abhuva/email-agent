@@ -21,11 +21,11 @@
 - **test_backfill.py** - Backfill functionality
 - **test_cleanup_flags.py** - Cleanup flags command
 
-### ❌ Missing Integration Tests
-- **test_integration_v3_workflow.py** - End-to-end V3 workflow with --dry-run
-- Integration tests for force-reprocess
-- Integration tests for cleanup-flags command
-- Integration tests for backfill command
+### Integration Tests
+- ✅ **test_integration_v3_workflow.py** - End-to-end V3 workflow with --dry-run (Task 18.5)
+- ✅ **test_integration_v3_workflow.py::TestV3WorkflowForceReprocess** - Force-reprocess integration tests (Task 18.6, 8 tests)
+- ❌ Integration tests for cleanup-flags command
+- ❌ Integration tests for backfill command
 
 ### ❌ Missing E2E Tests
 - Live IMAP connection tests

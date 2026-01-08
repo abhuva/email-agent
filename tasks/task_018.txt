@@ -110,7 +110,7 @@ Verify implementation using the following approach:
 ### Details:
 
 
-## 18.6. Implement integration tests for force-reprocess functionality [pending]
+## 18.6. Implement integration tests for force-reprocess functionality [done]
 ### Dependencies: None
 ### Description: Develop integration tests for the force-reprocess feature, verifying it correctly identifies and reprocesses previously handled emails.
 ### Details:

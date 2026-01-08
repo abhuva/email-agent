@@ -36,10 +36,11 @@
 - **Priority:** Medium
 - **Scope:** End-to-end V3 workflow with --dry-run mode
 
-### 📋 Subtask 18.6: Implement integration tests for force-reprocess
-- **Status:** Pending
+### ✅ Subtask 18.6: Implement integration tests for force-reprocess
+- **Status:** Done
 - **Priority:** Medium
 - **Scope:** Force-reprocess feature integration tests
+- **Completed:** Created `TestV3WorkflowForceReprocess` class with 8 comprehensive integration tests covering single email by UID, batch processing, mixed status, file overwriting, dry-run mode, flag management, error handling, and comparison with normal mode
 
 ### 📋 Subtask 18.7: Implement integration tests for cleanup-flags command
 - **Status:** Pending
@@ -89,7 +90,8 @@
 - ❌ test_backfill.py → Subtask 18.2
 - ❌ test_cleanup_flags.py → Subtask 18.3
 - ❌ test_integration_v3_workflow.py → Subtask 18.5
-- ❌ Integration tests (force-reprocess, cleanup-flags, backfill) → Subtasks 18.6-18.8
+- ✅ Integration tests (force-reprocess) → Subtask 18.6 (DONE)
+- ❌ Integration tests (cleanup-flags, backfill) → Subtasks 18.7-18.8
 - ❌ E2E tests → Subtasks 18.9-18.11
 
 ## Next Steps

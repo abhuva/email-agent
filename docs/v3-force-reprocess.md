@@ -214,11 +214,22 @@ The force-reprocess feature is tested in:
 - `tests/test_imap_client.py`: Tests for `get_unprocessed_emails(force_reprocess=True)`
 - `tests/test_cli_v3.py`: Tests for `--force-reprocess` flag parsing
 - `tests/test_obsidian_utils.py`: Tests for file overwriting behavior
+- `tests/test_integration_v3_workflow.py`: Comprehensive integration tests (Task 18.6)
+  - `TestV3WorkflowForceReprocess` class with 8 integration tests covering:
+    - Single email by UID reprocessing
+    - Batch email reprocessing
+    - Mixed processed/unprocessed status
+    - File overwriting behavior
+    - Dry-run mode compatibility
+    - Flag management
+    - Error handling (UID not found)
+    - Comparison with normal mode
 
 Run tests:
 ```bash
 pytest tests/test_imap_client.py -v
 pytest tests/test_cli_v3.py::test_process_command_force_reprocess -v
+pytest tests/test_integration_v3_workflow.py::TestV3WorkflowForceReprocess -v
 ```
 
 ## PDD Alignment
@@ -234,4 +245,4 @@ This feature implements:
 - **IMAP Client**: `src/imap_client.py`
 - **Note Creation**: `src/obsidian_note_creation.py`
 - **Logging**: `src/v3_logger.py`
-- **Tests**: `tests/test_imap_client.py`, `tests/test_cli_v3.py`
+- **Tests**: `tests/test_imap_client.py`, `tests/test_cli_v3.py`, `tests/test_integration_v3_workflow.py`
