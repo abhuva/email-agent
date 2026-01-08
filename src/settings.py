@@ -168,7 +168,7 @@ class Settings:
         self._ensure_initialized()
         return self._config.paths.prompt_file
     
-    # OpenRouter Configuration Getters
+    # OpenRouter Configuration Getters (shared settings)
     
     def get_openrouter_api_key(self) -> str:
         """
@@ -192,25 +192,66 @@ class Settings:
         self._ensure_initialized()
         return self._config.openrouter.api_url
     
-    def get_openrouter_model(self) -> str:
-        """Get LLM model name."""
+    # Classification Configuration Getters
+    
+    def get_classification_model(self) -> str:
+        """Get LLM model name for classification."""
         self._ensure_initialized()
-        return self._config.openrouter.model
+        return self._config.classification.model
+    
+    def get_classification_temperature(self) -> float:
+        """Get LLM temperature setting for classification."""
+        self._ensure_initialized()
+        return self._config.classification.temperature
+    
+    def get_classification_retry_attempts(self) -> int:
+        """Get number of retry attempts for classification API calls."""
+        self._ensure_initialized()
+        return self._config.classification.retry_attempts
+    
+    def get_classification_retry_delay_seconds(self) -> int:
+        """Get initial retry delay in seconds for classification."""
+        self._ensure_initialized()
+        return self._config.classification.retry_delay_seconds
+    
+    # Summarization Configuration Getters
+    
+    def get_summarization_model(self) -> str:
+        """Get LLM model name for summarization."""
+        self._ensure_initialized()
+        return self._config.summarization.model
+    
+    def get_summarization_temperature(self) -> float:
+        """Get LLM temperature setting for summarization."""
+        self._ensure_initialized()
+        return self._config.summarization.temperature
+    
+    def get_summarization_retry_attempts(self) -> int:
+        """Get number of retry attempts for summarization API calls."""
+        self._ensure_initialized()
+        return self._config.summarization.retry_attempts
+    
+    def get_summarization_retry_delay_seconds(self) -> int:
+        """Get initial retry delay in seconds for summarization."""
+        self._ensure_initialized()
+        return self._config.summarization.retry_delay_seconds
+    
+    # Backward compatibility: Keep old method names that map to classification
+    def get_openrouter_model(self) -> str:
+        """Get LLM model name (backward compatibility - returns classification model)."""
+        return self.get_classification_model()
     
     def get_openrouter_temperature(self) -> float:
-        """Get LLM temperature setting."""
-        self._ensure_initialized()
-        return self._config.openrouter.temperature
+        """Get LLM temperature setting (backward compatibility - returns classification temperature)."""
+        return self.get_classification_temperature()
     
     def get_openrouter_retry_attempts(self) -> int:
-        """Get number of retry attempts for API calls."""
-        self._ensure_initialized()
-        return self._config.openrouter.retry_attempts
+        """Get number of retry attempts (backward compatibility - returns classification retry attempts)."""
+        return self.get_classification_retry_attempts()
     
     def get_openrouter_retry_delay_seconds(self) -> int:
-        """Get initial retry delay in seconds."""
-        self._ensure_initialized()
-        return self._config.openrouter.retry_delay_seconds
+        """Get initial retry delay (backward compatibility - returns classification retry delay)."""
+        return self.get_classification_retry_delay_seconds()
     
     # Processing Configuration Getters
     

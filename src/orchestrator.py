@@ -66,6 +66,14 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
+# Try to import rich for progress bars (optional dependency)
+try:
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
+    from rich.console import Console
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
 from src.settings import settings
 from src.imap_client import ImapClient, IMAPClientError, IMAPConnectionError, IMAPFetchError
 from src.llm_client import LLMClient, LLMResponse, LLMClientError
@@ -74,6 +82,9 @@ from src.note_generator import NoteGenerator, TemplateRenderError
 from src.v3_logger import EmailLogger
 from src.dry_run import is_dry_run
 from src.config import ConfigError
+from src.summarization import check_summarization_required
+from src.email_summarization import generate_email_summary
+from src.openrouter_client import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +194,15 @@ class Pipeline:
         self.note_generator = NoteGenerator()
         self.email_logger = EmailLogger()
         
+        # Initialize OpenRouter client for summarization
+        try:
+            api_key = settings.get_openrouter_api_key()
+            api_url = settings.get_openrouter_api_url()
+            self.openrouter_client = OpenRouterClient(api_key, api_url)
+        except Exception as e:
+            logger.warning(f"Could not initialize OpenRouter client for summarization: {e}")
+            self.openrouter_client = None
+        
         logger.info("Pipeline initialized successfully")
     
     def process_emails(self, options: ProcessOptions) -> PipelineSummary:
@@ -235,6 +255,25 @@ class Pipeline:
                     average_time=0.0
                 )
             
+            # Set up progress bar if rich is available
+            progress = None
+            progress_task = None
+            if RICH_AVAILABLE and len(emails) > 0:
+                console = Console()
+                progress = Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                    TimeElapsedColumn(),
+                    console=console
+                )
+                progress.start()
+                progress_task = progress.add_task(
+                    f"[cyan]Processing {len(emails)} email(s)...",
+                    total=len(emails)
+                )
+            
             # Process each email
             # Note: Processing emails one at a time to prevent memory leaks during batch processing
             # Each email is processed and result is stored, but email_data is not kept in memory
@@ -247,9 +286,16 @@ class Pipeline:
                 # (Python GC will handle cleanup, but explicit clearing helps)
                 del email_data
                 
-                # Log progress for large batches
-                if len(emails) > 10 and idx % 10 == 0:
+                # Update progress bar if available
+                if progress and progress_task is not None:
+                    progress.update(progress_task, advance=1)
+                # Fallback: Log progress for large batches if no progress bar
+                elif len(emails) > 10 and idx % 10 == 0:
                     logger.info(f"Progress: {idx}/{len(emails)} emails processed")
+            
+            # Stop progress bar after processing
+            if progress:
+                progress.stop()
             
             # Generate summary with detailed statistics
             total_time = time.time() - start_time
@@ -494,6 +540,9 @@ class Pipeline:
             # Log classification results to both logging systems
             self._log_classification_results(uid, llm_response, classification_result, options)
             
+            # Stage 2.5: Summarization (if email is important and summarization is configured)
+            self._generate_summary_if_needed(email_data, classification_result, uid)
+            
             # Stage 3: Note Generation
             note_content = self._generate_note(email_data, classification_result)
             
@@ -721,6 +770,83 @@ class Pipeline:
                 )
         
         return classification_result
+    
+    def _generate_summary_if_needed(
+        self,
+        email_data: Dict[str, Any],
+        classification_result: ClassificationResult,
+        uid: str
+    ) -> None:
+        """
+        Generate summary for email if summarization is required.
+        
+        This method:
+        - Checks if email tags match summarization_tags from config
+        - Calls LLM to generate summary if required
+        - Stores summary result in email_data for template rendering
+        - Handles errors gracefully (summarization failure doesn't break pipeline)
+        
+        Args:
+            email_data: Email data dictionary (will be modified to include summary)
+            classification_result: Classification result with tags
+            uid: Email UID for logging
+        """
+        # Skip if OpenRouter client not available
+        if not self.openrouter_client:
+            logger.debug(f"Skipping summarization for UID {uid} (OpenRouter client not available)")
+            return
+        
+        try:
+            # Get tags from classification result
+            email_tags = classification_result.to_frontmatter_dict().get('tags', [])
+            
+            # Create email dict with tags for summarization check
+            email_with_tags = {**email_data, 'tags': email_tags}
+            
+            # Check if summarization is required (uses V3 settings directly)
+            summarization_result = check_summarization_required(email_with_tags)
+            
+            if not summarization_result.get('summarize', False):
+                reason = summarization_result.get('reason', 'unknown')
+                logger.info(f"Summarization not required for UID {uid}: {reason} (tags: {email_tags})")
+                return
+            
+            logger.info(f"Summarization required for email UID {uid} (tags: {email_tags})")
+            
+            # Generate summary using LLM (uses V3 settings directly)
+            try:
+                summary_result = generate_email_summary(
+                    email_data,
+                    self.openrouter_client,
+                    summarization_result
+                )
+                
+                # Store summary result in email_data for template rendering
+                email_data['summary'] = summary_result
+                
+                if summary_result.get('success', False):
+                    summary_text = summary_result.get('summary', '')
+                    logger.info(f"Successfully generated summary for email UID {uid} ({len(summary_text)} chars)")
+                    logger.debug(f"Summary data: success={summary_result.get('success')}, summary_length={len(summary_text)}, action_items={len(summary_result.get('action_items', []))}, priority={summary_result.get('priority')}")
+                else:
+                    error = summary_result.get('error', 'unknown')
+                    logger.warning(f"Summary generation failed for email UID {uid}: {error}")
+                    
+            except Exception as e:
+                # Graceful degradation - log but continue
+                logger.error(f"Error generating summary for email UID {uid}: {e}", exc_info=True)
+                email_data['summary'] = {
+                    'success': False,
+                    'summary': '',
+                    'action_items': [],
+                    'priority': 'medium',
+                    'error': f'summary_generation_error: {str(e)}'
+                }
+                
+        except Exception as e:
+            # Never let summarization check break the pipeline
+            logger.error(f"Unexpected error in summarization check for UID {uid}: {e}", exc_info=True)
+            # Don't set summary - template will handle missing summary gracefully
     
     def _log_classification_results(
         self,

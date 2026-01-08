@@ -6,8 +6,8 @@ imap:
   query: ALL
   processed_tag: AIProcessed
   application_flags:
-  - AIProcessed
-  - ObsidianNoteCreated
+  #- AIProcessed
+  #- ObsidianNoteCreated
   - NoteCreationFailed
 paths:
   template_file: config/note_template.md.j2
@@ -20,15 +20,21 @@ paths:
 openrouter:
   api_key_env: OPENROUTER_API_KEY
   api_url: https://openrouter.ai/api/v1
+classification:
   model: google/gemini-2.5-flash-lite-preview-09-2025
   temperature: 0.2
   retry_attempts: 3
-  retry_delay_seconds: 5
+  retry_delay_seconds: 1
+summarization:
+  model: google/gemini-2.5-flash-lite
+  temperature: 0.4
+  retry_attempts: 1
+  retry_delay_seconds: 1
 processing:
   importance_threshold: 8
   spam_threshold: 5
-  max_body_chars: 4000
+  max_body_chars: 6000
   max_emails_per_run: 15
 # Optional - only if you want summarization
   summarization_tags:
-    - 'Urgent'  # Or other tags you use
+    - 'important'  # Tag generated when importance_score >= threshold

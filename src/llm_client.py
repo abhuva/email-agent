@@ -77,10 +77,10 @@ class LLMClient:
         if self._api_key is None:
             self._api_key = settings.get_openrouter_api_key()
             self._api_url = settings.get_openrouter_api_url()
-            self._model = settings.get_openrouter_model()
-            self._temperature = settings.get_openrouter_temperature()
-            self._retry_attempts = settings.get_openrouter_retry_attempts()
-            self._retry_delay_seconds = settings.get_openrouter_retry_delay_seconds()
+            self._model = settings.get_classification_model()
+            self._temperature = settings.get_classification_temperature()
+            self._retry_attempts = settings.get_classification_retry_attempts()
+            self._retry_delay_seconds = settings.get_classification_retry_delay_seconds()
     
     def _format_prompt_for_json(self, email_content: str, user_prompt: Optional[str] = None) -> str:
         """

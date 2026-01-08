@@ -14,24 +14,27 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def get_summarization_tags(config) -> List[str]:
+def get_summarization_tags() -> List[str]:
     """
-    Safely access and validate the summarization_tags configuration.
-    
-    Args:
-        config: ConfigManager instance
+    Safely access and validate the summarization_tags configuration from V3 settings.
     
     Returns:
         List of tag strings that trigger summarization, or empty list if invalid/missing
     
     Examples:
-        >>> config.summarization_tags = ['Urgent', 'Important']
-        >>> tags = get_summarization_tags(config)
-        >>> 'Urgent' in tags
+        >>> tags = get_summarization_tags()
+        >>> 'important' in tags
         True
     """
     try:
-        tags = getattr(config, 'summarization_tags', None)
+        from src.settings import settings
+        
+        # Get summarization tags from V3 config
+        try:
+            processing_config = settings._config.processing
+            tags = getattr(processing_config, 'summarization_tags', None)
+        except Exception:
+            tags = None
         
         # Check if tags exist and is a list
         if tags is None:
@@ -154,17 +157,16 @@ def load_summarization_prompt(prompt_path: Optional[str]) -> Optional[str]:
 
 
 def check_summarization_required(
-    email: Dict[str, Any],
-    config
+    email: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
     Determine if an email should be summarized and load the prompt if needed.
     
     This is the main function that orchestrates tag checking and prompt loading.
+    Uses V3 settings facade directly.
     
     Args:
         email: Email dict with 'tags' key (list of tag strings)
-        config: ConfigManager instance
     
     Returns:
         Dict with keys:
@@ -173,15 +175,16 @@ def check_summarization_required(
             - reason: Optional[str] - Reason if summarize is False (for logging)
     
     Examples:
-        >>> email = {'tags': ['Urgent']}
-        >>> config.summarization_tags = ['Urgent']
-        >>> result = check_summarization_required(email, config)
+        >>> email = {'tags': ['important']}
+        >>> result = check_summarization_required(email)
         >>> result['summarize']
         True
     """
     try:
-        # Get summarization tags from config
-        summarization_tags = get_summarization_tags(config)
+        from src.settings import settings
+        
+        # Get summarization tags from V3 settings
+        summarization_tags = get_summarization_tags()
         
         if not summarization_tags:
             logger.debug("No summarization tags configured, skipping summarization")
@@ -205,8 +208,13 @@ def check_summarization_required(
                 'reason': 'tags_do_not_match'
             }
         
-        # Email should be summarized - load the prompt
-        prompt_path = getattr(config, 'summarization_prompt_path', None)
+        # Email should be summarized - load the prompt from V3 settings
+        try:
+            paths_config = settings._config.paths
+            prompt_path = getattr(paths_config, 'summarization_prompt_path', None)
+        except Exception:
+            prompt_path = None
+        
         prompt = load_summarization_prompt(prompt_path)
         
         if not prompt:

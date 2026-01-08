@@ -210,24 +210,41 @@ class TemplateRenderer:
         """
         Jinja2 filter for formatting datetimes to ISO format.
         
+        Uses email.utils.parsedate_to_datetime() to properly handle RFC 2822
+        email date formats, including timezone names like "(CEST)".
+        
         Args:
-            value: Date string to format
+            value: Date string to format (can be RFC 2822, ISO, etc.)
             
         Returns:
             ISO formatted datetime string (YYYY-MM-DDTHH:MM:SSZ)
         """
+        if not value:
+            return value
+        
         try:
-            # Try to parse common date formats
-            for fmt in ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%a, %d %b %Y %H:%M:%S %z']:
-                try:
-                    dt = datetime.strptime(value, fmt)
-                    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                except ValueError:
-                    continue
-            # If no format matches, return original
-            return value
-        except Exception:
-            return value
+            # First try parsing as ISO format (common in modern systems)
+            # Handle 'Z' timezone indicator
+            iso_str = value.replace('Z', '+00:00')
+            dt = datetime.fromisoformat(iso_str)
+            # Convert to UTC and format as ISO with Z suffix
+            if dt.tzinfo:
+                dt = dt.astimezone(timezone.utc)
+            return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        except (ValueError, TypeError):
+            # Fall back to RFC 2822 parsing (email standard)
+            # This handles formats like "Wed, 13 Sep 2023 14:34:53 +0200 (CEST)"
+            try:
+                from email.utils import parsedate_to_datetime
+                dt = parsedate_to_datetime(value)
+                # Convert to UTC and format as ISO with Z suffix
+                if dt.tzinfo:
+                    dt = dt.astimezone(timezone.utc)
+                return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not parse date string '{value}': {e}")
+                # If all parsing fails, return original (better than empty string)
+                return value
     
     def _truncate_filter(self, value: str, length: int = 100) -> str:
         """
@@ -321,6 +338,25 @@ class TemplateRenderer:
             context['importance_threshold'] = 8
             context['spam_threshold'] = 5
             logger.warning("Settings not initialized, using default thresholds")
+        
+        # Add summary data if available (raw response, no parsing)
+        summary_data = email_data.get('summary')
+        if summary_data and isinstance(summary_data, dict):
+            summary_text = summary_data.get('summary', '')
+            has_summary = summary_data.get('success', False) and bool(summary_text)
+            context['summary'] = {
+                'success': summary_data.get('success', False),
+                'summary_text': summary_text,  # Raw LLM response, inserted directly
+                'has_summary': has_summary
+            }
+            logger.debug(f"Summary data added to template context: success={context['summary']['success']}, has_summary={has_summary}, summary_length={len(summary_text)}")
+        else:
+            context['summary'] = {
+                'success': False,
+                'summary_text': '',
+                'has_summary': False
+            }
+            logger.debug(f"No summary data in email_data for UID {email_data.get('uid', 'unknown')}")
         
         return context
     

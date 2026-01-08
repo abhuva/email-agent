@@ -85,6 +85,8 @@ class ConfigLoader:
             'IMAP': 'imap',
             'PATHS': 'paths',
             'OPENROUTER': 'openrouter',
+            'CLASSIFICATION': 'classification',
+            'SUMMARIZATION': 'summarization',
             'PROCESSING': 'processing'
         }
         

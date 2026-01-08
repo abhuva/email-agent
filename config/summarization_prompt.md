@@ -12,11 +12,6 @@ Analyze the following email and provide a concise, actionable summary.
 
 2. **Action Items**: If the email contains any action items, tasks, or requests, list them clearly. If there are no action items, state "None."
 
-3. **Priority Level**: Assess the priority level:
-   - **high**: Urgent, requires immediate attention, time-sensitive
-   - **medium**: Important but not urgent, can be handled within a few days
-   - **low**: Informational, no immediate action required
-
 ## Output Format
 
 Provide your response in the following format:
@@ -28,16 +23,6 @@ Provide your response in the following format:
 - [Action item 1]
 - [Action item 2]
 (Or "None" if no action items)
-
-**Priority:** [high/medium/low]
-
-## Email Content
-
-Subject: {subject}
-From: {from}
-Date: {date}
-
-{email_body}
 
 ---
 

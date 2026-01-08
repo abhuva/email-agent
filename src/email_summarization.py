@@ -170,16 +170,17 @@ def call_llm_for_summarization(
 
 def parse_summary_response(raw_response: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Parse LLM response into structured summary object.
+    Parse LLM response and return raw summary text with minimal processing.
+    
+    For smaller models like Gemini Flash, we return the raw response directly
+    without complex parsing, allowing the model's natural formatting to be preserved.
     
     Args:
         raw_response: Raw API response dict from LLM
     
     Returns:
         Dict with keys:
-            - summary: str - Main summary text
-            - action_items: List[str] - List of action items
-            - priority: str - Priority level (low/medium/high)
+            - summary: str - Raw summary text (minimal processing)
             - success: bool - Whether parsing succeeded
             - raw_content: str - Raw content from API (for debugging)
     
@@ -191,8 +192,6 @@ def parse_summary_response(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
     """
     result = {
         'summary': '',
-        'action_items': [],
-        'priority': 'medium',
         'success': False,
         'raw_content': ''
     }
@@ -211,83 +210,31 @@ def parse_summary_response(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
         
         result['raw_content'] = content.strip()
         
-        # Strip markdown formatting if present
+        # Minimal processing: just strip whitespace and remove markdown code blocks if present
         content_clean = content.strip()
         
-        # Remove markdown code blocks if present
+        # Remove markdown code blocks if present (some models wrap responses in code blocks)
         if content_clean.startswith("```"):
-            # Extract content between code blocks
             match = re.search(r'```(?:markdown)?\s*(.*?)\s*```', content_clean, re.DOTALL)
             if match:
                 content_clean = match.group(1).strip()
         
-        # Validate minimum length
-        if len(content_clean) < 20:
-            logger.warning(f"Summary too short ({len(content_clean)} chars), minimum 20 required")
+        # Basic validation: minimum length
+        if len(content_clean) < 10:
+            logger.warning(f"Summary too short ({len(content_clean)} chars), minimum 10 required")
             return result
         
-        # Validate maximum length
-        if len(content_clean) > 500:
-            logger.warning(f"Summary too long ({len(content_clean)} chars), truncating to 500")
-            content_clean = content_clean[:500].rstrip()
-        
-        # Try to extract structured information
-        # Look for action items (bullet points, numbered lists)
-        action_items = []
-        priority = 'medium'
-        
-        # Extract bullet points or numbered items that look like action items
-        action_patterns = [
-            r'(?:^|\n)[-*•]\s*(.+?)(?=\n|$)',
-            r'(?:^|\n)\d+\.\s*(.+?)(?=\n|$)',
-            r'(?:^|\n)Action[:\s]+(.+?)(?=\n|$)',
-        ]
-        
-        for pattern in action_patterns:
-            matches = re.findall(pattern, content_clean, re.MULTILINE | re.IGNORECASE)
-            if matches:
-                action_items.extend([m.strip() for m in matches if len(m.strip()) > 5])
-        
-        # Extract priority (look for "priority: high/medium/low" or similar)
-        priority_patterns = [
-            r'priority[:\s]+(low|medium|high)',
-            r'priority[:\s]+(urgent|normal|low)',
-        ]
-        
-        for pattern in priority_patterns:
-            match = re.search(pattern, content_clean, re.IGNORECASE)
-            if match:
-                priority_raw = match.group(1).lower()
-                if 'urgent' in priority_raw or 'high' in priority_raw:
-                    priority = 'high'
-                elif 'low' in priority_raw:
-                    priority = 'low'
-                else:
-                    priority = 'medium'
-                break
-        
-        # The main summary is the cleaned content (or first paragraph if structured)
-        summary = content_clean
-        
-        # If we found action items, try to separate them from summary
-        if action_items:
-            # Remove action items section from summary if present
-            for item in action_items:
-                summary = summary.replace(f"- {item}", "").replace(f"* {item}", "").replace(f"• {item}", "")
-            summary = re.sub(r'\n{3,}', '\n\n', summary).strip()
-        
-        result['summary'] = summary
-        result['action_items'] = action_items[:5]  # Limit to 5 action items
-        result['priority'] = priority
+        # Store the raw summary text directly (no parsing, no breaking down)
+        result['summary'] = content_clean
         result['success'] = True
         
-        logger.debug(f"Parsed summary: {len(summary)} chars, {len(action_items)} action items, priority: {priority}")
+        logger.debug(f"Summary extracted: {len(content_clean)} chars (raw response, no parsing)")
         
     except Exception as e:
         logger.error(f"Error parsing summary response: {e}", exc_info=True)
         # Return partial result if we got some content
         if result.get('raw_content'):
-            result['summary'] = result['raw_content'][:500]
+            result['summary'] = result['raw_content']
             result['success'] = True  # Partial success
     
     return result
@@ -296,7 +243,6 @@ def parse_summary_response(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
 def generate_email_summary(
     email: Dict[str, Any],
     client: OpenRouterClient,
-    config,
     summarization_result: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
@@ -304,32 +250,34 @@ def generate_email_summary(
     
     This function orchestrates prompt formatting, API calls, error handling,
     and response parsing to generate a structured summary.
+    Uses V3 settings facade directly.
     
     Args:
         email: Email dict with 'subject', 'sender', 'body', 'date', etc.
         client: OpenRouterClient instance
-        config: ConfigManager instance
         summarization_result: Optional result from check_summarization_required()
                              If None, will check if summarization is needed
     
     Returns:
         Dict with keys:
             - success: bool - Whether summary was generated successfully
-            - summary: str - Main summary text
-            - action_items: List[str] - List of action items
-            - priority: str - Priority level
+            - summary: str - Raw summary text from LLM (inserted directly, no parsing)
             - error: Optional[str] - Error message if failed
+            - action_items: List[str] - (Deprecated, always empty) Kept for backward compatibility
+            - priority: str - (Deprecated, always 'medium') Kept for backward compatibility
     
     Examples:
         >>> email = {'subject': 'Test', 'sender': 'test@example.com', 'body': 'Content'}
-        >>> result = generate_email_summary(email, client, config)
+        >>> result = generate_email_summary(email, client)
         >>> 'success' in result
         True
     """
+    from src.settings import settings
+    
     # Check if summarization is required
     if summarization_result is None:
         from src.summarization import check_summarization_required
-        summarization_result = check_summarization_required(email, config)
+        summarization_result = check_summarization_required(email)
     
     if not summarization_result.get('summarize', False):
         reason = summarization_result.get('reason', 'unknown')
@@ -380,19 +328,21 @@ def generate_email_summary(
             email_date
         )
         
-        # Get model from config
-        model = config.openrouter_model
+        # Get model and settings from V3 summarization config
+        model = settings.get_summarization_model()
+        temperature = settings.get_summarization_temperature()
+        max_tokens = 300  # Can be made configurable later if needed
         
         # Call LLM API
-        logger.info(f"Calling LLM API for email {email_uid} summarization")
+        logger.info(f"Calling LLM API for email {email_uid} summarization (model: {model}, temperature: {temperature})")
         start_time = time.time()
         
         raw_response = call_llm_for_summarization(
             client,
             formatted_prompt,
             model,
-            max_tokens=300,
-            temperature=0.3
+            max_tokens=max_tokens,
+            temperature=temperature
         )
         
         api_latency = time.time() - start_time

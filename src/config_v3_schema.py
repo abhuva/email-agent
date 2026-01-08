@@ -65,6 +65,7 @@ class PathsConfig(BaseModel):
     analytics_file: str = Field(default="logs/analytics.jsonl", description="Structured analytics log (JSONL format)")
     changelog_path: str = Field(default="logs/email_changelog.md", description="Changelog/audit log file")
     prompt_file: str = Field(default="config/prompt.md", description="LLM prompt file for email classification")
+    summarization_prompt_path: Optional[str] = Field(default=None, description="Path to summarization prompt file (optional, for important emails)")
 
     @field_validator('obsidian_vault')
     @classmethod
@@ -84,9 +85,22 @@ class PathsConfig(BaseModel):
 
 
 class OpenRouterConfig(BaseModel):
-    """OpenRouter API configuration section."""
+    """OpenRouter API configuration section (shared settings)."""
     api_key_env: str = Field(default="OPENROUTER_API_KEY", description="Environment variable name for API key")
     api_url: str = Field(default="https://openrouter.ai/api/v1", description="OpenRouter API endpoint")
+
+    @field_validator('api_key_env')
+    @classmethod
+    def validate_api_key_env(cls, v: str) -> str:
+        """Validate API key environment variable name is provided."""
+        if not v or not v.strip():
+            raise ValueError("api_key_env must be specified (security requirement)")
+        # Note: Actual env var value is validated when accessed via settings.get_openrouter_api_key()
+        return v
+
+
+class LLMTaskConfig(BaseModel):
+    """Base configuration for LLM tasks (classification and summarization)."""
     model: str = Field(..., description="LLM model to use")
     temperature: float = Field(default=0.2, description="LLM temperature (0.0-2.0)")
     retry_attempts: int = Field(default=3, description="Number of retry attempts for failed API calls")
@@ -116,14 +130,15 @@ class OpenRouterConfig(BaseModel):
             raise ValueError(f"Retry delay must be at least 1 second, got {v}")
         return v
 
-    @field_validator('api_key_env')
-    @classmethod
-    def validate_api_key_env(cls, v: str) -> str:
-        """Validate API key environment variable name is provided."""
-        if not v or not v.strip():
-            raise ValueError("api_key_env must be specified (security requirement)")
-        # Note: Actual env var value is validated when accessed via settings.get_openrouter_api_key()
-        return v
+
+class ClassificationConfig(LLMTaskConfig):
+    """Configuration for email classification task."""
+    pass
+
+
+class SummarizationConfig(LLMTaskConfig):
+    """Configuration for email summarization task."""
+    pass
 
 
 class ProcessingConfig(BaseModel):
@@ -132,6 +147,7 @@ class ProcessingConfig(BaseModel):
     spam_threshold: int = Field(default=5, description="Maximum spam score (0-10) to consider email as spam")
     max_body_chars: int = Field(default=4000, description="Maximum characters to send to LLM")
     max_emails_per_run: int = Field(default=15, description="Maximum number of emails to process per execution")
+    summarization_tags: Optional[list[str]] = Field(default=None, description="List of tags that trigger summarization (optional)")
 
     @field_validator('importance_threshold', 'spam_threshold')
     @classmethod
@@ -160,10 +176,12 @@ class V3ConfigSchema(BaseModel):
     imap: ImapConfig
     paths: PathsConfig
     openrouter: OpenRouterConfig
+    classification: ClassificationConfig
+    summarization: SummarizationConfig
     processing: ProcessingConfig
 
     model_config = ConfigDict(
-        extra="forbid",  # Reject any extra fields not in schema
+        extra="allow",  # Allow extra fields for backward compatibility (summarization_tags, etc.)
         validate_assignment=True  # Validate on assignment
     )
 
