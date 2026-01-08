@@ -883,7 +883,7 @@
           "id": 2,
           "title": "Implement email retrieval and selection logic",
           "description": "Add the ability to retrieve emails from IMAP and select which ones to process based on CLI arguments",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],

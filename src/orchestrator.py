@@ -38,7 +38,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
 from src.settings import settings
-from src.imap_client import ImapClient, IMAPClientError
+from src.imap_client import ImapClient, IMAPClientError, IMAPConnectionError, IMAPFetchError
 from src.llm_client import LLMClient, LLMResponse, LLMClientError
 from src.decision_logic import DecisionLogic, ClassificationResult
 from src.note_generator import NoteGenerator, TemplateRenderError
@@ -239,29 +239,104 @@ class Pipeline:
         """
         Retrieve emails to process based on options.
         
+        This method handles:
+        - Single email retrieval by UID (with processed status check)
+        - Batch retrieval of unprocessed emails
+        - Force reprocess mode (ignores processed status)
+        - Comprehensive error handling and logging
+        
         Args:
-            options: Processing options
+            options: Processing options (uid, force_reprocess, dry_run)
             
         Returns:
-            List of email data dictionaries
+            List of email data dictionaries ready for processing
+            
+        Raises:
+            IMAPClientError: If IMAP operations fail
         """
-        if options.uid:
-            # Process specific email by UID
-            logger.info(f"Retrieving email with UID: {options.uid}")
-            email_data = self.imap_client.get_email_by_uid(options.uid)
-            if email_data:
-                return [email_data]
+        try:
+            if options.uid:
+                # Process specific email by UID
+                logger.info(f"Retrieving email with UID: {options.uid}")
+                
+                try:
+                    # Retrieve email by UID
+                    email_data = self.imap_client.get_email_by_uid(options.uid)
+                    
+                    if not email_data:
+                        logger.warning(f"Email with UID {options.uid} not found")
+                        return []
+                    
+                    # Check if already processed (unless force_reprocess is set)
+                    if not options.force_reprocess:
+                        processed_tag = settings.get_imap_processed_tag()
+                        if self.imap_client.is_processed(options.uid):
+                            logger.info(
+                                f"Email UID {options.uid} already processed (has flag '{processed_tag}'). "
+                                f"Use --force-reprocess to reprocess."
+                            )
+                            return []
+                        else:
+                            logger.debug(f"Email UID {options.uid} is not processed, proceeding")
+                    else:
+                        logger.info(f"Force reprocess mode: processing email UID {options.uid} even if already processed")
+                    
+                    logger.info(f"Successfully retrieved email UID {options.uid}: '{email_data.get('subject', '[No Subject]')}'")
+                    return [email_data]
+                    
+                except IMAPFetchError as e:
+                    logger.error(f"Failed to retrieve email UID {options.uid}: {e}")
+                    # Return empty list to allow processing to continue with other emails
+                    return []
+                except Exception as e:
+                    logger.error(f"Unexpected error retrieving email UID {options.uid}: {e}", exc_info=True)
+                    return []
             else:
-                logger.warning(f"Email with UID {options.uid} not found")
-                return []
-        else:
-            # Process all unprocessed emails
-            logger.info("Retrieving unprocessed emails")
-            max_emails = settings.get_max_emails_per_run()
-            return self.imap_client.get_unprocessed_emails(
-                max_emails=max_emails,
-                force_reprocess=options.force_reprocess
-            )
+                # Process all unprocessed emails
+                logger.info("Retrieving unprocessed emails from IMAP server")
+                
+                try:
+                    # Get configuration from settings facade
+                    max_emails = settings.get_max_emails_per_run()
+                    processed_tag = settings.get_imap_processed_tag()
+                    user_query = settings.get_imap_query()
+                    
+                    logger.debug(f"IMAP query: {user_query}")
+                    logger.debug(f"Max emails per run: {max_emails}")
+                    logger.debug(f"Processed tag: {processed_tag}")
+                    logger.debug(f"Force reprocess: {options.force_reprocess}")
+                    
+                    # Retrieve unprocessed emails
+                    emails = self.imap_client.get_unprocessed_emails(
+                        max_emails=max_emails,
+                        force_reprocess=options.force_reprocess
+                    )
+                    
+                    logger.info(f"Retrieved {len(emails)} email(s) for processing")
+                    
+                    if emails and logger.isEnabledFor(logging.DEBUG):
+                        # Log details of retrieved emails
+                        for email_data in emails:
+                            uid = email_data.get('uid', 'unknown')
+                            subject = email_data.get('subject', '[No Subject]')
+                            logger.debug(f"  - UID {uid}: '{subject[:60]}'")
+                    
+                    return emails
+                    
+                except IMAPFetchError as e:
+                    logger.error(f"Failed to retrieve unprocessed emails: {e}")
+                    # Return empty list to allow graceful handling
+                    return []
+                except Exception as e:
+                    logger.error(f"Unexpected error retrieving unprocessed emails: {e}", exc_info=True)
+                    return []
+                    
+        except IMAPConnectionError as e:
+            logger.error(f"IMAP connection error during email retrieval: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in email retrieval: {e}", exc_info=True)
+            raise
     
     def _process_single_email(self, email_data: Dict[str, Any], options: ProcessOptions) -> ProcessingResult:
         """
