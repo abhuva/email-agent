@@ -32,6 +32,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V3 Cleanup Flags](v3-cleanup-flags.md)** — Safeguarded command to remove application-specific IMAP flags (Task 13)
 - **[V3 Orchestrator](v3-orchestrator.md)** — High-level pipeline orchestration coordinating all components (Task 14)
 - **[V3 Backfill](v3-backfill.md)** — Process historical emails with date range filtering, progress tracking, and throttling (Task 15)
+- **[V3 E2E Tests](v3-e2e-tests.md)** — End-to-end tests with live IMAP connections (Task 18.9)
 
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:

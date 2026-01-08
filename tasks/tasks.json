@@ -1230,7 +1230,7 @@
           "id": "18.9",
           "title": "Create E2E tests with live IMAP connections",
           "description": "Implement end-to-end tests using real IMAP connections to test accounts, verifying email retrieval, processing, and flag management.",
-          "status": "pending",
+          "status": "done",
           "priority": "low"
         },
         {
