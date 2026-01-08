@@ -675,151 +675,37 @@ SORT date DESC
 
 ## 5. Troubleshooting
 
-### 5.1 Configuration Issues
+For comprehensive troubleshooting information, see the **[Troubleshooting Guide](TROUBLESHOOTING.md)**.
 
-**Problem: Config file not found**
-```
-ConfigError: Config file not found: config/config.yaml
-```
-**Solution:**
-```bash
-cp config/config.yaml.example config/config.yaml
-# Then edit with your settings
-```
+The troubleshooting guide covers:
+- **Configuration Issues** - Config file errors, missing environment variables, YAML syntax problems
+- **IMAP Connection Problems** - Authentication failures, connection timeouts, SSL/TLS errors, UID vs sequence number issues
+- **AI Processing Errors** - API authentication, rate limiting, invalid models
+- **Tagging Issues** - Flags not visible in Thunderbird, invalid flag names
+- **Performance Issues** - Slow processing, memory usage
+- **Logging and Debugging** - How to enable debug mode and interpret logs
 
-**Problem: Missing environment variables**
-```
-ConfigError: Missing required env vars: ['IMAP_PASSWORD']
-```
-**Solution:**
-1. Create `.env` file if it doesn't exist
-2. Add: `IMAP_PASSWORD=your-password`
-3. Verify variable names match config file
+### Quick Reference
 
-**Problem: Invalid YAML syntax**
-```
-ConfigFormatError: YAML parse error: ...
-```
-**Solution:**
-- Use spaces for indentation (not tabs)
-- Check for missing colons after keys
-- Validate YAML online: https://www.yamllint.com/
+**Common Issues:**
 
-### 5.2 IMAP Connection Problems
+1. **Config file not found:**
+   ```bash
+   cp config/config.yaml.example config/config.yaml
+   ```
 
-**Problem: Authentication failed**
-```
-IMAPConnectionError: IMAP login failed
-```
-**Solutions:**
-1. **Verify credentials** in `.env` file
-2. **Use app-specific password** if 2FA is enabled:
-   - Gmail: Settings → Security → App passwords
-   - Outlook: Account → Security → App passwords
-3. **Enable IMAP access:**
-   - Gmail: Settings → Forwarding and POP/IMAP → Enable IMAP
-   - Outlook: Settings → Mail → Sync email → Enable IMAP
+2. **Missing environment variables:**
+   - Create `.env` file with `IMAP_PASSWORD` and `OPENROUTER_API_KEY`
 
-**Problem: Connection timeout**
-```
-IMAPConnectionError: IMAP connection failed: timeout
-```
-**Solutions:**
-1. Check server and port in config
-2. Verify firewall allows IMAP ports (993, 143)
-3. Test from different network
-4. Try different port (993 vs 143)
+3. **IMAP authentication failed:**
+   - Use app-specific password if 2FA is enabled
+   - Enable IMAP access in your email account settings
 
-**Problem: SSL/TLS errors**
-```
-[SSL: WRONG_VERSION_NUMBER] wrong version number
-```
-**Solution:**
-- Use port 143 for STARTTLS servers
-- Use port 993 for SSL servers
-- Code handles this automatically, but verify port setting
+4. **API errors:**
+   - Verify API key in `.env` file
+   - Check rate limits and model availability
 
-### 5.3 AI Processing Errors
-
-**Problem: Unauthorized (401)**
-```
-OpenRouterAPIError: HTTP 401: Unauthorized
-```
-**Solution:**
-1. Verify API key in `.env`
-2. Check key starts with `sk-or-v1-`
-3. Get new key from https://openrouter.ai/ if needed
-
-**Problem: Rate limit exceeded (429)**
-```
-OpenRouterAPIError: HTTP 429: Rate limit exceeded
-```
-**Solutions:**
-1. Reduce `max_emails_per_run` in config
-2. Wait a few minutes and retry (automatic retry with backoff)
-3. Upgrade OpenRouter plan for higher limits
-
-**Problem: Invalid model**
-```
-OpenRouterAPIError: HTTP 400: Invalid model
-```
-**Solution:**
-- Check model name in config
-- Use format: `provider/model-name`
-- Verify model is available on OpenRouter
-
-### 5.4 V2: Obsidian Integration Issues
-
-**Problem: Vault path doesn't exist**
-```
-ConfigPathError: Obsidian vault path does not exist
-```
-**Solution:**
-```bash
-# Create the directory
-mkdir -p /path/to/obsidian/vault/emails
-
-# Verify path in config.yaml
-obsidian_vault_path: '/path/to/obsidian/vault/emails'
-```
-
-**Problem: Permission denied writing notes**
-```
-FileWriteError: Permission denied: /path/to/vault/emails/note.md
-```
-**Solution:**
-1. Check directory permissions: `ls -la /path/to/vault/emails`
-2. Ensure write access: `chmod 755 /path/to/vault/emails`
-3. Check if Obsidian is locking files (close Obsidian temporarily)
-
-**Problem: Notes not appearing in Obsidian**
-**Solution:**
-1. Refresh Obsidian: `Ctrl+R` (Windows/Linux) or `Cmd+R` (macOS)
-2. Check if notes are in correct directory
-3. Verify Obsidian is watching the directory
-4. Check Obsidian settings → Files & Links → New file location
-
-### 5.5 Tagging Issues
-
-**Problem: Tags not visible in Thunderbird**
-**Explanation:**
-- Thunderbird's "Tags" view only shows KEYWORDS extension tags
-- The agent uses FLAGS (universally supported)
-- Flags are functional and searchable, just not visible in Thunderbird UI
-
-**Solution:**
-- This is a Thunderbird limitation, not a bug
-- Flags work correctly and are searchable via IMAP
-- Use other email clients or IMAP search to verify
-
-**Problem: Invalid characters in flag name**
-```
-NO [b'[CANNOT] Invalid characters in keyword']
-```
-**Solution:**
-- IMAP doesn't allow brackets `[]` in flag names
-- Use `ObsidianNoteCreated` not `Obsidian-Note-Created`
-- Check `processed_tag` and `tag_mapping` in config
+For detailed solutions and additional troubleshooting steps, see the [Troubleshooting Guide](TROUBLESHOOTING.md).
 
 ### 5.6 Performance Issues
 
