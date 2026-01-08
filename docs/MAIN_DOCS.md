@@ -4,36 +4,52 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Essential System Docs
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
-- [pdd.md](../pdd.md) — Product Design Document V3 (✅ In Progress), foundational upgrade with score-based classification, CLI controls, and templating.
+- [pdd.md](../pdd.md) — Product Design Document V3 (✅ Complete), foundational upgrade with score-based classification, CLI controls, and templating.
 - [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete), outlining Obsidian integration and note creation features.
+- [prd.md](../prd.md) — Product Requirements Document
 
 ## User Guides
 - **[Complete Guide](COMPLETE_GUIDE.md)** — Comprehensive user guide covering installation, configuration, usage, Obsidian integration, troubleshooting, and deployment (for end users).
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** — Detailed troubleshooting guide with solutions for common issues.
 
 ## Deep Dive Module Docs
-- [Logging System](logging-system.md)
-- [IMAP Fetching](imap-fetching.md)
-- [Prompt Pipeline / Markdown Management](prompts.md)
-- [Conditional Summarization System](summarization.md) (V2)
-- [Task Master Project Management](../README-task-master.md)
+- [Logging System](logging-system.md) — Detailed logging implementation
+- [IMAP Fetching](imap-fetching.md) — IMAP implementation details and patterns
+- [Prompt Pipeline / Markdown Management](prompts.md) — Prompt management system
+- [Conditional Summarization System](summarization.md) — Summarization system (V2)
+- [IMAP Keywords vs Flags](imap-keywords-vs-flags.md) — Technical explanation of IMAP flags
+- [Live Test Guide](live-test-guide.md) — Guide for manual live testing
+- [Task Master Project Management](../README-task-master.md) — Task management system
 
 ## V3 Module Documentation
-- **[V3 Configuration Guide](v3-configuration.md)** — V3 configuration system, schema, and settings facade (Task 1)
-- **[V3 Migration Guide](v3-migration-guide.md)** — Migrating from V2 to V3 configuration patterns
-- **[V3 CLI](v3-cli.md)** — Command-line interface with click (Task 2)
-- **[V3 IMAP Client](v3-imap-client.md)** — IMAP connection and email retrieval (Task 3)
-- **[V3 LLM Client](v3-llm-client.md)** — LLM API interactions with retry logic (Task 4)
-- **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds (Task 5)
-- **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6)
-- **[V3 Note Generator](v3-note-generator.md)** — Jinja2 templating system for Markdown note generation (Tasks 7-8)
-- **[V3 Logging Integration](v3-logging-integration.md)** — Dual logging system (operational logs + structured analytics) (Task 9)
-- **[V3 Force-Reprocess](v3-force-reprocess.md)** — Force-reprocess capability for reprocessing already-processed emails (Task 12)
-- **[V3 Cleanup Flags](v3-cleanup-flags.md)** — Safeguarded command to remove application-specific IMAP flags (Task 13)
-- **[V3 Orchestrator](v3-orchestrator.md)** — High-level pipeline orchestration coordinating all components (Task 14)
-- **[V3 Backfill](v3-backfill.md)** — Process historical emails with date range filtering, progress tracking, and throttling (Task 15)
-- **[V3 E2E Tests](v3-e2e-tests.md)** — End-to-end tests with live IMAP connections (Task 18.9)
-- **[CI Integration](ci-integration.md)** — CI/CD configuration and test automation (Task 18.12)
+
+### Core V3 Features
+- **[V3 Configuration Guide](v3-configuration.md)** — V3 configuration system, schema, and settings facade (Task 1) ✅
+- **[V3 Migration Guide](v3-migration-guide.md)** — Migrating from V2 to V3 configuration patterns ✅
+- **[V3 CLI](v3-cli.md)** — Command-line interface with click (Task 2) ✅
+- **[V3 IMAP Client](v3-imap-client.md)** — IMAP connection and email retrieval (Task 3) ✅
+- **[V3 LLM Client](v3-llm-client.md)** — LLM API interactions with retry logic (Task 4) ✅
+- **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds (Task 5) ✅
+- **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6) ✅
+- **[V3 Note Generator](v3-note-generator.md)** — Jinja2 templating system for Markdown note generation (Tasks 7-8) ✅
+- **[V3 Logging Integration](v3-logging-integration.md)** — Dual logging system (operational logs + structured analytics) (Task 9) ✅
+- **[V3 Orchestrator](v3-orchestrator.md)** — High-level pipeline orchestration coordinating all components (Task 14) ✅
+
+### V3 Advanced Features
+- **[V3 Force-Reprocess](v3-force-reprocess.md)** — Force-reprocess capability for reprocessing already-processed emails (Task 12) ✅
+- **[V3 Cleanup Flags](v3-cleanup-flags.md)** — Safeguarded command to remove application-specific IMAP flags (Task 13) ✅
+- **[V3 Backfill](v3-backfill.md)** — Process historical emails with date range filtering, progress tracking, and throttling (Task 15) ✅
+- **[V3 Dry-Run Mode](v3-dry-run.md)** — Preview processing without making changes ✅
+
+### V3 Testing & CI/CD
+- **[V3 E2E Tests](v3-e2e-tests.md)** — End-to-end tests with live IMAP connections (Task 18.9-18.11) ✅
+- **[CI Integration](ci-integration.md)** — CI/CD configuration and test automation (Task 18.12) ✅
+
+## Analysis & Reports
+- **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄
+- **[Code Cleanup Assessment 2026](code-cleanup-assessment-2026.md)** — Code quality assessment (Task 16.1) ✅
+- **[V3 PDD Task Alignment](V3_PDD_TASK_ALIGNMENT_ANALYSIS.md)** — PDD task alignment analysis
+- **[Documentation Consolidation Plan](DOCUMENTATION_CONSOLIDATION_PLAN.md)** — Documentation consolidation strategy
 
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:
@@ -54,7 +70,11 @@ The following documents provide historical context and implementation decisions:
 > - Always load this file and README.md first!
 > - Then, review the PDD V3 and module docs as needed.
 > - **Current Focus:** V3 (Foundational Upgrade) - see [pdd.md](../pdd.md)
-> - **V3 Status:** Tasks 1-9 complete (Configuration, CLI, IMAP, LLM, Prompts, Decision Logic, Templating, Logging)
+> - **V3 Status:** ✅ **Complete** - All core features implemented (Tasks 1-18 complete)
+>   - Core: Configuration, CLI, IMAP, LLM, Decision Logic, Note Generator, Logging, Orchestrator
+>   - Advanced: Force-Reprocess, Cleanup Flags, Backfill, Dry-Run
+>   - Testing: Comprehensive test suite with unit, integration, and E2E tests
+>   - CI/CD: Automated testing and quality checks
 
 > **For End Users:**
 > - Start with the [Complete Guide](COMPLETE_GUIDE.md) for installation and usage
