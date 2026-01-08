@@ -1,9 +1,195 @@
+"""
+Test fixtures and helpers for V3 email agent tests.
+
+This module provides comprehensive test infrastructure including:
+- V3 configuration fixtures
+- Mock IMAP server fixtures
+- Mock LLM API fixtures
+- Test email data fixtures
+- Dry-run test helpers
+"""
 import pytest
+import imaplib
+import json
+import os
+import yaml
 from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+
+# ============================================================================
+# V3 Configuration Fixtures
+# ============================================================================
+
+@pytest.fixture
+def v3_config_dict():
+    """Return a complete V3 config dictionary matching PDD Section 3.1."""
+    return {
+        'imap': {
+            'server': 'test.imap.com',
+            'port': 993,
+            'username': 'test@example.com',
+            'password_env': 'IMAP_PASSWORD',
+            'query': 'UNSEEN',
+            'processed_tag': 'AIProcessed',
+            'application_flags': ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
+        },
+        'paths': {
+            'template_file': 'config/note_template.md.j2',
+            'obsidian_vault': '/tmp/test_vault',
+            'log_file': 'logs/agent.log',
+            'analytics_file': 'logs/analytics.jsonl',
+            'changelog_path': 'logs/email_changelog.md',
+            'prompt_file': 'config/prompt.md'
+        },
+        'openrouter': {
+            'api_key_env': 'OPENROUTER_API_KEY',
+            'api_url': 'https://openrouter.ai/api/v1',
+            'model': 'test-model',
+            'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 1
+        },
+        'processing': {
+            'importance_threshold': 8,
+            'spam_threshold': 5,
+            'max_body_chars': 4000,
+            'max_emails_per_run': 15
+        }
+    }
+
+
+@pytest.fixture
+def v3_config_file(tmp_path, v3_config_dict):
+    """Create a temporary V3 config.yaml file with all required files."""
+    # Create directory structure
+    test_dir = tmp_path / "test_config"
+    test_dir.mkdir()
+    (test_dir / "config").mkdir()
+    (test_dir / "logs").mkdir()
+    (test_dir / "vault").mkdir()  # Obsidian vault
+    
+    # Create required files
+    prompt_file = test_dir / "config" / "prompt.md"
+    prompt_file.write_text("# Test Prompt\n\nAnalyze this email.")
+    
+    template_file = test_dir / "config" / "note_template.md.j2"
+    template_file.write_text("---\nuid: {{ uid }}\n---\n\n# {{ subject }}\n\n{{ body }}")
+    
+    # Create config file
+    config_file = test_dir / "config.yaml"
+    # Update paths to be relative to test_dir
+    v3_config_dict['paths']['obsidian_vault'] = str(test_dir / "vault")
+    v3_config_dict['paths']['template_file'] = str(template_file)
+    v3_config_dict['paths']['prompt_file'] = str(prompt_file)
+    v3_config_dict['paths']['log_file'] = str(test_dir / "logs" / "agent.log")
+    v3_config_dict['paths']['analytics_file'] = str(test_dir / "logs" / "analytics.jsonl")
+    v3_config_dict['paths']['changelog_path'] = str(test_dir / "logs" / "email_changelog.md")
+    
+    with open(config_file, 'w') as f:
+        yaml.dump(v3_config_dict, f)
+    
+    return str(config_file)
+
+
+@pytest.fixture
+def v3_config_file_minimal(tmp_path):
+    """Create a minimal V3 config file for testing validation errors."""
+    test_dir = tmp_path / "test_config"
+    test_dir.mkdir()
+    (test_dir / "config").mkdir()
+    (test_dir / "vault").mkdir()
+    
+    prompt_file = test_dir / "config" / "prompt.md"
+    prompt_file.write_text("# Test")
+    
+    template_file = test_dir / "config" / "note_template.md.j2"
+    template_file.write_text("Test")
+    
+    config_file = test_dir / "config.yaml"
+    config_data = {
+        'imap': {
+            'server': 'test.imap.com',
+            'username': 'test@example.com',
+            'password_env': 'IMAP_PASSWORD'
+        },
+        'paths': {
+            'obsidian_vault': str(test_dir / "vault"),
+            'template_file': str(template_file),
+            'prompt_file': str(prompt_file)
+        },
+        'openrouter': {
+            'model': 'test-model',
+            'api_key_env': 'OPENROUTER_API_KEY'
+        },
+        'processing': {}
+    }
+    
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+    
+    return str(config_file)
+
+
+@pytest.fixture
+def valid_env_file(tmp_path):
+    """Create a valid .env file with required environment variables."""
+    content = "IMAP_PASSWORD=test_password\nOPENROUTER_API_KEY=test_api_key\n"
+    p = tmp_path / ".env"
+    p.write_text(content)
+    return str(p)
+
+
+@pytest.fixture
+def mock_settings(monkeypatch, v3_config_dict):
+    """Mock Settings facade for testing."""
+    settings_mock = Mock()
+    
+    # IMAP settings
+    settings_mock.get_imap_server.return_value = v3_config_dict['imap']['server']
+    settings_mock.get_imap_port.return_value = v3_config_dict['imap']['port']
+    settings_mock.get_imap_username.return_value = v3_config_dict['imap']['username']
+    settings_mock.get_imap_password.return_value = 'test_password'
+    settings_mock.get_imap_query.return_value = v3_config_dict['imap']['query']
+    settings_mock.get_imap_processed_tag.return_value = v3_config_dict['imap']['processed_tag']
+    settings_mock.get_imap_application_flags.return_value = v3_config_dict['imap']['application_flags']
+    
+    # Paths settings
+    settings_mock.get_template_file.return_value = v3_config_dict['paths']['template_file']
+    settings_mock.get_obsidian_vault.return_value = v3_config_dict['paths']['obsidian_vault']
+    settings_mock.get_log_file.return_value = v3_config_dict['paths']['log_file']
+    settings_mock.get_analytics_file.return_value = v3_config_dict['paths']['analytics_file']
+    settings_mock.get_changelog_path.return_value = v3_config_dict['paths']['changelog_path']
+    settings_mock.get_prompt_file.return_value = v3_config_dict['paths']['prompt_file']
+    
+    # OpenRouter settings
+    settings_mock.get_openrouter_api_key.return_value = 'test_api_key'
+    settings_mock.get_openrouter_api_url.return_value = v3_config_dict['openrouter']['api_url']
+    settings_mock.get_openrouter_model.return_value = v3_config_dict['openrouter']['model']
+    settings_mock.get_openrouter_temperature.return_value = v3_config_dict['openrouter']['temperature']
+    settings_mock.get_openrouter_retry_attempts.return_value = v3_config_dict['openrouter']['retry_attempts']
+    settings_mock.get_openrouter_retry_delay_seconds.return_value = v3_config_dict['openrouter']['retry_delay_seconds']
+    
+    # Processing settings
+    settings_mock.get_importance_threshold.return_value = v3_config_dict['processing']['importance_threshold']
+    settings_mock.get_spam_threshold.return_value = v3_config_dict['processing']['spam_threshold']
+    settings_mock.get_max_body_chars.return_value = v3_config_dict['processing']['max_body_chars']
+    settings_mock.get_max_emails_per_run.return_value = v3_config_dict['processing']['max_emails_per_run']
+    
+    settings_mock._initialized = True
+    settings_mock._ensure_initialized = Mock()
+    
+    return settings_mock
+
+
+# ============================================================================
+# Legacy V2 Config Fixtures (for backward compatibility)
+# ============================================================================
 
 @pytest.fixture
 def valid_config_path(tmp_path):
-    # Write a valid sample config.yaml for testing
+    """Legacy V2 config format for backward compatibility."""
     content = '''
 imap:
   server: 'mail.example.com'
@@ -29,24 +215,439 @@ openrouter:
     p.write_text(content)
     return str(p)
 
+
 @pytest.fixture
 def invalid_config_path(tmp_path):
-    # Write an invalid sample config.yaml (missing required fields)
+    """Invalid config file for testing validation."""
     content = "openrouter: {}"
     p = tmp_path / "config.yaml"
     p.write_text(content)
     return str(p)
 
-@pytest.fixture
-def valid_env_file(tmp_path):
-    content = """IMAP_PASSWORD=validpassword\nOPENROUTER_API_KEY=validapikey\n"""
-    p = tmp_path / ".env"
-    p.write_text(content)
-    return str(p)
 
 @pytest.fixture
 def invalid_env_file(tmp_path):
+    """Invalid .env file for testing."""
     content = """IMAP_PASSWORD=\n"""
     p = tmp_path / ".env"
     p.write_text(content)
     return str(p)
+
+
+# ============================================================================
+# Mock IMAP Server Fixtures
+# ============================================================================
+
+@pytest.fixture
+def mock_imap_connection():
+    """Create a mock IMAP connection with standard methods."""
+    mock_imap = MagicMock(spec=imaplib.IMAP4_SSL)
+    mock_imap.select.return_value = ('OK', [b'1'])
+    mock_imap.search.return_value = ('OK', [b'1 2 3'])
+    mock_imap.fetch.return_value = ('OK', [(b'1 (UID 12345 FLAGS (\\Seen))', b'email data')])
+    mock_imap.store.return_value = ('OK', [b'FLAGS updated'])
+    mock_imap.logout.return_value = ('OK', [b'Logged out'])
+    return mock_imap
+
+
+@pytest.fixture
+def mock_imap_connection_starttls():
+    """Create a mock IMAP connection with STARTTLS (port 143)."""
+    mock_imap = MagicMock(spec=imaplib.IMAP4)
+    mock_imap.starttls.return_value = ('OK', [b'STARTTLS successful'])
+    mock_imap.select.return_value = ('OK', [b'1'])
+    mock_imap.search.return_value = ('OK', [b'1 2 3'])
+    mock_imap.fetch.return_value = ('OK', [(b'1 (UID 12345 FLAGS (\\Seen))', b'email data')])
+    mock_imap.store.return_value = ('OK', [b'FLAGS updated'])
+    mock_imap.logout.return_value = ('OK', [b'Logged out'])
+    return mock_imap
+
+
+@pytest.fixture
+def mock_imap_client():
+    """Create a fully configured mock IMAP client."""
+    client = Mock()
+    client.connect = Mock()
+    client.disconnect = Mock()
+    client.get_email_by_uid = Mock()
+    client.get_unprocessed_emails = Mock(return_value=[])
+    client.is_processed = Mock(return_value=False)
+    client.set_flag = Mock(return_value=True)
+    client.remove_flag = Mock(return_value=True)
+    client._connected = True
+    client._imap = Mock()
+    return client
+
+
+@pytest.fixture
+def mock_imap_connection_error():
+    """Mock IMAP connection that raises errors."""
+    mock_imap = MagicMock()
+    mock_imap.login.side_effect = imaplib.IMAP4.error('Authentication failed')
+    return mock_imap
+
+
+# ============================================================================
+# Mock LLM API Fixtures
+# ============================================================================
+
+@pytest.fixture
+def mock_llm_response_success():
+    """Mock successful LLM API response."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "choices": [{
+            "message": {
+                "content": '{"spam_score": 2, "importance_score": 9}'
+            }
+        }]
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_response.status_code = 200
+    return mock_response
+
+
+@pytest.fixture
+def mock_llm_response_error():
+    """Mock LLM API response with error."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = Exception('API Error')
+    mock_response.status_code = 500
+    return mock_response
+
+
+@pytest.fixture
+def mock_llm_client():
+    """Create a fully configured mock LLM client."""
+    from src.llm_client import LLMResponse
+    
+    client = Mock()
+    response = LLMResponse(
+        spam_score=2,
+        importance_score=9,
+        raw_response='{"spam_score": 2, "importance_score": 9}'
+    )
+    client.classify_email = Mock(return_value=response)
+    client._api_key = 'test_api_key'
+    client._api_url = 'https://openrouter.ai/api/v1'
+    return client
+
+
+@pytest.fixture
+def mock_llm_client_error():
+    """Mock LLM client that raises errors."""
+    from src.llm_client import LLMAPIError
+    
+    client = Mock()
+    client.classify_email.side_effect = LLMAPIError("API request failed")
+    return client
+
+
+# ============================================================================
+# Test Email Data Fixtures
+# ============================================================================
+
+@pytest.fixture
+def sample_email_data():
+    """Basic sample email data."""
+    return {
+        'uid': '12345',
+        'subject': 'Test Email',
+        'from': 'sender@example.com',
+        'to': ['recipient@example.com'],
+        'date': '2024-01-01T12:00:00Z',
+        'body': 'This is a test email body.',
+        'content_type': 'text/plain'
+    }
+
+
+@pytest.fixture
+def sample_email_data_important():
+    """Sample email that should be classified as important."""
+    return {
+        'uid': '12346',
+        'subject': 'URGENT: Action Required',
+        'from': 'boss@example.com',
+        'to': ['employee@example.com'],
+        'date': '2024-01-01T13:00:00Z',
+        'body': 'This is an urgent email requiring immediate attention.',
+        'content_type': 'text/plain'
+    }
+
+
+@pytest.fixture
+def sample_email_data_spam():
+    """Sample email that should be classified as spam."""
+    return {
+        'uid': '12347',
+        'subject': 'You have won $1,000,000!',
+        'from': 'spammer@example.com',
+        'to': ['victim@example.com'],
+        'date': '2024-01-01T14:00:00Z',
+        'body': 'Click here to claim your prize!',
+        'content_type': 'text/plain'
+    }
+
+
+@pytest.fixture
+def sample_email_data_html():
+    """Sample email with HTML content."""
+    return {
+        'uid': '12348',
+        'subject': 'HTML Email',
+        'from': 'sender@example.com',
+        'to': ['recipient@example.com'],
+        'date': '2024-01-01T15:00:00Z',
+        'body': '<html><body><h1>HTML Content</h1><p>This is HTML.</p></body></html>',
+        'content_type': 'text/html'
+    }
+
+
+@pytest.fixture
+def sample_email_data_large():
+    """Sample email with large body content."""
+    large_body = 'A' * 10000  # 10KB of content
+    return {
+        'uid': '12349',
+        'subject': 'Large Email',
+        'from': 'sender@example.com',
+        'to': ['recipient@example.com'],
+        'date': '2024-01-01T16:00:00Z',
+        'body': large_body,
+        'content_type': 'text/plain'
+    }
+
+
+@pytest.fixture
+def sample_email_data_multipart():
+    """Sample email with multipart content."""
+    return {
+        'uid': '12350',
+        'subject': 'Multipart Email',
+        'from': 'sender@example.com',
+        'to': ['recipient@example.com'],
+        'date': '2024-01-01T17:00:00Z',
+        'body': 'This is a multipart email with attachments.',
+        'content_type': 'multipart/mixed',
+        'attachments': [
+            {'filename': 'document.pdf', 'size': 1024}
+        ]
+    }
+
+
+@pytest.fixture
+def sample_email_data_thread():
+    """Sample email that is part of a thread."""
+    return {
+        'uid': '12351',
+        'subject': 'Re: Discussion Thread',
+        'from': 'participant@example.com',
+        'to': ['group@example.com'],
+        'date': '2024-01-01T18:00:00Z',
+        'body': 'This is a reply in a discussion thread.',
+        'content_type': 'text/plain',
+        'in_reply_to': '<message-id-123@example.com>',
+        'references': ['<message-id-123@example.com>']
+    }
+
+
+@pytest.fixture
+def sample_email_list(sample_email_data, sample_email_data_important, sample_email_data_spam):
+    """List of multiple sample emails."""
+    return [
+        sample_email_data,
+        sample_email_data_important,
+        sample_email_data_spam
+    ]
+
+
+# ============================================================================
+# Classification Result Fixtures
+# ============================================================================
+
+@pytest.fixture
+def mock_classification_result():
+    """Mock classification result for important email."""
+    from src.decision_logic import ClassificationResult, ClassificationStatus
+    
+    return ClassificationResult(
+        is_important=True,
+        is_spam=False,
+        importance_score=9,
+        spam_score=2,
+        confidence=0.9,
+        status=ClassificationStatus.SUCCESS,
+        raw_scores={'spam_score': 2, 'importance_score': 9},
+        metadata={}
+    )
+
+
+@pytest.fixture
+def mock_classification_result_spam():
+    """Mock classification result for spam email."""
+    from src.decision_logic import ClassificationResult, ClassificationStatus
+    
+    return ClassificationResult(
+        is_important=False,
+        is_spam=True,
+        importance_score=2,
+        spam_score=8,
+        confidence=0.8,
+        status=ClassificationStatus.SUCCESS,
+        raw_scores={'spam_score': 8, 'importance_score': 2},
+        metadata={}
+    )
+
+
+@pytest.fixture
+def mock_classification_result_neutral():
+    """Mock classification result for neutral email."""
+    from src.decision_logic import ClassificationResult, ClassificationStatus
+    
+    return ClassificationResult(
+        is_important=False,
+        is_spam=False,
+        importance_score=5,
+        spam_score=3,
+        confidence=0.7,
+        status=ClassificationStatus.SUCCESS,
+        raw_scores={'spam_score': 3, 'importance_score': 5},
+        metadata={}
+    )
+
+
+# ============================================================================
+# Dry-Run Test Helpers
+# ============================================================================
+
+@pytest.fixture
+def dry_run_context():
+    """Context manager fixture for dry-run mode testing."""
+    from src.dry_run import DryRunContext
+    return DryRunContext
+
+
+@pytest.fixture
+def enable_dry_run(monkeypatch):
+    """Fixture to enable dry-run mode for a test."""
+    from src.dry_run import set_dry_run, is_dry_run
+    
+    def _enable():
+        set_dry_run(True)
+        assert is_dry_run() is True
+    
+    def _disable():
+        set_dry_run(False)
+        assert is_dry_run() is False
+    
+    # Enable at start
+    _enable()
+    
+    yield _enable, _disable
+    
+    # Disable at end
+    _disable()
+
+
+@pytest.fixture
+def dry_run_helper():
+    """Helper functions for dry-run testing."""
+    from src.dry_run import set_dry_run, is_dry_run, DryRunContext
+    
+    class DryRunHelper:
+        """Helper class for dry-run operations."""
+        
+        @staticmethod
+        def enable():
+            """Enable dry-run mode."""
+            set_dry_run(True)
+        
+        @staticmethod
+        def disable():
+            """Disable dry-run mode."""
+            set_dry_run(False)
+        
+        @staticmethod
+        def is_enabled():
+            """Check if dry-run is enabled."""
+            return is_dry_run()
+        
+        @staticmethod
+        def context(enabled: bool = True):
+            """Get a dry-run context manager."""
+            return DryRunContext(enabled)
+        
+        @staticmethod
+        def assert_dry_run():
+            """Assert that dry-run mode is enabled."""
+            assert is_dry_run(), "Expected dry-run mode to be enabled"
+        
+        @staticmethod
+        def assert_not_dry_run():
+            """Assert that dry-run mode is disabled."""
+            assert not is_dry_run(), "Expected dry-run mode to be disabled"
+    
+    return DryRunHelper
+
+
+# ============================================================================
+# Additional Mock Fixtures
+# ============================================================================
+
+@pytest.fixture
+def mock_decision_logic():
+    """Mock decision logic module."""
+    from src.decision_logic import ClassificationResult, ClassificationStatus
+    
+    logic = Mock()
+    result = ClassificationResult(
+        is_important=True,
+        is_spam=False,
+        importance_score=9,
+        spam_score=2,
+        confidence=0.9,
+        status=ClassificationStatus.SUCCESS,
+        raw_scores={'spam_score': 2, 'importance_score': 9},
+        metadata={}
+    )
+    logic.classify = Mock(return_value=result)
+    return logic
+
+
+@pytest.fixture
+def mock_note_generator():
+    """Mock note generator."""
+    generator = Mock()
+    generator.generate_note = Mock(return_value='# Test Email\n\nTest content')
+    return generator
+
+
+@pytest.fixture
+def mock_email_logger():
+    """Mock email logger."""
+    logger = Mock()
+    logger.log_email_processed = Mock()
+    logger.log_classification_result = Mock()
+    return logger
+
+
+@pytest.fixture
+def temp_analytics_file(tmp_path):
+    """Create a temporary analytics JSONL file."""
+    analytics_file = tmp_path / "analytics.jsonl"
+    return str(analytics_file)
+
+
+@pytest.fixture
+def temp_log_file(tmp_path):
+    """Create a temporary log file."""
+    log_file = tmp_path / "agent.log"
+    return str(log_file)
+
+
+@pytest.fixture
+def temp_obsidian_vault(tmp_path):
+    """Create a temporary Obsidian vault directory."""
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    return str(vault_dir)
