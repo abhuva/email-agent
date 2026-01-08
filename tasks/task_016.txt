@@ -1,281 +1,196 @@
 # Task ID: 16
-# Title: Implement Configurable IMAP Query Filtering System
-# Status: done
-# Dependencies: 2
-# Priority: low
-# Description: Refactor the IMAP query combination logic to make idempotency tags and filtering criteria configurable by users instead of hardcoded values.
+# Title: Comprehensive Code Cleanup and Refactoring for V3 Modules
+# Status: pending
+# Dependencies: 18
+# Priority: medium
+# Description: Systematically remove unused code, deprecated functions, and legacy V1/V2 code while improving overall code organization and ensuring consistent patterns across V3 modules.
 # Details:
-Currently, the system hardcodes idempotency tags (Obsidian-Note-Created, Note-Creation-Failed, AIProcessed) in the IMAP query combination logic. This task involves:
+This task involves a thorough cleanup of the codebase with the following specific actions:
 
-1. Create a configuration system that allows users to specify which tags to exclude from IMAP queries
-2. Implement a flexible query builder that can combine multiple filtering criteria beyond just tag exclusion
-3. Design a clean API for the query builder that maintains backward compatibility
-4. Update the existing query combination logic to use the new configurable system
-5. Ensure the default configuration maintains current behavior (excluding the three idempotency tags)
-6. Add appropriate documentation for the new configuration options
-7. Consider implementing this as a strategy pattern where different query building strategies can be plugged in
-8. Ensure performance is not significantly impacted, especially for large mailboxes
-9. Add validation to prevent users from creating invalid query combinations
+1. Identify and remove all unused code by analyzing import statements and function calls
+2. Remove all deprecated functions that have been superseded by newer implementations
+3. Eliminate all legacy V1/V2 code that is no longer required for the current system
+4. Clean up import statements by removing unused imports and organizing them according to project conventions
+5. Remove or document all commented-out code (if documentation is needed, move comments to appropriate documentation files)
+6. Identify duplicate functionality across modules and consolidate into shared utilities
+7. Reorganize code structure to improve readability and maintainability
+8. Ensure all V3 modules follow consistent naming conventions, error handling patterns, and architectural approaches
+9. Update any documentation that references removed code
+10. Maintain a log of all removed code sections in case reference is needed later
 
-The implementation should be in the IMAP service module, focusing on the query building components. Maintain the core idempotency requirement while allowing for greater flexibility.
+Before making changes, create a feature branch from the main development branch. Commit changes in logical, discrete units to facilitate code review. Consider using automated tools like linters, dead code analyzers, and import organizers where applicable.
 
 # Test Strategy:
-Testing should cover:
+Testing should verify that functionality remains intact while ensuring code quality improvements. Follow these steps:
 
-1. Unit tests:
-   - Verify default configuration produces the same queries as the current system
-   - Test custom tag exclusion configurations work correctly
-   - Test edge cases like empty exclusion lists or complex query combinations
-   - Verify query syntax remains valid for the IMAP protocol
-
-2. Integration tests:
-   - Test the query builder with actual IMAP connections
-   - Verify queries correctly filter messages as expected
-   - Test performance with large mailboxes and complex queries
-
-3. Configuration validation:
-   - Test that invalid configurations are properly handled
-   - Verify configuration changes are properly persisted
-
-4. Backward compatibility:
-   - Ensure existing code using the query system continues to work
-   - Test migration from old to new system
-
-Create a test matrix covering different combinations of filtering criteria to ensure all possible configurations work correctly. Document any changes to expected behavior.
+1. Run the full test suite before beginning refactoring to establish a baseline
+2. After each significant change, run relevant unit and integration tests to verify no functionality was broken
+3. After all changes are complete, run the full test suite again to ensure overall system integrity
+4. Perform static code analysis using tools like ESLint, SonarQube, or similar to verify improved code quality metrics
+5. Conduct manual testing of key user flows that might be affected by the refactoring
+6. Verify that all CI/CD pipelines complete successfully
+7. Have another developer perform a thorough code review focusing on:
+   - Confirming no necessary code was accidentally removed
+   - Validating that all references are properly updated
+   - Ensuring no orphaned code remains
+   - Checking that V3 modules now follow consistent patterns
+8. Document before/after metrics such as lines of code, cyclomatic complexity, and test coverage to demonstrate improvements
+9. Deploy to a staging environment and verify application behavior matches production
 
 # Subtasks:
-## 1. Update ConfigManager with IMAP Query Exclusion Settings [done]
+## 1. Set up code analysis tools and establish refactoring guidelines [pending]
 ### Dependencies: None
-### Description: Add a new configuration section for IMAP query exclusions with options to customize tag exclusions and disable idempotency checks.
+### Description: Configure and set up automated tools for code analysis, establish refactoring guidelines, and create a feature branch for the cleanup work.
 ### Details:
-Implementation steps:
-1. Add a new 'imap_query_exclusions' section to the ConfigManager class
-2. Create the following configuration options:
-   - exclude_tags: List of tags to exclude (default to ['Obsidian-Note-Created', 'Note-Creation-Failed', 'AIProcessed'])
-   - additional_exclude_tags: List of additional tags to exclude (default to empty list)
-   - disable_idempotency: Boolean flag to disable all tag exclusions (default to False)
-3. Implement validation logic to ensure exclude_tags is a list of strings
-4. Add methods to get the combined list of exclude_tags (base + additional)
-5. Update config loading and validation functions
+1. Create a feature branch named 'v3-code-cleanup' from the main development branch.
+2. Set up and configure linters (e.g., ESLint, Pylint) with appropriate rules for detecting unused code.
+3. Install and configure dead code analyzers (e.g., Vulture for Python, ts-prune for TypeScript).
+4. Set up import organizers (e.g., isort for Python, import-sort for JavaScript/TypeScript).
+5. Create a document outlining refactoring guidelines including naming conventions, error handling patterns, and architectural approaches for V3 modules.
+6. Establish a logging system to track all code removals for future reference.
+7. Test the analysis tools on a small section of code to ensure they work as expected.
+8. Create a template for commit messages to ensure consistent documentation of changes.
 
-Testing approach:
-- Unit test the ConfigManager with various valid and invalid configurations
-- Test that default values are correctly applied when not specified
-- Verify validation catches improper configuration types
-
-<info added on 2026-01-07T17:29:56.868Z>
-Correction to default tag names:
-- The default exclude_tags should be ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed'] as IMAP servers don't allow hyphens in flag names
-- When implementing validation logic, add a check to ensure no tag contains hyphens or spaces
-- Add a helper method to sanitize tag names by removing hyphens and converting to camelCase
-- Consider adding a warning log when a user tries to configure tags with invalid characters
-- Update documentation to clarify that IMAP flags must follow RFC3501 specifications (alphanumeric characters, underscores, and periods only)
-</info added on 2026-01-07T17:29:56.868Z>
-
-<info added on 2026-01-07T17:30:17.145Z>
-<info added on 2026-01-08T14:22:31.452Z>
-Implementation notes for tag handling:
-
-1. Update the default exclude_tags to match the actual constants in the codebase:
-   ```python
-   # Use these constants from the codebase
-   from constants import OBSIDIAN_NOTE_CREATED_TAG, NOTE_CREATION_FAILED_TAG, AI_PROCESSED_TAG
-   
-   # Default configuration
-   DEFAULT_EXCLUDE_TAGS = [AI_PROCESSED_TAG, OBSIDIAN_NOTE_CREATED_TAG, NOTE_CREATION_FAILED_TAG]
-   ```
-
-2. Add a tag validation function to ensure IMAP compatibility:
-   ```python
-   def validate_imap_tag(tag):
-       """Validates that a tag follows IMAP flag naming rules (RFC3501)"""
-       import re
-       if not re.match(r'^[\w.]+$', tag):
-           raise ValueError(f"Invalid IMAP flag name: '{tag}'. IMAP flags must contain only alphanumeric characters, underscores, and periods.")
-       return True
-   ```
-
-3. Implement a tag sanitization method to handle user input:
-   ```python
-   def sanitize_imap_tag(tag):
-       """Converts a string to a valid IMAP flag name"""
-       # Replace hyphens with nothing (camelCase convention)
-       sanitized = re.sub(r'-(\w)', lambda m: m.group(1).upper(), tag)
-       # Replace spaces with underscores
-       sanitized = sanitized.replace(' ', '_')
-       # Remove any remaining invalid characters
-       sanitized = re.sub(r'[^\w.]', '', sanitized)
-       
-       if sanitized != tag:
-           logger.warning(f"Tag '{tag}' was sanitized to '{sanitized}' to comply with IMAP flag requirements")
-       
-       return sanitized
-   ```
-
-4. Update the ConfigManager.validate_config method to check all tags:
-   ```python
-   # In the validate_config method
-   if 'imap_query_exclusions' in config:
-       exclusions = config['imap_query_exclusions']
-       
-       if 'exclude_tags' in exclusions:
-           if not isinstance(exclusions['exclude_tags'], list):
-               raise ValueError("exclude_tags must be a list of strings")
-           for tag in exclusions['exclude_tags']:
-               validate_imap_tag(tag)
-               
-       if 'additional_exclude_tags' in exclusions:
-           if not isinstance(exclusions['additional_exclude_tags'], list):
-               raise ValueError("additional_exclude_tags must be a list of strings")
-           for tag in exclusions['additional_exclude_tags']:
-               validate_imap_tag(tag)
-   ```
-
-5. Add a method to get sanitized tags when needed:
-   ```python
-   def get_sanitized_exclude_tags(self):
-       """Returns the combined list of exclude tags, ensuring all are IMAP-compatible"""
-       raw_tags = self.get_exclude_tags()
-       return [sanitize_imap_tag(tag) for tag in raw_tags]
-   ```
-
-6. Add documentation in the config template:
-   ```yaml
-   # Example config.yaml section to add
-   imap_query_exclusions:
-     # Tags used to exclude emails from processing
-     # IMPORTANT: IMAP flags must follow RFC3501 - only alphanumeric, underscore, period allowed
-     exclude_tags: 
-       - AIProcessed
-       - ObsidianNoteCreated
-       - NoteCreationFailed
-     additional_exclude_tags: []
-     disable_idempotency: false
-   ```
-</info added on 2026-01-08T14:22:31.452Z>
-</info added on 2026-01-07T17:30:17.145Z>
-
-## 2. Create Flexible IMAP Query Builder Function [done]
+## 2. Analyze and document code dependencies across V3 modules [pending]
 ### Dependencies: 16.1
-### Description: Implement a new function that builds IMAP queries with configurable exclusion tags and supports disabling idempotency checks.
+### Description: Perform a comprehensive analysis of dependencies between modules to identify unused code and understand the impact of removing components.
 ### Details:
-Implementation steps:
-1. Create a new function `build_imap_query_with_exclusions()` in imap_connection.py that takes:
-   - user_query: The base query string
-   - exclude_tags: List of tags to exclude
-   - disable_idempotency: Flag to bypass tag exclusions
-2. Implement logic to build IMAP query with NOT KEYWORD clauses for each exclude tag
-3. Handle special cases:
-   - Empty exclude_tags list
-   - When disable_idempotency is True (return user_query directly)
-   - When user_query is empty or None
-4. Ensure proper IMAP syntax with parentheses and operators
+1. Create a dependency graph of all V3 modules (settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, backfill).
+2. Document function calls between modules to understand which functions are actually used.
+3. Identify entry points for each module and trace execution paths.
+4. Mark functions and code blocks that appear to be unused based on static analysis.
+5. Document all deprecated functions that have been superseded by newer implementations.
+6. Identify legacy V1/V2 code sections that remain in the codebase.
+7. Create a spreadsheet or document that lists all code sections marked for potential removal.
+8. Validate findings with team members who have historical knowledge of the codebase.
 
-Testing approach:
-- Unit test with various combinations of inputs
-- Verify correct IMAP query syntax is generated
-- Test edge cases (empty lists, None values, etc.)
-- Benchmark query generation performance
-
-## 3. Refactor search_emails_excluding_processed() Function [done]
+## 3. Create comprehensive test suite for V3 modules before refactoring [pending]
 ### Dependencies: 16.2
-### Description: Update the existing search function to use the new query builder while maintaining backward compatibility.
+### Description: Develop unit tests for all V3 modules to ensure functionality is preserved during the cleanup process.
 ### Details:
-Implementation steps:
-1. Refactor search_emails_excluding_processed() to accept a list parameter 'exclude_tags' instead of individual tag parameters
-2. Add a 'disable_idempotency' parameter with default value False
-3. Use the new build_imap_query_with_exclusions() function internally
-4. Maintain backward compatibility by setting default values that match current behavior
-5. Update function documentation to reflect new parameters
-6. Ensure error handling is consistent
+1. Create unit tests for each V3 module: settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, and backfill.
+2. Ensure test coverage for all critical paths and functions that will remain after cleanup.
+3. Implement integration tests using the --dry-run flag to verify system behavior without making external calls.
+4. Create end-to-end tests with mocked IMAP and LLM services.
+5. Document test coverage and identify any gaps.
+6. Ensure tests pass on the current codebase before any refactoring begins.
+7. Set up CI/CD pipeline to run tests automatically on commits.
+8. Create baseline performance metrics to compare against after refactoring.
 
-Testing approach:
-- Unit test the refactored function with various parameter combinations
-- Verify backward compatibility with existing code
-- Test that queries are correctly passed to the IMAP connection
-- Test error handling scenarios
-
-## 4. Update fetch_emails() Function Signature and Implementation [done]
+## 4. Clean up import statements and remove unused imports [pending]
 ### Dependencies: 16.3
-### Description: Modify the fetch_emails() function to accept and pass through the new configuration parameters.
+### Description: Systematically review and clean up import statements across all V3 modules.
 ### Details:
-Implementation steps:
-1. Update the fetch_emails() function signature to accept:
-   - exclude_tags parameter (default to None to use system defaults)
-   - disable_idempotency parameter (default to False)
-2. Pass these parameters to search_emails_excluding_processed() call
-3. Update function documentation to explain the new parameters
-4. Ensure backward compatibility with existing code
-5. Add parameter validation if needed
+1. Run import organizers on each file to automatically sort and group imports according to project conventions.
+2. Manually review each file to identify and remove unused imports that automated tools might miss.
+3. Standardize import patterns across all modules (e.g., absolute vs. relative imports).
+4. Update import paths if any files will be moved during reorganization.
+5. Verify that all imports resolve correctly after changes.
+6. Run the test suite to ensure no functionality was broken.
+7. Document any significant changes or patterns discovered.
+8. Commit changes with clear messages describing the cleanup performed on each module.
 
-Testing approach:
-- Unit test with various parameter combinations
-- Verify parameters are correctly passed to search_emails_excluding_processed()
-- Test backward compatibility
-- Integration test with mock IMAP server
-
-## 5. Update main_loop.py to Use Configurable Query Parameters [done]
-### Dependencies: 16.1, 16.4
-### Description: Modify the main application loop to pass configuration values to the email fetching functions.
+## 5. Remove deprecated functions and replace with modern implementations [pending]
+### Dependencies: 16.3, 16.4
+### Description: Identify and remove deprecated functions, replacing calls to them with their modern equivalents.
 ### Details:
-Implementation steps:
-1. Update the email processing code in main_loop.py to read the new configuration values
-2. Pass config.exclude_tags and config.disable_idempotency to fetch_emails() calls
-3. Ensure proper error handling if configuration is invalid
-4. Add logging for which exclusion tags are being used
-5. Consider adding a startup validation to warn about potentially problematic configurations
+1. Using the documentation from subtask 2, identify all deprecated functions.
+2. For each deprecated function, identify its modern replacement.
+3. Update all calls to deprecated functions to use the modern implementations.
+4. Remove the deprecated function implementations.
+5. Update any documentation or comments that reference the deprecated functions.
+6. Run the test suite to ensure functionality is preserved.
+7. Document all replacements made for future reference.
+8. Commit changes with detailed descriptions of what was replaced and why.
 
-Testing approach:
-- Integration test with different configuration settings
-- Verify configuration values are correctly passed to fetch_emails()
-- Test error handling for invalid configurations
-- Test logging output
-
-## 6. Implement Comprehensive Testing Suite [done]
-### Dependencies: 16.1, 16.2, 16.3, 16.4, 16.5
-### Description: Create a suite of unit and integration tests to verify the new query filtering system works correctly.
+## 6. Eliminate legacy V1/V2 code from V3 modules [pending]
+### Dependencies: 16.3, 16.5
+### Description: Remove all legacy V1/V2 code that is no longer required for the current system.
 ### Details:
-Implementation steps:
-1. Create unit tests for the new build_imap_query_with_exclusions() function
-   - Test various combinations of queries and exclusion tags
-   - Test edge cases (empty lists, None values)
-   - Test disable_idempotency flag behavior
-2. Create unit tests for the updated search_emails_excluding_processed() function
-   - Test backward compatibility
-   - Test with custom exclude_tags
-3. Create integration tests that verify:
-   - Default behavior matches current system
-   - Custom configurations work as expected
-   - Performance impact is acceptable
-4. Test error handling and validation
-5. Create test fixtures for different configuration scenarios
+1. Using the documentation from subtask 2, identify all legacy V1/V2 code sections.
+2. Verify that each identified section is truly not needed for V3 functionality.
+3. Remove the legacy code sections one module at a time.
+4. Update any V3 code that might have referenced the removed code.
+5. Run the test suite after each module cleanup to ensure functionality is preserved.
+6. Document all removed code sections in the removal log.
+7. Update any documentation that references the removed code.
+8. Commit changes with clear descriptions of what was removed from each module.
 
-Testing approach:
-- Use pytest for all tests
-- Create mock IMAP server responses for integration tests
-- Measure and compare performance with different configurations
-- Test with large tag lists to ensure performance
-
-## 7. Update Documentation and Configuration Examples [done]
-### Dependencies: 16.1, 16.2, 16.3, 16.4, 16.5
-### Description: Update user documentation and configuration examples to explain the new query filtering options.
+## 7. Remove or document commented-out code [pending]
+### Dependencies: 16.6
+### Description: Review all commented-out code and either remove it or move important comments to appropriate documentation.
 ### Details:
-Implementation steps:
-1. Update config.yaml.example with the new imap_query_exclusions section
-   - Include commented examples of different configurations
-   - Explain default values
-2. Update COMPLETE_GUIDE.md with:
-   - Explanation of the new configuration options
-   - Examples of common use cases
-   - Migration notes for existing users
-3. Add inline code documentation for all new and modified functions
-4. Create a specific section in the docs explaining the query filtering system
-5. Add examples of how to use the system for different scenarios
-6. Document any performance considerations
+1. Scan all files for commented-out code blocks.
+2. For each commented-out code block, determine if it contains valuable information.
+3. If the commented code is obsolete or redundant, remove it completely.
+4. If the commented code contains valuable information or explanations, extract that information to appropriate documentation files.
+5. Create or update documentation files as needed to preserve important context.
+6. Run the test suite to ensure no functionality was affected.
+7. Document all significant decisions about commented code in the removal log.
+8. Commit changes with descriptions of what was removed or moved to documentation.
 
-Testing approach:
-- Review documentation for clarity and completeness
-- Verify all examples are correct and work as described
-- Have another team member review the documentation
-- Ensure backward compatibility is clearly explained
+## 8. Identify and consolidate duplicate functionality [pending]
+### Dependencies: 16.5, 16.6, 16.7
+### Description: Find duplicate or similar functionality across modules and consolidate into shared utilities.
+### Details:
+1. Analyze the codebase to identify functions with similar purposes or implementations.
+2. Create shared utility modules for common functionality.
+3. Refactor duplicate code to use the shared utilities.
+4. Ensure proper error handling and consistent patterns in the shared utilities.
+5. Update import statements to reference the new shared utilities.
+6. Run the test suite to verify that functionality is preserved.
+7. Document the consolidated utilities and their intended use cases.
+8. Commit changes with explanations of what was consolidated and why.
+
+## 9. Reorganize code structure for improved maintainability [pending]
+### Dependencies: 16.8
+### Description: Restructure code organization to improve readability and maintainability while ensuring logical grouping of related functionality.
+### Details:
+1. Review the current file and directory structure of V3 modules.
+2. Design an improved structure that groups related functionality logically.
+3. Move files and code sections according to the new structure.
+4. Update import paths and references to reflect the new structure.
+5. Ensure consistent file naming and module organization.
+6. Run the test suite to verify that functionality is preserved.
+7. Update any documentation that references file paths or module structure.
+8. Commit changes with detailed explanations of the restructuring decisions.
+
+## 10. Standardize error handling and logging across V3 modules [pending]
+### Dependencies: 16.9
+### Description: Implement consistent error handling patterns and logging approaches across all V3 modules.
+### Details:
+1. Review current error handling and logging practices across V3 modules.
+2. Define standardized error handling patterns based on the refactoring guidelines.
+3. Update all modules to follow the standardized error handling patterns.
+4. Implement consistent logging levels and formats across all modules.
+5. Ensure appropriate error messages and logging for all error scenarios.
+6. Run the test suite with focus on error scenarios to verify correct behavior.
+7. Document the standardized error handling and logging patterns.
+8. Commit changes with explanations of the standardization implemented.
+
+## 11. Conduct comprehensive testing of refactored codebase [pending]
+### Dependencies: 16.10
+### Description: Perform thorough testing of the refactored codebase, including unit tests, integration tests, and end-to-end tests.
+### Details:
+1. Run the complete unit test suite for all V3 modules.
+2. Conduct integration tests using the --dry-run flag to verify system behavior.
+3. Perform live end-to-end tests with real IMAP and LLM services in a test environment.
+4. Test edge cases and error scenarios to ensure proper handling.
+5. Conduct performance tests and compare against baseline metrics.
+6. Fix any issues discovered during testing.
+7. Document test results and any remaining concerns.
+8. Update test documentation to reflect the current state of the codebase.
+
+## 12. Update documentation and finalize code cleanup [pending]
+### Dependencies: 16.11
+### Description: Update all documentation to reflect the cleaned-up codebase and prepare for merging the changes back to the main branch.
+### Details:
+1. Update README files and developer documentation to reflect the new code structure.
+2. Ensure all API documentation is current and accurate.
+3. Update any user-facing documentation that might reference removed code or changed functionality.
+4. Finalize the removal log with all code sections that were removed.
+5. Create a summary report of the cleanup process, including metrics on code reduction and improvements.
+6. Conduct a final code review with team members.
+7. Prepare a pull request with a detailed description of all changes made.
+8. After approval, merge the feature branch back to the main development branch.
 

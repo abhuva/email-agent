@@ -1,6 +1,6 @@
 # Task ID: 13
 # Title: Create cleanup-flags command
-# Status: pending
+# Status: done
 # Dependencies: 2, 3
 # Priority: low
 # Description: Implement a safeguarded command to remove application-specific flags from the mail server.
@@ -11,31 +11,31 @@ Implement the 'cleanup-flags' subcommand that removes only application-specific 
 Test the command with confirmation and cancellation. Verify only application-specific flags are removed. Check that the dry-run option shows flags without removing them. Verify logging of flag removal operations.
 
 # Subtasks:
-## 1. Define configuration structure for application-specific IMAP flags [pending]
+## 1. Define configuration structure for application-specific IMAP flags [done]
 ### Dependencies: None
 ### Description: Create a configuration schema to define which IMAP flags are considered application-specific and should be managed by the cleanup command
 ### Details:
 Implement a configuration section in the application's config file that allows users to define which IMAP flags are considered application-specific. The configuration should include: 1) A list of flag patterns to match (e.g., 'MyApp/*'), 2) Optional exclusion patterns, 3) Documentation on the format and impact of these settings. Ensure the configuration is validated when loaded and provide helpful error messages for invalid configurations. Use the settings.py facade to access these configuration values.
 
-## 2. Implement flag scanning functionality [pending]
+## 2. Implement flag scanning functionality [done]
 ### Dependencies: 13.1
 ### Description: Create a module to scan and identify application-specific flags on emails based on the configuration
 ### Details:
 Develop a function that connects to the IMAP server, scans emails in specified folders, and identifies flags matching the patterns defined in the configuration. The function should: 1) Accept connection parameters and folder specifications, 2) Return a structured report of emails and their matching flags, 3) Include error handling for connection issues, 4) Be optimized for performance with large mailboxes by using appropriate IMAP commands and batching. Use the settings.py facade to access any configuration values needed.
 
-## 3. Implement dry-run functionality [pending]
+## 3. Implement dry-run functionality [done]
 ### Dependencies: 13.2
 ### Description: Create a command option and supporting code to preview flag removal operations without making changes
 ### Details:
 Implement a '--dry-run' flag for the command that shows which flags would be removed without actually removing them. The output should: 1) List each email that would be affected (showing identifiers like UID and subject), 2) Show which flags would be removed from each email, 3) Provide summary statistics (total emails affected, total flags to be removed), 4) Format the output in a clear, readable way. This functionality should reuse the scanning module from subtask 2 but skip the actual modification steps.
 
-## 4. Implement flag removal functionality with confirmation prompt [pending]
+## 4. Implement flag removal functionality with confirmation prompt [done]
 ### Dependencies: 13.2
 ### Description: Create the core functionality to remove identified flags with a mandatory confirmation step as required by the PDD
 ### Details:
 Implement the actual flag removal functionality with a MANDATORY confirmation prompt as required by the PDD (security requirement). The implementation should: 1) Present a clear warning about the operation's impact, 2) Show a summary of what will be modified, 3) Require explicit confirmation (e.g., typing 'yes' or similar), 4) Abort if confirmation is not provided, 5) Include safeguards to prevent accidental removal of system or critical flags, 6) Implement the actual IMAP commands to remove the flags when confirmed. Ensure proper error handling and transaction safety where possible.
 
-## 5. Implement detailed logging and integrate command into CLI [pending]
+## 5. Implement detailed logging and integrate command into CLI [done]
 ### Dependencies: 13.3, 13.4
 ### Description: Add comprehensive logging of operations and integrate the new subcommand into the application's CLI structure
 ### Details:

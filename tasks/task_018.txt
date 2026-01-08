@@ -1,0 +1,154 @@
+# Task ID: 18
+# Title: Implement Comprehensive V3 Test Suite with Unit, Integration, and E2E Coverage
+# Status: pending
+# Dependencies: 15
+# Priority: high
+# Description: Develop a complete test suite for all V3 modules covering unit tests with mocks, integration tests with --dry-run, and live end-to-end tests for the entire pipeline.
+# Details:
+Create a structured test suite organized by module and test type, focusing on filling the identified coverage gaps:
+
+1. **Unit Tests**:
+   - EXISTING COVERAGE: CLI, Config, IMAP Client, LLM Client, Decision Logic, Note Generator, Error Handling, Logger, Prompt Renderer
+   - MISSING COVERAGE (PRIORITY):
+     - Complete test_orchestrator.py (CRITICAL - core coordination logic) - build upon partially completed work
+     - Create test_backfill.py for backfill functionality
+     - Create test_cleanup_flags.py for cleanup flags command
+
+2. **Integration Tests**:
+   - Create test_integration_v3_workflow.py for end-to-end V3 workflow with --dry-run
+   - Implement integration tests for force-reprocess functionality
+   - Implement integration tests for cleanup-flags command
+   - Implement integration tests for backfill command
+   - Test orchestrator's coordination of multiple modules
+   - Test pipeline execution with simulated inputs
+
+3. **End-to-End Tests**:
+   - Create tests with real IMAP connections to test accounts
+   - Test with actual LLM API calls (consider using a staging API key)
+   - Test full pipeline execution with various email types:
+     - Simple emails
+     - Emails with attachments
+     - Thread emails
+     - Emails in different languages
+     - Emails with unusual formatting
+   - Test edge cases:
+     - Very large emails
+     - Rate limiting scenarios
+     - Connection interruptions
+     - Malformed responses
+
+4. **Test Infrastructure**:
+   - Develop V3 config fixtures (with proper structure)
+   - Create mock IMAP server fixtures
+   - Create mock LLM API fixtures
+   - Prepare test email data fixtures
+   - Implement dry-run test helpers
+
+Implement test fixtures and helpers to facilitate testing. Create a CI-compatible test suite that can run automatically, with appropriate mocking for external dependencies in CI environments.
+
+# Test Strategy:
+Verify implementation using the following approach:
+
+1. **Test Coverage Metrics**:
+   - Ensure at least 80% code coverage across all modules
+   - Use Jest's coverage reporting to identify gaps
+   - Verify all critical paths have test coverage
+   - Focus on filling the identified gaps in test coverage
+
+2. **Test Validation**:
+   - Unit tests should run quickly (<30 seconds total) and not depend on external services
+   - Integration tests should verify correct module interactions
+   - E2E tests should confirm the system works with real dependencies
+
+3. **Specific Test Cases to Verify**:
+   - Orchestrator: Test the complete processing pipeline and coordination logic (CRITICAL)
+   - Backfill: Test functionality for processing historical emails
+   - Cleanup-flags: Test command for managing processing flags
+   - Force-reprocess: Test reprocessing of previously processed emails
+   - Integration: Test end-to-end workflow with --dry-run mode
+   - E2E: Test with real services and edge cases
+
+4. **Test Environment**:
+   - Create a dedicated test environment with test email accounts
+   - Set up test fixtures that can be reset between test runs
+   - Implement test helpers for common operations
+   - Develop the identified test infrastructure needs
+
+5. **CI Integration**:
+   - Ensure tests can run in CI environment
+   - Set up appropriate mocking for external dependencies in CI
+   - Configure test reporting for easy identification of failures
+
+# Subtasks:
+## 18.1. Complete test_orchestrator.py unit tests [pending]
+### Dependencies: None
+### Description: Finish the partially completed orchestrator tests, focusing on core coordination logic, module interactions, and error handling paths.
+### Details:
+
+
+## 18.2. Create test_backfill.py unit tests [pending]
+### Dependencies: None
+### Description: Develop comprehensive unit tests for the backfill functionality, including command parsing, execution logic, and error handling.
+### Details:
+
+
+## 18.3. Create test_cleanup_flags.py unit tests [pending]
+### Dependencies: None
+### Description: Implement unit tests for the cleanup-flags command, covering flag identification, removal logic, and safety mechanisms.
+### Details:
+
+
+## 18.4. Develop test infrastructure components [pending]
+### Dependencies: None
+### Description: Create the necessary test fixtures and helpers identified in the coverage analysis: V3 config fixtures, mock IMAP server, mock LLM API, test email data, and dry-run helpers.
+### Details:
+
+
+## 18.5. Implement test_integration_v3_workflow.py [pending]
+### Dependencies: None
+### Description: Create integration tests for the end-to-end V3 workflow using --dry-run mode to verify module interactions without external dependencies.
+### Details:
+
+
+## 18.6. Implement integration tests for force-reprocess functionality [pending]
+### Dependencies: None
+### Description: Develop integration tests for the force-reprocess feature, verifying it correctly identifies and reprocesses previously handled emails.
+### Details:
+
+
+## 18.7. Implement integration tests for cleanup-flags command [pending]
+### Dependencies: None
+### Description: Create integration tests for the cleanup-flags command, testing its interaction with the IMAP system and verification mechanisms.
+### Details:
+
+
+## 18.8. Implement integration tests for backfill command [pending]
+### Dependencies: None
+### Description: Develop integration tests for the backfill command, verifying its ability to process historical emails according to specified parameters.
+### Details:
+
+
+## 18.9. Create E2E tests with live IMAP connections [pending]
+### Dependencies: None
+### Description: Implement end-to-end tests using real IMAP connections to test accounts, verifying email retrieval, processing, and flag management.
+### Details:
+
+
+## 18.10. Create E2E tests with live LLM API [pending]
+### Dependencies: None
+### Description: Develop end-to-end tests using actual LLM API calls (with staging API key), verifying prompt construction, response handling, and error recovery.
+### Details:
+
+
+## 18.11. Implement E2E tests for edge cases [pending]
+### Dependencies: None
+### Description: Create specialized end-to-end tests for edge cases: very large emails, rate limiting scenarios, connection interruptions, and malformed responses.
+### Details:
+
+
+## 18.12. Configure CI integration for test suite [pending]
+### Dependencies: None
+### Description: Set up the test suite to run in CI environments with appropriate mocking for external dependencies and clear reporting of test results.
+### Details:
+
+

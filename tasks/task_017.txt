@@ -1,161 +1,35 @@
 # Task ID: 17
-# Title: Codebase Cleanup and Documentation Consolidation
-# Status: done
-# Dependencies: None
+# Title: Comprehensive Documentation Audit and Consolidation for V3 Features
+# Status: pending
+# Dependencies: 16, 18
 # Priority: medium
-# Description: Analyze the codebase to identify and remove unused code while consolidating duplicate documentation files to improve maintainability and developer experience.
+# Description: Perform a thorough review of all project documentation to ensure completeness, accuracy, and consistency with the V3 implementation, while removing outdated content and consolidating duplicate information.
 # Details:
-This task consists of three main phases:
+This task involves a systematic review of all documentation files in the project repository with the following specific actions:
 
-1. **Analysis Phase**:
-   - Use static code analysis tools (e.g., ESLint for JavaScript, Pylint for Python) to identify unused variables, functions, and classes
-   - Perform dependency analysis to find unreachable code paths
-   - Check for duplicate code blocks and opportunities for refactoring
-   - Identify deprecated API usage
-   - Create a detailed report documenting all findings with recommendations for each issue
-   - Categorize issues by severity (critical, major, minor)
-
-2. **Implementation Phase**:
-   - Create a branch for cleanup changes
-   - Address issues in order of severity, starting with critical issues
-   - Commit changes in logical, atomic units with descriptive messages
-   - For each significant change, add comments explaining the rationale
-   - Update import statements and dependencies as needed
-   - Remove commented-out code blocks that are no longer needed
-   - Standardize code formatting across the codebase
-
-3. **Documentation Consolidation**:
-   - Compare COMPLETE_GUIDE.md and MAIN_DOCS.md to identify unique and overlapping content
-   - Create a new unified documentation structure that preserves all important information
-   - Include a section on architectural decisions and implementation history
-   - Update all internal documentation links
-   - Archive the original files with clear notes about the consolidation
-   - Update any references to the old documentation files in the codebase
-
-Throughout the process, maintain a detailed changelog of all modifications for review.
+1. Create an inventory of all existing documentation files and their purposes
+2. Cross-reference all V3 features with their documentation coverage, identifying any gaps
+3. Remove or update any references to deprecated features or outdated examples
+4. Verify all code snippets and examples against the current codebase to ensure they work as documented
+5. Check API references for accuracy, ensuring parameter names, types, and descriptions match implementation
+6. Identify and consolidate duplicate documentation across different files
+7. Update MAIN_DOCS.md to serve as a comprehensive entry point with proper navigation to all documentation sections
+8. Ensure consistent formatting, terminology, and style across all documentation
+9. Add version information where appropriate to help users understand which features apply to their version
+10. Check for broken links or references within the documentation
+11. Verify that installation instructions, prerequisites, and configuration steps are current
+12. Update troubleshooting guides to address common issues with the V3 implementation
 
 # Test Strategy:
-Testing will occur at multiple stages to ensure the cleanup doesn't break existing functionality:
+The documentation audit should be validated through the following methods:
 
-1. **Pre-Implementation Testing**:
-   - Run the full test suite before making any changes to establish a baseline
-   - Document test coverage metrics and identify areas with insufficient coverage
-   - Add tests for critical areas with poor coverage before proceeding
-
-2. **Incremental Testing**:
-   - After each logical group of changes, run relevant unit and integration tests
-   - Perform manual testing of affected features
-   - Use git bisect if any regressions are discovered to identify the problematic change
-
-3. **Final Verification**:
-   - Run the complete test suite including unit, integration, and end-to-end tests
-   - Compare test results with the baseline to ensure no regressions
-   - Verify all CI/CD pipelines complete successfully
-   - Conduct peer code review of all changes
-   - Test documentation links to ensure they correctly point to the new consolidated docs
-   - Have another team member follow the consolidated documentation to verify clarity and completeness
-   - Create a summary report comparing before/after metrics (code size, test coverage, build time)
-
-# Subtasks:
-## 1. Perform Static Code Analysis and Generate Cleanup Report [done]
-### Dependencies: None
-### Description: Analyze the entire codebase to identify unused code, unreachable functions, dead imports, and other issues requiring cleanup. Create a comprehensive report documenting all findings with recommendations.
-### Details:
-Implementation steps:
-1. Set up and configure static analysis tools (ESLint for JavaScript, Pylint for Python)
-2. Run static analysis on all Python files in src/ directory
-3. Identify and document:
-   - Unused variables, functions, and classes
-   - Unreachable code paths through dependency analysis
-   - Dead imports and unused dependencies
-   - Commented-out code blocks
-   - Duplicate code segments
-   - Deprecated API usage
-4. Create a detailed report with:
-   - List of all issues found, categorized by severity (critical, major, minor)
-   - Line numbers and file locations for each issue
-   - Specific recommendations for addressing each issue
-   - Potential risks associated with each cleanup action
-5. Prioritize issues based on severity and impact
-
-Testing approach:
-- Verify report accuracy by manually checking a sample of identified issues
-- Have another developer review the report for completeness
-- Ensure all src/ files were included in the analysis
-
-## 2. Implement Code Cleanup Based on Analysis Report [done]
-### Dependencies: 17.1
-### Description: Execute the cleanup recommendations from the analysis report by removing unused code, fixing imports, eliminating dead code, and addressing all identified issues.
-### Details:
-Implementation steps:
-1. Create a new branch for cleanup changes from the main branch
-2. Address issues in order of severity, starting with critical issues:
-   - Remove unused variables, functions, and classes
-   - Eliminate unreachable code paths
-   - Clean up dead imports and unused dependencies
-   - Remove commented-out code blocks
-   - Refactor duplicate code segments
-   - Update deprecated API usage
-3. Commit changes in logical, atomic units with descriptive commit messages
-4. For each significant change, add comments explaining the rationale
-5. Standardize code formatting across the codebase
-6. Update import statements and dependencies as needed
-7. Maintain a detailed changelog of all modifications
-
-Testing approach:
-- Run unit tests after each significant change to catch immediate issues
-- Perform manual testing of affected components
-- Review changes with another developer before proceeding to full test verification
-
-## 3. Verify Codebase Functionality with Comprehensive Testing [done]
-### Dependencies: 17.2
-### Description: Run the full test suite to ensure that the cleanup changes haven't broken any functionality and that the codebase remains stable.
-### Details:
-Implementation steps:
-1. Ensure all test dependencies are installed and up-to-date
-2. Run the complete test suite on the cleanup branch
-3. Document any test failures in detail
-4. For each test failure:
-   - Determine if it's related to the cleanup changes
-   - Fix issues while maintaining the cleanup goals
-   - Re-run failed tests to verify fixes
-5. Perform integration testing to ensure components work together correctly
-6. Run performance tests to ensure cleanup didn't negatively impact performance
-7. Create a test verification report documenting:
-   - Test coverage statistics
-   - Any issues found and resolved
-   - Confirmation of passing tests
-
-Testing approach:
-- Use automated test runners to execute all unit, integration, and system tests
-- Perform manual testing of critical user flows
-- Compare test results with pre-cleanup baseline
-- Verify edge cases are still handled correctly
-
-## 4. Consolidate and Modernize Documentation [done]
-### Dependencies: 17.3
-### Description: Review all documentation files, identify and merge duplicates, preserve important historical context, and remove outdated information while maintaining decision rationale.
-### Details:
-Implementation steps:
-1. Review all documentation files in the docs/ directory
-2. Identify duplicate documentation (specifically COMPLETE_GUIDE.md and MAIN_DOCS.md)
-3. Create a documentation consolidation plan:
-   - Map overlapping content between files
-   - Identify unique content in each file
-   - Design a new unified documentation structure
-4. Implement the consolidation:
-   - Create new consolidated documentation files
-   - Preserve important historical context and implementation decisions
-   - Maintain rationale for architectural and design decisions
-   - Remove outdated or redundant information
-   - Update all internal documentation links
-5. Archive original files with clear notes about the consolidation
-6. Update any references to old documentation files in the codebase
-7. Create a documentation changelog detailing what was consolidated and why
-
-Testing approach:
-- Have team members review the consolidated documentation for clarity and completeness
-- Verify all internal links work correctly
-- Check that all important historical context and decision rationale is preserved
-- Ensure the documentation accurately reflects the current state of the codebase after cleanup
-
+1. Create a documentation coverage matrix that maps each V3 feature to its corresponding documentation
+2. Perform a peer review where at least two team members who didn't write the original documentation verify its accuracy
+3. Execute all code examples in an isolated environment to confirm they work as documented
+4. Use automated link checkers to verify all internal and external links are valid
+5. Have a new team member attempt to use the documentation to perform specific tasks, noting any points of confusion
+6. Validate MAIN_DOCS.md navigation by ensuring every documentation file is accessible through its links
+7. Create a checklist of common documentation issues (inconsistent terminology, outdated screenshots, etc.) and verify each document against this list
+8. Compare API documentation against actual implementation using automated tools or manual inspection of the codebase
+9. Test the documentation on different devices and browsers to ensure readability and proper formatting
+10. Document any issues found during testing in a separate report, categorized by severity and type
