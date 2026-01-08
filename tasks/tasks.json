@@ -468,7 +468,7 @@
       "id": 8,
       "title": "Create default note template",
       "description": "Design a default Markdown template that includes frontmatter for metadata and a structured body for email content.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         7
       ],
@@ -480,7 +480,7 @@
           "id": 1,
           "title": "Define YAML frontmatter structure for email metadata",
           "description": "Create the YAML frontmatter section of the template that will store all email metadata as specified in PDD Section 3.2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Design the frontmatter section at the top of the Markdown template that includes fields as specified in PDD Section 3.2: llm_output section with importance_score, spam_score, model_used and processing_meta section with script_version: \"3.0\", processed_at, status: \"success\" or \"error\". Include dynamic tag addition logic to add \"important\" tag if score >= threshold. Format using proper YAML syntax with clear field names and example values. Add comments explaining each field's purpose and possible values."
         },
@@ -488,7 +488,7 @@
           "id": 2,
           "title": "Design structured body section for email content",
           "description": "Create the main body section of the template with placeholders for email content",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -498,7 +498,7 @@
           "id": 3,
           "title": "Implement conditional sections based on classification",
           "description": "Add template sections that appear conditionally based on classification results",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -508,7 +508,7 @@
           "id": 4,
           "title": "Add comprehensive template comments and customization guidance",
           "description": "Include detailed comments throughout the template to guide user customization",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -518,7 +518,7 @@
           "id": 5,
           "title": "Create template file with example data and usage instructions",
           "description": "Finalize the template file with example data and add usage documentation",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
