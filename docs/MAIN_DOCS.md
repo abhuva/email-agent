@@ -19,10 +19,13 @@ This is the top-level guide for all docs, implementation details, and project st
 - [Task Master Project Management](../README-task-master.md)
 
 ## V3 Module Documentation
-- **[V3 Configuration Guide](v3-configuration.md)** — V3 configuration system, schema, and settings facade
+- **[V3 Configuration Guide](v3-configuration.md)** — V3 configuration system, schema, and settings facade (Task 1)
 - **[V3 Migration Guide](v3-migration-guide.md)** — Migrating from V2 to V3 configuration patterns
+- **[V3 CLI](v3-cli.md)** — Command-line interface with click (Task 2)
+- **[V3 IMAP Client](v3-imap-client.md)** — IMAP connection and email retrieval (Task 3)
+- **[V3 LLM Client](v3-llm-client.md)** — LLM API interactions with retry logic (Task 4)
+- **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds (Task 5)
 - **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6)
-- **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds
 
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:
