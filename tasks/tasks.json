@@ -893,7 +893,7 @@
           "id": 3,
           "title": "Integrate LLM classification and decision logic",
           "description": "Connect the LLM classification module and implement the decision tree for email processing",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],

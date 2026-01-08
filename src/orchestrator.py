@@ -365,22 +365,25 @@ class Pipeline:
         logger.info(f"Processing email UID: {uid}")
         
         try:
-            # Stage 1: LLM Classification
-            llm_response = self._classify_email(email_data)
+            # Stage 1: LLM Classification (with error handling)
+            llm_response = self._classify_email_with_fallback(email_data, uid)
             
-            # Stage 2: Decision Logic
-            classification_result = self.decision_logic.classify(llm_response)
+            # Stage 2: Decision Logic (with comprehensive logging)
+            classification_result = self._apply_decision_logic(llm_response, uid, options)
+            
+            # Log classification results to both logging systems
+            self._log_classification_results(uid, llm_response, classification_result, options)
             
             # Stage 3: Note Generation
             note_content = self._generate_note(email_data, classification_result)
             
-            # Stage 4: File Writing
+            # Stage 4: File Writing (respects dry-run)
             file_path = self._write_note(email_data, note_content, options)
             
-            # Stage 5: IMAP Flag Setting
+            # Stage 5: IMAP Flag Setting (respects dry-run)
             self._set_imap_flags(uid, options)
             
-            # Stage 6: Logging
+            # Stage 6: Final Logging
             self._log_email_processed(uid, classification_result, success=True)
             
             processing_time = time.time() - start_time
@@ -410,9 +413,98 @@ class Pipeline:
                 processing_time=processing_time
             )
     
+    def _classify_email_with_fallback(self, email_data: Dict[str, Any], uid: str) -> LLMResponse:
+        """
+        Classify email using LLM with comprehensive error handling and fallback strategies.
+        
+        This method implements the error handling requirements from Task 10:
+        - Retries with exponential backoff (handled by LLMClient)
+        - Fallback to error response (-1, -1) if all retries fail
+        - Detailed logging of classification attempts
+        
+        Args:
+            email_data: Email data dictionary
+            uid: Email UID for logging
+            
+        Returns:
+            LLMResponse with spam_score and importance_score (or error values -1, -1 on failure)
+        """
+        # Extract email content for LLM
+        subject = email_data.get('subject', '')
+        body = email_data.get('body', '')
+        from_addr = email_data.get('from', '')
+        
+        logger.info(f"Starting LLM classification for email UID: {uid}")
+        logger.debug(f"Email subject: {subject[:60]}...")
+        logger.debug(f"Email from: {from_addr}")
+        
+        # Truncate body if needed
+        max_chars = settings.get_max_body_chars()
+        original_body_length = len(body)
+        if len(body) > max_chars:
+            body = body[:max_chars] + "... [truncated]"
+            logger.debug(f"Truncated email body from {original_body_length} to {max_chars} characters")
+        
+        # Build prompt
+        prompt = self._build_classification_prompt(subject, from_addr, body)
+        
+        # Call LLM with error handling
+        try:
+            logger.debug("Calling LLM API for classification")
+            llm_response = self.llm_client.classify_email(prompt)
+            
+            logger.info(
+                f"LLM classification successful for UID {uid}: "
+                f"spam_score={llm_response.spam_score}, "
+                f"importance_score={llm_response.importance_score}"
+            )
+            
+            return llm_response
+            
+        except LLMClientError as e:
+            # LLM API failed after all retries - use fallback error response
+            logger.error(
+                f"LLM classification failed for email UID {uid} after retries: {e}. "
+                f"Using error fallback response with -1 scores."
+            )
+            
+            # Create error LLMResponse with -1 scores (Task 10 requirement)
+            # The decision logic will handle converting this to an error ClassificationResult
+            error_response = LLMResponse(
+                spam_score=-1,
+                importance_score=-1,
+                raw_response=f"Error: {type(e).__name__} - {str(e)}"
+            )
+            
+            logger.warning(
+                f"Using error fallback for UID {uid}: "
+                f"spam_score={error_response.spam_score}, "
+                f"importance_score={error_response.importance_score}"
+            )
+            
+            return error_response
+            
+        except Exception as e:
+            # Unexpected error - use fallback
+            logger.error(
+                f"Unexpected error during LLM classification for UID {uid}: {e}",
+                exc_info=True
+            )
+            
+            # Create error LLMResponse with -1 scores
+            error_response = LLMResponse(
+                spam_score=-1,
+                importance_score=-1,
+                raw_response=f"Unexpected error: {type(e).__name__} - {str(e)}"
+            )
+            
+            return error_response
+    
     def _classify_email(self, email_data: Dict[str, Any]) -> LLMResponse:
         """
-        Classify email using LLM.
+        Classify email using LLM (legacy method, kept for compatibility).
+        
+        Use _classify_email_with_fallback for new code.
         
         Args:
             email_data: Email data dictionary
@@ -423,21 +515,118 @@ class Pipeline:
         Raises:
             LLMClientError: If LLM classification fails
         """
-        # Extract email content for LLM
-        subject = email_data.get('subject', '')
-        body = email_data.get('body', '')
-        from_addr = email_data.get('from', '')
+        uid = email_data.get('uid', 'unknown')
+        return self._classify_email_with_fallback(email_data, uid)
+    
+    def _apply_decision_logic(
+        self,
+        llm_response: LLMResponse,
+        uid: str,
+        options: ProcessOptions
+    ) -> ClassificationResult:
+        """
+        Apply decision logic to LLM response with comprehensive logging.
         
-        # Truncate body if needed
-        max_chars = settings.get_max_body_chars()
-        if len(body) > max_chars:
-            body = body[:max_chars] + "... [truncated]"
+        This method:
+        - Applies thresholds from settings facade
+        - Logs decision-making process
+        - Handles edge cases
+        - Respects dry-run mode (classification still happens, just logged)
         
-        # Build prompt
-        prompt = self._build_classification_prompt(subject, from_addr, body)
+        Args:
+            llm_response: LLM response with scores
+            uid: Email UID for logging
+            options: Processing options
+            
+        Returns:
+            ClassificationResult with final classification decision
+        """
+        # Get thresholds from settings facade
+        importance_threshold = settings.get_importance_threshold()
+        spam_threshold = settings.get_spam_threshold()
         
-        # Call LLM
-        return self.llm_client.classify_email(prompt)
+        logger.info(
+            f"Applying decision logic for UID {uid}: "
+            f"scores (spam={llm_response.spam_score}, importance={llm_response.importance_score}), "
+            f"thresholds (spam={spam_threshold}, importance={importance_threshold})"
+        )
+        
+        # Apply decision logic
+        classification_result = self.decision_logic.classify(llm_response)
+        
+        # Log decision results
+        logger.info(
+            f"Classification decision for UID {uid}: "
+            f"is_important={classification_result.is_important}, "
+            f"is_spam={classification_result.is_spam}, "
+            f"confidence={classification_result.confidence}, "
+            f"status={classification_result.status.value}"
+        )
+        
+        # Log threshold comparisons
+        if classification_result.status.value != 'error':
+            importance_met = llm_response.importance_score >= importance_threshold
+            spam_met = llm_response.spam_score >= spam_threshold
+            
+            logger.debug(
+                f"Threshold comparison for UID {uid}: "
+                f"importance_score {llm_response.importance_score} >= {importance_threshold} = {importance_met}, "
+                f"spam_score {llm_response.spam_score} >= {spam_threshold} = {spam_met}"
+            )
+        
+        # In dry-run mode, log what decision would be made
+        if options.dry_run:
+            try:
+                from src.dry_run_output import DryRunOutput
+                output = DryRunOutput()
+                output.info(f"Classification Decision (UID {uid}):")
+                output.detail("  Importance", f"{llm_response.importance_score}/10 (threshold: {importance_threshold})")
+                output.detail("  Spam", f"{llm_response.spam_score}/10 (threshold: {spam_threshold})")
+                output.detail("  Result", f"Important={classification_result.is_important}, Spam={classification_result.is_spam}")
+            except ImportError:
+                logger.info(
+                    f"[DRY RUN] Classification: UID {uid} - "
+                    f"Important={classification_result.is_important}, Spam={classification_result.is_spam}"
+                )
+        
+        return classification_result
+    
+    def _log_classification_results(
+        self,
+        uid: str,
+        llm_response: LLMResponse,
+        classification_result: ClassificationResult,
+        options: ProcessOptions
+    ) -> None:
+        """
+        Log classification results to both logging systems.
+        
+        This implements the requirement to log classification results and decisions
+        to both operational logs and structured analytics.
+        
+        Args:
+            uid: Email UID
+            llm_response: LLM response with raw scores
+            classification_result: Final classification result
+            options: Processing options
+        """
+        # Log to operational logs (unstructured)
+        logger.info(
+            f"Classification complete for UID {uid}: "
+            f"LLM scores (spam={llm_response.spam_score}, importance={llm_response.importance_score}), "
+            f"Decision (important={classification_result.is_important}, spam={classification_result.is_spam}), "
+            f"Status={classification_result.status.value}"
+        )
+        
+        # Log to structured analytics (via EmailLogger)
+        # This will be written to analytics.jsonl
+        self.email_logger.log_classification_result(
+            uid=uid,
+            importance_score=llm_response.importance_score,
+            spam_score=llm_response.spam_score,
+            is_important=classification_result.is_important,
+            is_spam=classification_result.is_spam
+        )
     
     def _build_classification_prompt(self, subject: str, from_addr: str, body: str) -> str:
         """
