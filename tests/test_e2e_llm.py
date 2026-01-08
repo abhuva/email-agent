@@ -276,15 +276,25 @@ class TestE2ELLMErrorHandling:
     def test_invalid_api_key_handling(self, live_llm_config):
         """Test handling of invalid API key."""
         # Create client with invalid key
-        with patch('src.settings.settings') as mock_settings:
+        # Need to patch where LLMClient imports settings from
+        with patch('src.llm_client.settings') as mock_settings:
             mock_settings.get_openrouter_api_key.return_value = 'invalid_key'
             mock_settings.get_openrouter_api_url.return_value = live_llm_config['api_url']
             mock_settings.get_openrouter_model.return_value = live_llm_config['model']
             mock_settings.get_openrouter_temperature.return_value = live_llm_config['temperature']
             mock_settings.get_openrouter_retry_attempts.return_value = 1  # Fast failure
             mock_settings.get_openrouter_retry_delay_seconds.return_value = 1
+            mock_settings.get_max_body_chars.return_value = 4000
             
+            # Create new client instance after patching
             client = LLMClient()
+            # Reset any cached config
+            client._api_key = None
+            client._api_url = None
+            client._model = None
+            client._temperature = None
+            client._retry_attempts = None
+            client._retry_delay_seconds = None
             
             with pytest.raises(LLMAPIError):
                 client.classify_email("Test email content")
@@ -292,15 +302,25 @@ class TestE2ELLMErrorHandling:
     def test_network_error_handling(self, live_llm_config):
         """Test handling of network errors."""
         # Create client with invalid URL
-        with patch('src.settings.settings') as mock_settings:
+        # Need to patch where LLMClient imports settings from
+        with patch('src.llm_client.settings') as mock_settings:
             mock_settings.get_openrouter_api_key.return_value = live_llm_config['api_key']
-            mock_settings.get_openrouter_api_url.return_value = 'https://invalid-url-that-does-not-exist.com/api/v1'
+            mock_settings.get_openrouter_api_url.return_value = 'https://invalid-url-that-does-not-exist-12345.com/api/v1'
             mock_settings.get_openrouter_model.return_value = live_llm_config['model']
             mock_settings.get_openrouter_temperature.return_value = live_llm_config['temperature']
             mock_settings.get_openrouter_retry_attempts.return_value = 1  # Fast failure
             mock_settings.get_openrouter_retry_delay_seconds.return_value = 1
+            mock_settings.get_max_body_chars.return_value = 4000
             
+            # Create new client instance after patching
             client = LLMClient()
+            # Reset any cached config
+            client._api_key = None
+            client._api_url = None
+            client._model = None
+            client._temperature = None
+            client._retry_attempts = None
+            client._retry_delay_seconds = None
             
             with pytest.raises(LLMAPIError):
                 client.classify_email("Test email content")
