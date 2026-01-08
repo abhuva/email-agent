@@ -10,6 +10,7 @@ CLI Structure:
 """
 import click
 import sys
+import logging
 from typing import Optional, Dict, Any
 from pathlib import Path
 from dataclasses import dataclass
@@ -168,28 +169,62 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
         except ImportError:
             click.echo("[DRY RUN MODE] No files will be written or flags set")
     
-    # TODO: This will be connected to orchestrator in Task 14
-    # For now, just show what would happen
-    if dry_run:
-        try:
-            from src.dry_run_output import DryRunOutput
-            output = DryRunOutput()
-            output.header("Dry-Run Mode Active")
-            output.info("Processing logic will be implemented in Task 14 (orchestrator integration)")
-            output.detail("UID", uid if uid else "(all unprocessed)")
-            output.detail("Force reprocess", force_reprocess)
-            output.detail("Dry run", dry_run)
-        except ImportError:
-            click.echo("Process command called with:")
-            click.echo(f"  UID: {uid if uid else '(all unprocessed)'}")
-            click.echo(f"  Force reprocess: {force_reprocess}")
-            click.echo(f"  Dry run: {dry_run}")
-    else:
-        click.echo("Process command called with:")
-        click.echo(f"  UID: {uid if uid else '(all unprocessed)'}")
-        click.echo(f"  Force reprocess: {force_reprocess}")
-        click.echo(f"  Dry run: {dry_run}")
-        click.echo("\n[INFO] Processing logic will be implemented in Task 14 (orchestrator integration)")
+    # Initialize logging
+    try:
+        from src.logger import LoggerFactory
+        from src.settings import settings
+        log_file = settings.get_log_file()
+        logger_instance = LoggerFactory.create_logger(
+            name='email_agent',
+            level='INFO',
+            log_file=log_file,
+            console=True
+        )
+        logging.getLogger('email_agent').info("Logging initialized")
+    except Exception as e:
+        click.echo(f"Warning: Could not initialize logging: {e}", err=True)
+    
+    # Create pipeline and process emails
+    try:
+        from src.orchestrator import Pipeline, ProcessOptions
+        
+        # Create pipeline options
+        pipeline_options = ProcessOptions(
+            uid=uid,
+            force_reprocess=force_reprocess,
+            dry_run=dry_run
+        )
+        
+        # Create and run pipeline
+        pipeline = Pipeline()
+        summary = pipeline.process_emails(pipeline_options)
+        
+        # Display results
+        if dry_run:
+            try:
+                from src.dry_run_output import DryRunOutput
+                output = DryRunOutput()
+                output.header("Processing Complete")
+                output.info(f"Processed {summary.total_emails} email(s)")
+                output.detail("Successful", summary.successful)
+                output.detail("Failed", summary.failed)
+                output.detail("Total time", f"{summary.total_time:.2f}s")
+                if summary.total_emails > 0:
+                    output.detail("Average time", f"{summary.average_time:.2f}s per email")
+            except ImportError:
+                click.echo(f"\nProcessing complete: {summary.successful} successful, {summary.failed} failed")
+        else:
+            click.echo(f"\nProcessing complete: {summary.successful} successful, {summary.failed} failed in {summary.total_time:.2f}s")
+        
+        # Exit with error code if any failures
+        if summary.failed > 0:
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"Error during processing: {e}", err=True)
+        logger = logging.getLogger(__name__)
+        logger.error(f"Pipeline execution failed: {e}", exc_info=True)
+        sys.exit(1)
     
     # Return options for programmatic use
     return options

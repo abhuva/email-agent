@@ -875,7 +875,7 @@
           "id": 1,
           "title": "Create core pipeline architecture and CLI argument handling",
           "description": "Establish the main program structure with click-based CLI argument parsing and basic control flow",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Implement the main entry point that parses CLI arguments (--dry-run, --force-reprocess, --uid) using click as specified in the PDD. Create a Pipeline class in src/orchestrator.py that will orchestrate the entire email processing flow. Set up the basic program structure with configuration loading through the settings.py facade, logging initialization, and error handling framework. Define the high-level pipeline steps as methods that will be implemented in subsequent tasks. Ensure the CLI structure follows exactly: `python main.py process` with flags as specified in the PDD."
         },
