@@ -913,7 +913,7 @@
           "id": 5,
           "title": "Implement IMAP flag setting and finalize pipeline execution flow",
           "description": "Add the ability to mark emails as processed in IMAP and complete the end-to-end pipeline",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],

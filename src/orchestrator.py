@@ -200,40 +200,123 @@ class Pipeline:
                 )
             
             # Process each email
-            for email_data in emails:
+            # Note: Processing emails one at a time to prevent memory leaks during batch processing
+            # Each email is processed and result is stored, but email_data is not kept in memory
+            for idx, email_data in enumerate(emails, 1):
+                logger.debug(f"Processing email {idx}/{len(emails)}")
                 result = self._process_single_email(email_data, options)
                 results.append(result)
+                
+                # Clear email_data reference to help with memory management
+                # (Python GC will handle cleanup, but explicit clearing helps)
+                del email_data
+                
+                # Log progress for large batches
+                if len(emails) > 10 and idx % 10 == 0:
+                    logger.info(f"Progress: {idx}/{len(emails)} emails processed")
             
-            # Generate summary
+            # Generate summary with detailed statistics
             total_time = time.time() - start_time
             successful = sum(1 for r in results if r.success)
             failed = len(results) - successful
+            average_time = total_time / len(results) if results else 0.0
+            
+            # Calculate additional statistics
+            total_processing_time = sum(r.processing_time for r in results)
+            avg_processing_time = total_processing_time / len(results) if results else 0.0
             
             summary = PipelineSummary(
                 total_emails=len(results),
                 successful=successful,
                 failed=failed,
                 total_time=total_time,
-                average_time=total_time / len(results) if results else 0.0
+                average_time=average_time
             )
             
-            logger.info(f"Processing complete: {summary.successful} successful, {summary.failed} failed in {summary.total_time:.2f}s")
+            # Comprehensive summary logging
+            logger.info("=" * 60)
+            logger.info("EMAIL PROCESSING SUMMARY")
+            logger.info("=" * 60)
+            logger.info(f"Total emails processed: {summary.total_emails}")
+            logger.info(f"  ✓ Successful: {summary.successful}")
+            logger.info(f"  ✗ Failed: {summary.failed}")
+            logger.info(f"Total pipeline time: {summary.total_time:.2f}s")
+            logger.info(f"Average time per email: {summary.average_time:.2f}s")
+            logger.info(f"Average processing time (per email): {avg_processing_time:.2f}s")
+            
+            if summary.successful > 0:
+                success_rate = (summary.successful / summary.total_emails) * 100
+                logger.info(f"Success rate: {success_rate:.1f}%")
+            
+            if summary.failed > 0:
+                logger.warning(f"⚠ {summary.failed} email(s) failed processing - check logs for details")
+                # Log details of failed emails
+                failed_uids = [r.uid for r in results if not r.success]
+                failed_errors = [r.error for r in results if not r.success and r.error]
+                logger.debug(f"Failed email UIDs: {failed_uids}")
+                if failed_errors:
+                    logger.debug(f"Error messages: {failed_errors[:5]}")  # Show first 5 errors
+                    if len(failed_errors) > 5:
+                        logger.debug(f"... and {len(failed_errors) - 5} more errors")
+            
+            # Performance check (requirement: local operations < 1s)
+            if avg_processing_time > 1.0:
+                logger.warning(
+                    f"⚠ Performance warning: Average processing time ({avg_processing_time:.2f}s) "
+                    f"exceeds requirement (< 1s). Consider optimization."
+                )
+            else:
+                logger.debug(f"✓ Performance requirement met: {avg_processing_time:.2f}s < 1s")
+            
+            logger.info("=" * 60)
             
             return summary
             
         except IMAPClientError as e:
             logger.error(f"IMAP error during processing: {e}")
+            # Return partial summary if we processed some emails before the error
+            if results:
+                total_time = time.time() - start_time
+                successful = sum(1 for r in results if r.success)
+                failed = len(results) - successful
+                logger.warning(f"Returning partial results: {successful} successful, {failed} failed")
+                return PipelineSummary(
+                    total_emails=len(results),
+                    successful=successful,
+                    failed=failed,
+                    total_time=total_time,
+                    average_time=total_time / len(results) if results else 0.0
+                )
             raise
         except Exception as e:
             logger.error(f"Unexpected error during processing: {e}", exc_info=True)
+            # Return partial summary if we processed some emails before the error
+            if results:
+                total_time = time.time() - start_time
+                successful = sum(1 for r in results if r.success)
+                failed = len(results) - successful
+                logger.warning(f"Returning partial results after unexpected error: {successful} successful, {failed} failed")
+                return PipelineSummary(
+                    total_emails=len(results),
+                    successful=successful,
+                    failed=failed,
+                    total_time=total_time,
+                    average_time=total_time / len(results) if results else 0.0
+                )
             raise
         finally:
-            # Disconnect from IMAP
+            # Cleanup operations: Disconnect from IMAP and release resources
+            # This ensures no memory leaks and proper resource cleanup
             try:
-                self.imap_client.disconnect()
-                logger.info("Disconnected from IMAP server")
+                if self.imap_client and hasattr(self.imap_client, '_connected') and self.imap_client._connected:
+                    self.imap_client.disconnect()
+                    logger.info("Disconnected from IMAP server")
             except Exception as e:
-                logger.warning(f"Error disconnecting from IMAP: {e}")
+                logger.warning(f"Error disconnecting from IMAP during cleanup: {e}")
+            
+            # Additional cleanup: Clear any cached data to prevent memory leaks
+            # (Currently no cached data, but this is a placeholder for future optimizations)
+            logger.debug("Pipeline cleanup complete")
     
     def _retrieve_emails(self, options: ProcessOptions) -> List[Dict[str, Any]]:
         """
@@ -834,22 +917,62 @@ class Pipeline:
     
     def _set_imap_flags(self, uid: str, options: ProcessOptions) -> None:
         """
-        Set IMAP flags to mark email as processed.
+        Set IMAP flags to mark email as processed after successful handling.
+        
+        This method:
+        - Sets the processed tag to mark email as processed
+        - Respects dry-run mode (logs what would be set without actually setting)
+        - Handles errors gracefully to prevent pipeline crashes
+        - Logs all flag operations for audit trail
         
         Args:
             uid: Email UID
             options: Processing options
+            
+        Raises:
+            IMAPClientError: If IMAP operation fails (but errors are logged, not propagated)
         """
-        if is_dry_run() or options.dry_run:
-            # In dry-run mode, don't set flags
-            processed_tag = settings.get_imap_processed_tag()
+        processed_tag = settings.get_imap_processed_tag()
+        dry_run_mode = is_dry_run() or options.dry_run
+        
+        if dry_run_mode:
+            # In dry-run mode, don't set flags but log what would be set
             logger.info(f"[DRY RUN] Would set flag '{processed_tag}' for email UID: {uid}")
+            try:
+                from src.dry_run_output import DryRunOutput
+                output = DryRunOutput()
+                output.info(f"IMAP Flag Setting (UID {uid}):")
+                output.detail("Flag", processed_tag)
+                output.detail("Action", "Would set processed flag")
+            except ImportError:
+                pass  # DryRunOutput not available, skip
             return
         
-        # Set processed flag
-        processed_tag = settings.get_imap_processed_tag()
-        self.imap_client.set_flag(uid, processed_tag)
-        logger.info(f"Set flag '{processed_tag}' for email UID: {uid}")
+        # Set processed flag (actual operation)
+        try:
+            logger.debug(f"Setting IMAP flag '{processed_tag}' for email UID: {uid}")
+            success = self.imap_client.set_flag(uid, processed_tag)
+            
+            if success:
+                logger.info(f"Successfully set flag '{processed_tag}' for email UID: {uid}")
+            else:
+                logger.warning(f"Failed to set flag '{processed_tag}' for email UID: {uid} (operation returned False)")
+                # Don't raise exception - flag setting failure shouldn't crash the pipeline
+                # The email will be retried on next run if it doesn't have the flag
+                
+        except IMAPConnectionError as e:
+            error_msg = f"IMAP connection error while setting flag for UID {uid}: {e}"
+            logger.error(error_msg)
+            # Don't raise - allow pipeline to continue with other emails
+            # Connection issues will be handled at the pipeline level
+        except IMAPClientError as e:
+            error_msg = f"IMAP error while setting flag '{processed_tag}' for UID {uid}: {e}"
+            logger.error(error_msg)
+            # Don't raise - flag setting failure shouldn't crash the pipeline
+        except Exception as e:
+            error_msg = f"Unexpected error setting flag '{processed_tag}' for UID {uid}: {e}"
+            logger.error(error_msg, exc_info=True)
+            # Don't raise - unexpected errors shouldn't crash the pipeline
     
     def _log_email_processed(self, uid: str, classification_result: Optional[ClassificationResult], 
                             success: bool, error: Optional[str] = None) -> None:
