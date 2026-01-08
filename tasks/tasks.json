@@ -63,7 +63,7 @@
           "id": 6,
           "title": "Create `settings.py` Configuration Facade",
           "description": "Implement a central facade module that provides getter methods for all configuration values",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4
