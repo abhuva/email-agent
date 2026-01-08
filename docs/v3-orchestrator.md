@@ -1,12 +1,12 @@
 # V3 Orchestrator Module
 
-**Status:** ✅ Complete (Task 14.1)  
+**Status:** ✅ Complete (Tasks 14.1-14.6)  
 **Module:** `src/orchestrator.py`  
 **Integration:** `src/cli_v3.py`
 
 ## Overview
 
-The V3 orchestrator module provides high-level business logic orchestration for the email processing pipeline. It coordinates all components (IMAP, LLM, decision logic, note generation, logging) into a cohesive end-to-end processing flow.
+The V3 orchestrator module provides high-level business logic orchestration for the email processing pipeline. It coordinates all components (IMAP, LLM, decision logic, note generation, logging) into a cohesive end-to-end processing flow with comprehensive error handling, performance optimizations, and detailed logging.
 
 ## Architecture
 
@@ -100,36 +100,73 @@ print(f"Total time: {summary.total_time:.2f}s")
 
 6. **IMAP Flag Setting** (`_set_imap_flags`)
    - Sets processed tag on successful processing
-   - Respects dry-run mode
+   - Comprehensive error handling (failures don't crash pipeline)
+   - Respects dry-run mode (logs what would be set)
+   - Detailed logging of all flag operations
 
 7. **Logging** (`_log_email_processed`)
    - Logs to operational logs (agent.log)
    - Logs to structured analytics (analytics.jsonl)
    - Records success/failure with scores
+   - Comprehensive summary logging with statistics
+
+8. **Summary Generation** (`process_emails`)
+   - Detailed statistics (total, successful, failed)
+   - Performance metrics (total time, average time)
+   - Success rate calculation
+   - Performance requirement verification
+   - Error details for failed emails
 
 ## Error Handling
 
-The pipeline implements **per-email error isolation**:
+The pipeline implements **per-email error isolation** with comprehensive error handling:
 
-- Errors in processing one email don't affect others
-- Each email's processing result is tracked independently
-- Failures are logged with error details
-- Pipeline continues processing remaining emails
+- **Isolated Processing**: Errors in processing one email don't affect others
+- **Result Tracking**: Each email's processing result is tracked independently
+- **Detailed Logging**: Failures are logged with full error details and context
+- **Graceful Continuation**: Pipeline continues processing remaining emails after failures
+- **Partial Results**: Returns partial results if errors occur mid-batch
+- **Flag Setting Resilience**: IMAP flag setting failures don't crash the pipeline
 
 ### Error Types
 
 - **IMAPClientError**: IMAP connection or operation failures
+  - Handled gracefully with connection retry logic
+  - Partial results returned if connection fails mid-batch
 - **LLMClientError**: LLM API failures (handled with retry logic)
+  - Automatic retry with exponential backoff
+  - Fallback to error response (-1, -1) if all retries fail
 - **TemplateRenderError**: Note generation failures
+  - Fallback template used if primary template fails
+- **FileWriteError**: File system errors
+  - Detailed error messages with file paths
+  - Directory creation handled automatically
 - **ConfigError**: Configuration loading failures
+  - Validated at pipeline initialization
 
 ## Performance
 
-The pipeline is designed to meet performance requirements:
+The pipeline is designed to meet strict performance requirements:
 
 - **Local operations < 1s**: File operations and local processing are optimized
-- **No memory leaks**: Proper resource cleanup (IMAP disconnection, etc.)
+  - Performance metrics tracked and logged
+  - Warnings issued if average processing time exceeds 1s
+- **No memory leaks**: Comprehensive resource cleanup
+  - IMAP connections properly disconnected in finally block
+  - Email data references explicitly cleared after processing
+  - Progress logging for large batches (every 10 emails)
 - **Batch processing**: Handles multiple emails efficiently
+  - Sequential processing prevents memory accumulation
+  - Memory management optimizations for large batches
+  - Resource cleanup after each email
+
+### Performance Monitoring
+
+The pipeline tracks and reports:
+- Total pipeline execution time
+- Average time per email
+- Success rate percentage
+- Performance requirement compliance (< 1s per email)
 
 ## Configuration
 
@@ -187,12 +224,70 @@ def test_process_command(mock_pipeline_class, runner, temp_config_file):
     assert result.exit_code == 0
 ```
 
+## Architecture Details
+
+### State Management
+
+The Pipeline class manages state throughout the processing lifecycle:
+
+- **Component Initialization**: All components (IMAP, LLM, decision logic, note generator, logger) initialized in `__init__`
+- **Connection Management**: IMAP connection established at start, disconnected in finally block
+- **Result Tracking**: ProcessingResult objects track each email's outcome
+- **Error Context**: Full error context preserved for logging and debugging
+
+### Error Propagation Strategy
+
+The pipeline uses a **graceful degradation** approach:
+
+1. **Per-Email Isolation**: Each email processed in try-except block
+2. **Error Logging**: All errors logged with full context
+3. **Result Tracking**: Success/failure tracked per email
+4. **Partial Results**: If batch fails mid-processing, partial results returned
+5. **Resource Cleanup**: Cleanup always executed in finally block
+
+### Performance Optimizations
+
+1. **Memory Management**:
+   - Email data references cleared after processing
+   - Explicit del statements for large objects
+   - Progress logging prevents memory accumulation
+
+2. **Resource Cleanup**:
+   - IMAP disconnection in finally block
+   - Connection state verified before cleanup
+   - Debug logging for cleanup verification
+
+3. **Batch Processing**:
+   - Sequential processing prevents memory leaks
+   - Progress indicators for large batches
+   - Early termination on critical errors (with partial results)
+
+## Summary Logging
+
+The pipeline provides comprehensive summary logging:
+
+```
+============================================================
+EMAIL PROCESSING SUMMARY
+============================================================
+Total emails processed: 15
+  ✓ Successful: 14
+  ✗ Failed: 1
+Total pipeline time: 12.34s
+Average time per email: 0.82s
+Average processing time (per email): 0.75s
+Success rate: 93.3%
+⚠ 1 email(s) failed processing - check logs for details
+============================================================
+```
+
 ## Future Enhancements
 
-- Progress indicators for long-running operations
 - Parallel email processing (with rate limiting)
-- Enhanced error recovery strategies
-- Performance metrics and profiling
+- Enhanced error recovery strategies (automatic retry for transient failures)
+- Performance profiling and optimization
+- Real-time progress indicators for long-running operations
+- Metrics export for monitoring systems
 
 ---
 

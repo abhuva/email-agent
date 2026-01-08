@@ -3,13 +3,35 @@ V3 Orchestrator Module
 
 This module provides high-level business logic orchestration for the email processing pipeline.
 It coordinates all components (IMAP, LLM, decision logic, note generation, logging) into a
-cohesive end-to-end processing flow.
+cohesive end-to-end processing flow with comprehensive error handling, performance optimizations,
+and detailed logging.
 
 Architecture:
     - Pipeline class: Main orchestration class that coordinates all modules
-    - ProcessOptions: Configuration for pipeline execution
+    - ProcessOptions: Configuration for pipeline execution (UID, force_reprocess, dry_run)
+    - ProcessingResult: Result of processing a single email
+    - PipelineSummary: Summary statistics for a pipeline execution
     - Error handling: Isolated per-email error handling to prevent crashes
     - Performance: Local operations < 1s, no memory leaks during batch processing
+
+Pipeline Flow:
+    1. Email Retrieval - Fetches emails from IMAP (by UID or all unprocessed)
+    2. LLM Classification - Sends emails to LLM for spam/importance scoring
+    3. Decision Logic - Applies thresholds to determine email categorization
+    4. Note Generation - Generates Markdown notes using Jinja2 templates
+    5. File Writing - Writes notes to Obsidian vault with proper error handling
+    6. IMAP Flag Setting - Marks emails as processed (with error resilience)
+    7. Logging - Records processing results to both logging systems
+    8. Summary Generation - Provides comprehensive statistics and performance metrics
+
+Key Features:
+    - Per-email error isolation (failures don't affect other emails)
+    - Comprehensive error handling with graceful degradation
+    - Memory leak prevention (explicit cleanup, resource management)
+    - Performance monitoring (tracks and reports processing times)
+    - Detailed summary logging with statistics
+    - Dry-run mode support throughout
+    - Force reprocess capability
 
 All configuration access is through the settings.py facade, not direct YAML access.
 
@@ -29,7 +51,14 @@ Usage:
     ...     force_reprocess=False,
     ...     dry_run=False
     ... )
-    >>> results = pipeline.process_emails(options)
+    >>> summary = pipeline.process_emails(options)
+    >>> print(f"Processed {summary.successful} emails successfully")
+    >>> print(f"Failed: {summary.failed}")
+    >>> print(f"Total time: {summary.total_time:.2f}s")
+
+See Also:
+    - docs/v3-orchestrator.md - Complete documentation
+    - src/cli_v3.py - CLI integration
 """
 import logging
 import time
