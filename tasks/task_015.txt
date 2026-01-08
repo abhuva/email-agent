@@ -1,43 +1,43 @@
 # Task ID: 15
-# Title: Prepare documentation and deployment instructions
-# Status: done
+# Title: Implement backfill functionality for historical emails
+# Status: pending
 # Dependencies: 14
-# Priority: medium
-# Description: Create comprehensive documentation for setup, configuration, and usage
+# Priority: low
+# Description: Create a mechanism to process all historical emails with the new classification system.
 # Details:
-Prepare detailed documentation covering: 1) Installation and setup, 2) Configuration options with examples, 3) Usage instructions, 4) Troubleshooting guide, 5) Explanation of the note format and how to use it in Obsidian. Include information about the phased rollout plan described in the PRD.
+Implement a backfill function that processes all emails in the target mailbox, regardless of their current flag status. Include options to limit the backfill by date range or folder. Add a progress indicator for long-running backfill operations. Implement throttling to prevent API rate limiting issues. Include detailed logging of the backfill process with summary statistics.
 
 # Test Strategy:
-Review documentation for accuracy and completeness. Have a team member follow the instructions to verify they are clear and complete. Test configuration examples to ensure they work as described.
+Test backfill on a small subset of emails before full execution. Verify all emails are processed correctly. Check that progress indication works for long-running operations. Verify throttling prevents API rate limiting issues.
 
 # Subtasks:
-## 1. Draft Installation and Setup Documentation [done]
+## 1. Design backfill function core with date range and folder filtering [pending]
 ### Dependencies: None
-### Description: Create the first section of documentation detailing how users can install and initially set up the software, including prerequisites, step-by-step instructions, and verification steps.
+### Description: Create the core backfill function that can process historical emails with configurable filters
 ### Details:
-Structure as a markdown file with headings for prerequisites (e.g., system requirements, dependencies), numbered installation steps (e.g., download, extract, run installer), initial configuration commands, and a verification checklist. Include code snippets for common platforms (Windows, macOS, Linux) and screenshots if applicable. Ensure steps are testable and reference any required tools like Node.js or Git.
+Implement a function that accepts parameters for date range (startDate, endDate) and folder path. The function should query the email API to retrieve all emails matching these criteria. Include parameter validation and default values (all time, all folders). Structure the function to support batch processing of emails and ensure it correctly applies the new classification system to each email. Return a data structure that can be used for progress tracking and logging. Use the settings.py facade to access any configuration values needed.
 
-## 2. Document Configuration Options with Examples [done]
+## 2. Implement progress tracking mechanism [pending]
 ### Dependencies: 15.1
-### Description: Develop the configuration section explaining all available options, their purposes, default values, and practical examples for common use cases.
+### Description: Create a system to track and display progress during backfill operations
 ### Details:
-Use a table format to list options (parameter name, type, default, description), followed by YAML/JSON example configs for basic, advanced, and Obsidian-specific setups. Include validation steps and common pitfalls. Reference setup from subtask 1 for initial config file location. Test examples by applying them locally.
+Build a progress tracking class that maintains counts of total emails to process, emails processed, success/failure counts, and percentage complete. Implement methods to update this progress as emails are processed. Create both console output for command-line usage and a UI component for displaying progress in the application interface. The progress tracker should support both determinate (when total count is known) and indeterminate modes (when total count is unknown). Use the settings.py facade to access any configuration values needed.
 
-## 3. Write Usage Instructions and Note Format Explanation [done]
+## 3. Add throttling mechanism to prevent API rate limiting [pending]
+### Dependencies: 15.1
+### Description: Implement controls to limit the rate of API calls during backfill operations
+### Details:
+Create a throttling mechanism that limits API calls to a configurable rate (e.g., X calls per minute). Implement using either a token bucket algorithm or simple time-based throttling. Add retry logic with exponential backoff for handling rate limit errors from the API. Make the throttling parameters configurable based on the API's documented limits. Ensure the throttling mechanism properly handles batches of requests and maintains a consistent processing rate. Use the settings.py facade to access throttling configuration values (settings.get_openrouter_retry_attempts() and settings.get_openrouter_retry_delay_seconds()).
+
+## 4. Implement comprehensive logging system [pending]
 ### Dependencies: 15.1, 15.2
-### Description: Prepare usage guide covering core workflows, command-line/API usage, and specific instructions for the note format integration with Obsidian including syntax examples and plugins.
+### Description: Create detailed logging for the backfill process with summary statistics
 ### Details:
-Organize into subsections: quick start, daily usage, advanced features, and Obsidian section with note format spec (e.g., frontmatter, tags, Markdown extensions), embedding examples, and vault setup. Include copy-paste code blocks and workflow diagrams. Build on prior sections by cross-referencing installation and config.
+Implement a logging system that records: start/end times, configuration parameters used, progress updates at regular intervals, any errors encountered with full stack traces, and summary statistics upon completion. Create different log levels (debug, info, warning, error) and ensure appropriate information is logged at each level. Generate a summary report at the end of the backfill showing total emails processed, success rate, error counts by type, and processing time. Store logs in a structured format that can be easily analyzed. Use the settings.py facade to access log file paths and other configuration values.
 
-## 4. Create Troubleshooting Guide [done]
-### Dependencies: 15.1, 15.2, 15.3
-### Description: Compile a comprehensive troubleshooting section addressing common errors, diagnostic steps, log analysis, and solutions for installation, config, usage, and Obsidian issues.
-### Details:
-Categorize by error type (e.g., installation failures, config parsing errors, runtime issues, Obsidian sync problems) with symptoms, causes, step-by-step fixes, and prevention tips. Include log file locations from config docs and testing commands. Validate by simulating errors from previous subtasks.
-
-## 5. Incorporate Phased Rollout Plan and Finalize Documentation [done]
+## 5. Create user interface for backfill configuration and execution [pending]
 ### Dependencies: 15.1, 15.2, 15.3, 15.4
-### Description: Add a dedicated section explaining the phased rollout plan from the PRD with timelines, milestones, and user guidance, then compile all sections into a cohesive document with deployment instructions.
+### Description: Develop a UI to allow users to configure and initiate backfill operations
 ### Details:
-Extract PRD rollout details into phases (e.g., internal testing, beta, full release) with objectives, milestones, responsibilities, feedback mechanisms, and user participation instructions per phase. Use tables/Gantt-style timelines. Add deployment section (e.g., hosting, CI/CD if applicable). Review entire doc for consistency, add index/table of contents, and export to PDF/HTML. Reference rollout templates for structure like phases, checkpoints, and metrics.
+Build a user interface that allows configuration of all backfill parameters: date range selection with calendar controls, folder selection with a folder browser, throttling settings, and logging options. Include validation to prevent invalid configurations. Display the progress indicator during operation and show the summary report upon completion. Add the ability to cancel an in-progress backfill operation. Ensure the UI remains responsive during long-running backfill operations by using background processing. Use the settings.py facade to access any configuration values needed for the UI.
 

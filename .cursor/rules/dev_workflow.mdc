@@ -18,5 +18,5 @@ alwaysApply: true
 
 - **For AI Agents Starting Work:**
  - Always read [README-AI.md](mdc:README-AI.md) first for complete project context
- - Then review [pdd_v2.md](mdc:pdd_v2.md) for current requirements
+ - Then review [pdd.md](mdc:pdd.md) for current requirements
  - Check task status with `task-master next` or review `tasks/tasks.json`

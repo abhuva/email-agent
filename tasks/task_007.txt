@@ -1,43 +1,43 @@
 # Task ID: 7
-# Title: Implement LLM integration for email summarization
-# Status: done
-# Dependencies: 6
+# Title: Integrate templating engine
+# Status: pending
+# Dependencies: 1
 # Priority: medium
-# Description: Create the functionality to call an LLM API for generating email summaries
+# Description: Set up a templating system for generating Markdown notes based on email content and classification results.
 # Details:
-Implement the LLM API call functionality using the loaded prompt and email content. Structure the prompt to generate concise, informative summaries focusing on key points and action items. Include error handling for API failures, rate limiting, and malformed responses. The system should log errors but continue processing if summarization fails.
+Integrate Jinja2 or a similar templating engine in src/note_generator.py. Create a template loader that reads template files from a configurable location (paths.template_file: 'config/note_template.md.j2'). Implement a template renderer that combines email data, classification results, and other metadata to generate the final Markdown output. Include proper error handling for template rendering failures. All configuration access must be through the settings.py facade.
 
 # Test Strategy:
-Test with various email contents including short messages, long threads, and emails with different structures. Verify the summaries are accurate and helpful. Test error handling by simulating API failures.
+Test template loading with valid and invalid templates. Verify rendering produces expected output with various input combinations. Test error handling with malformed templates.
 
 # Subtasks:
-## 1. Create prompt template for email summarization [done]
+## 1. Install and configure templating engine [pending]
 ### Dependencies: None
-### Description: Design and implement a structured prompt template that combines the loaded prompt with email content to generate concise summaries focusing on key points and action items.
+### Description: Set up Jinja2 or a similar templating engine in the project environment
 ### Details:
-Load the existing prompt configuration. Create a prompt formatter using f-strings or a templating library (e.g., Jinja2) that injects email fields: subject, sender, body, date. Structure the prompt to explicitly request: 1) 2-3 sentence summary of main content, 2) bullet-point list of action items, 3) priority level (low/medium/high). Test template rendering with sample email data to ensure proper formatting and token limits.
+Add Jinja2 to project dependencies. Create a configuration module in src/note_generator.py that defines template-related settings such as template directory paths, file extensions, and caching options. Implement a basic initialization function that creates and configures the templating environment with appropriate settings for the application context. Use the settings.py facade to access the template file path (settings.get_template_file(), which should be 'config/note_template.md.j2' according to the PDD).
 
-## 2. Implement core LLM API integration [done]
+## 2. Implement template loader [pending]
 ### Dependencies: 7.1
-### Description: Build the LLM API client and core summarization function that calls the external LLM API using the formatted prompt from subtask 1.
+### Description: Create a template loader that reads template files from a configurable location
 ### Details:
-Use requests library or LLM client SDK (e.g., openai-python, litellm for multi-provider support). Implement async function `summarize_email(email_data)` that: 1) formats prompt using template from subtask 1, 2) makes POST request to LLM endpoint with proper headers (Authorization, Content-Type), 3) sends JSON payload with model name, prompt, temperature=0.3, max_tokens=300. Return raw API response. Include timeout (30s) and basic request validation.
+Develop a TemplateLoader class that handles locating and loading template files from the configured directory. Implement methods to list available templates, validate template existence, and load template content. Add support for template inheritance and includes. Ensure the loader handles file system errors gracefully with appropriate exception handling. Use the settings.py facade to access the template file path (settings.get_template_file()).
 
-## 3. Add comprehensive error handling and fallbacks [done]
+## 3. Create base templates for email-to-markdown conversion [pending]
 ### Dependencies: 7.2
-### Description: Implement robust error handling for API failures, rate limiting, malformed responses, and network issues while ensuring the system continues processing.
+### Description: Design and implement the base Markdown templates for different types of email content
 ### Details:
-Wrap API call in try-except blocks handling: HTTPError (4xx/5xx), ConnectionError, Timeout, JSONDecodeError. Implement exponential backoff retry (3 attempts, 1s/2s/4s delays) for 429 rate limits and 5xx errors. For failures, return fallback summary: 'Summary unavailable - please read original email'. Validate response structure (check for 'choices[0].message.content'). Log all errors with structured logging (email_id, error_type, response_status).
+Create a set of base templates for common email-to-markdown conversion scenarios. Include templates for different email classifications (e.g., newsletter, personal, transactional). Design templates with placeholders for email metadata (sender, date, subject), content sections, attachments, and classification results. Structure templates to generate well-formatted Markdown with proper headings, lists, and other formatting elements. Ensure templates align with the PDD specifications.
 
-## 4. Implement response parsing and validation [done]
+## 4. Implement template renderer [pending]
 ### Dependencies: 7.2, 7.3
-### Description: Parse LLM responses into structured summary objects and validate output quality before returning to the calling system.
+### Description: Develop a renderer that combines email data and classification results with templates
 ### Details:
-Create `parse_summary_response(raw_response)` function that: 1) extracts content from standard LLM response format, 2) strips markdown/whitespace, 3) validates minimum length (>20 chars) and maximum length (<500 chars), 4) checks for key phrases ('action items', 'summary') using regex, 5) returns structured dict: {'summary': str, 'action_items': list[str], 'priority': str, 'success': bool}. Default to empty values on parsing failure.
+Create a TemplateRenderer class that takes email data, classification results, and other metadata and renders it using the appropriate template. Implement context preparation functions that transform raw email data into a format suitable for template rendering. Add helper functions for common formatting tasks (date formatting, URL handling, etc.). Include methods to select the most appropriate template based on email classification or content type. Use the settings.py facade for any configuration values needed.
 
-## 5. Add logging, monitoring, and integration wrapper [done]
-### Dependencies: 7.1, 7.2, 7.3, 7.4
-### Description: Implement production-ready logging, metrics, and a complete wrapper function that integrates all previous subtasks with proper error boundaries.
+## 5. Add error handling and logging for template rendering [pending]
+### Dependencies: 7.4
+### Description: Implement comprehensive error handling for template rendering failures
 ### Details:
-Create main `generate_email_summary(email_data)` function that orchestrates subtasks 1-4. Add structured logging at each step (INFO: prompt formatted, API called; ERROR: failures with email_id). Track metrics: api_latency, success_rate, token_usage, error_type. Implement circuit breaker pattern (pause after 5 consecutive failures). Ensure function signature matches existing system expectations and gracefully handles all edge cases while maintaining processing flow.
+Enhance the template rendering system with robust error handling. Implement try-except blocks around template rendering operations to catch and handle template syntax errors, missing variables, and rendering failures. Create fallback templates for use when primary templates fail. Add detailed logging of rendering errors with context information to aid debugging. Implement a mechanism to notify users of rendering issues while still providing usable output when possible. Use the settings.py facade to access log file paths and other configuration values.
 

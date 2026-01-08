@@ -1,54 +1,43 @@
 # Task ID: 4
-# Title: Implement YAML frontmatter generation
+# Title: Implement LLM interaction module
 # Status: done
-# Dependencies: 3
+# Dependencies: 1
 # Priority: high
-# Description: Create functionality to extract email metadata and format it as YAML frontmatter
+# Description: Create a module to handle LLM API calls with retry logic and structured JSON response parsing.
 # Details:
-Develop a function that extracts required metadata from email objects (subject, from, to, cc, date, source_message_id) and formats it as valid YAML frontmatter. Handle edge cases like missing fields, malformed dates, and special characters. Ensure the function produces valid YAML that Obsidian can parse correctly.
+Implement an LLM client (src/llm_client.py) that sends prompts requesting structured JSON responses with spam_score and importance_score. Add configurable retry logic for failed API calls. Parse JSON responses and handle malformed responses gracefully. Use the temperature setting from the configuration. Include detailed logging of API interactions for debugging. MUST use settings.get_openrouter_api_url() and settings.get_openrouter_api_key() from settings.py facade. API contract: POST to URL from settings, Bearer token auth, JSON response with {"spam_score": <int>, "importance_score": <int>}.
 
 # Test Strategy:
-Test with various email formats including those with missing fields, special characters in headers, and different date formats. Verify the output is valid YAML that Obsidian can parse.
+Test successful API calls and response parsing. Verify retry logic works with simulated failures. Test handling of malformed JSON responses. Verify temperature setting is correctly applied.
 
 # Subtasks:
-## 1. Create core metadata extraction function [done]
+## 1. Create basic LLM client structure [done]
 ### Dependencies: None
-### Description: Implement a function to safely extract the required metadata fields from email objects with null defaults for missing fields.
+### Description: Set up the foundation for the LLM client module with settings facade and basic API call functionality
 ### Details:
-Create `extractEmailMetadata(email)` that returns an object with keys: `subject`, `from`, `to`, `cc`, `date`, `source_message_id`. Use optional chaining (`email?.subject || null`) or similar null-safe access patterns. Log warnings for completely missing email objects but always return a complete metadata object structure.
+Create a new module src/llm_client.py with a class that handles LLM interactions. Implement configuration loading using the settings.py facade to read API keys (settings.get_openrouter_api_key()), endpoints (settings.get_openrouter_api_url()), and default parameters (including temperature). Define the basic structure for making API calls to the LLM service with proper error handling. Include a method signature for sending prompts that will later be enhanced with retry logic and response parsing. Ensure all configuration access is through the settings facade, not directly from YAML.
 
-## 2. Implement date parsing and normalization [done]
+## 2. Implement prompt formatting for structured JSON responses [done]
 ### Dependencies: 4.1
-### Description: Add robust date handling to parse various email date formats into ISO 8601 string format for YAML compatibility.
+### Description: Create functionality to format prompts that specifically request structured JSON responses with required fields
 ### Details:
-Extend the extraction function with date parsing using `Date.parse()` or a library like `date-fns`. Handle malformed dates by falling back to `null` or current timestamp. Format valid dates as `'YYYY-MM-DDTHH:mm:ssZ'` (ISO 8601). Test with common email date formats like RFC 2822 and Unix timestamps.
+Develop a prompt formatter that appends instructions to user prompts requesting structured JSON responses. Ensure the formatter explicitly requests spam_score and importance_score fields in the response. Include validation to ensure the prompt maintains the correct format regardless of user input. Create unit tests to verify the formatter correctly structures prompts for JSON responses. The API contract must follow the PDD specification: POST to URL from settings, Bearer token auth, JSON response with {"spam_score": <int>, "importance_score": <int>}.
 
-## 3. Add special character escaping for YAML safety [done]
+## 3. Add configurable retry logic for API calls [done]
 ### Dependencies: 4.1
-### Description: Implement YAML-safe string escaping for fields containing colons, quotes, or special characters.
+### Description: Implement robust retry mechanism for handling transient failures in LLM API calls
 ### Details:
-Create a `yamlSafeString(value)` helper that wraps strings containing `:` after non-space or containing quotes in double quotes with escaped inner quotes (`"`). Use single quotes for simple strings. Null values become `null` in YAML. Apply this to all string fields (`subject`, `from`, `to`, `cc`, `source_message_id`).
+Enhance the basic API call functionality with configurable retry logic. Implement exponential backoff strategy with jitter. Make retry attempts (settings.get_openrouter_retry_attempts(), default 3), delays (settings.get_openrouter_retry_delay_seconds(), default 5), and conditions configurable through the settings facade. Handle different types of failures appropriately (network errors, rate limiting, server errors). Add detailed logging for each retry attempt including reason for failure and backoff time.
 
-## 4. Build YAML frontmatter string formatter [done]
-### Dependencies: 4.1, 4.2, 4.3
-### Description: Create the main function to convert metadata objects into valid YAML frontmatter string with proper delimiters.
+## 4. Implement JSON response parsing and validation [done]
+### Dependencies: 4.1, 4.2
+### Description: Create functionality to parse, validate and safely extract data from LLM JSON responses
 ### Details:
-Implement `generateYamlFrontmatter(metadata)` that produces:
-```
----
-subject: "..."
-from: "..."
-to: [...]
-cc: [...]
-date: "..."
-source_message_id: "..."
----
-```
-Use `yaml` library (recommended) or manual string construction. Ensure arrays (`to`, `cc`) render as YAML lists. Maintain exactly 2 newlines after opening `---` and 1 before closing `---`. Omit null fields or render as `null`.
+Develop a response parser that extracts and validates JSON from LLM responses. Implement schema validation to ensure responses contain required fields (spam_score and importance_score). Handle malformed JSON gracefully with appropriate error messages and fallback values. Create a structured response object that standardizes access to parsed data. Add unit tests with various response scenarios including valid, malformed, and missing field cases. Ensure the parser follows the API contract specified in the PDD.
 
-## 5. Add comprehensive testing and Obsidian validation [done]
-### Dependencies: 4.1, 4.2, 4.3, 4.4
-### Description: Write unit tests covering all edge cases and validate output in Obsidian.
+## 5. Implement comprehensive logging system [done]
+### Dependencies: 4.1, 4.3, 4.4
+### Description: Add detailed logging throughout the LLM interaction process for monitoring and debugging
 ### Details:
-Create tests for: missing fields, malformed dates, special chars (`subject: "Hi: there"`), multi-recipient `to/cc` arrays, empty email objects. Test final `generateEmailYamlFrontmatter(email)` function. Manually verify output parses correctly in Obsidian by creating test .md files with frontmatter and checking Properties view/metadata extraction.
+Implement a comprehensive logging system that captures all aspects of LLM interactions. Log prompt details (with sensitive information redacted), API call parameters including temperature setting, response data, parsing results, and any errors encountered. Add timing information for performance monitoring. Create different log levels for normal operation vs. debugging. Ensure logs are structured in a way that facilitates analysis and troubleshooting. Integrate the logging with the application's main logging system. Use the settings facade to access log file paths and other logging configuration.
 

@@ -1,43 +1,43 @@
 # Task ID: 8
-# Title: Create Obsidian note assembly and formatting
-# Status: done
-# Dependencies: 4, 5, 7
-# Priority: high
-# Description: Implement the functionality to assemble and format complete Obsidian notes
+# Title: Create default note template
+# Status: pending
+# Dependencies: 7
+# Priority: medium
+# Description: Design a default Markdown template that includes frontmatter for metadata and a structured body for email content.
 # Details:
-Develop a function that assembles the complete Markdown note by combining: 1) YAML frontmatter, 2) Summary section (if available) formatted as an Obsidian callout, and 3) Original email content under a 'Original Content' heading. Ensure proper spacing and formatting between sections. The function should produce a complete, well-formatted Markdown file ready for writing to disk.
+Create a default template file that includes YAML frontmatter for storing metadata as specified in PDD Section 3.2, including llm_output section with importance_score, spam_score, model_used and processing_meta section with script_version: "3.0", processed_at, status: "success" or "error". Add dynamic tag addition: add "important" tag if score >= threshold. Include a structured body section for email content with placeholders for all relevant email fields (subject, sender, date, body, etc.). Add conditional sections based on classification results. Ensure the template is well-commented for user customization.
 
 # Test Strategy:
-Test with various combinations of inputs including with and without summaries. Verify the output is valid Markdown that renders correctly in Obsidian with proper section formatting.
+Render the template with various email data to verify output formatting. Check that frontmatter includes all required metadata fields. Verify conditional sections render appropriately based on classification.
 
 # Subtasks:
-## 1. Create YAML frontmatter formatting function [done]
+## 1. Define YAML frontmatter structure for email metadata [pending]
 ### Dependencies: None
-### Description: Develop a function that takes YAML data as input and formats it as valid Obsidian YAML frontmatter with proper delimiters.
+### Description: Create the YAML frontmatter section of the template that will store all email metadata as specified in PDD Section 3.2
 ### Details:
-Create `format_yaml_frontmatter(yaml_data)` function that: 1) Validates input is a dictionary, 2) Uses `yaml.dump()` with `default_flow_style=False` and `sort_keys=False` to preserve order, 3) Wraps output in `---\n` + content + `\n---\n`, 4) Handles empty YAML data by returning empty frontmatter block. Test with sample data like `{'tags': ['email'], 'date': '2026-01-06'}`.[1]
+Design the frontmatter section at the top of the Markdown template that includes fields as specified in PDD Section 3.2: llm_output section with importance_score, spam_score, model_used and processing_meta section with script_version: "3.0", processed_at, status: "success" or "error". Include dynamic tag addition logic to add "important" tag if score >= threshold. Format using proper YAML syntax with clear field names and example values. Add comments explaining each field's purpose and possible values.
 
-## 2. Implement summary callout formatter [done]
-### Dependencies: None
-### Description: Create function to format summary text as Obsidian callout with proper syntax and spacing.
+## 2. Design structured body section for email content [pending]
+### Dependencies: 8.1
+### Description: Create the main body section of the template with placeholders for email content
 ### Details:
-Create `format_summary_callout(summary_text)` function that: 1) Checks if summary exists and is non-empty, 2) Returns `> [!summary] Summary\n> ${summary_text}\n\n` if summary exists, 3) Returns empty string `''` if no summary, 4) Ensures single newline after callout. Test with sample summary text.[1]
+Below the frontmatter, create a structured Markdown format for the email body that includes: 1) A header section with rendered versions of key metadata (subject as H1, sender/date as subheading), 2) The main email content section with placeholder text, 3) Formatting for handling attachments list, 4) Proper Markdown syntax for distinguishing quoted replies or forwarded content. Use HTML comments to separate sections for clarity. Ensure the structure aligns with the PDD specifications.
 
-## 3. Build original content section formatter [done]
-### Dependencies: None
-### Description: Create function to format email content under 'Original Content' heading with proper Markdown escaping.
+## 3. Implement conditional sections based on classification [pending]
+### Dependencies: 8.2
+### Description: Add template sections that appear conditionally based on classification results
 ### Details:
-Create `format_original_content(email_content)` function that: 1) Escapes Markdown special characters if needed, 2) Returns `# Original Content\n\n${email_content}\n` with double newlines before and single after, 3) Preserves original email formatting. Test with multi-line email content.
+Create conditional sections that will render differently based on classification results, including: 1) A warning banner section for high spam_score emails, 2) Visual indicators for importance level, 3) Template variations for different email categories (newsletter, personal, transactional, etc.). Use HTML comments to indicate conditional logic and provide examples of how each condition would render. Implement the dynamic tag addition logic specified in the PDD to add "important" tag if score >= threshold.
 
-## 4. Implement main note assembly function [done]
-### Dependencies: 8.1, 8.2, 8.3
-### Description: Create the core assembly function that orchestrates all components with proper spacing.
+## 4. Add comprehensive template comments and customization guidance [pending]
+### Dependencies: 8.3
+### Description: Include detailed comments throughout the template to guide user customization
 ### Details:
-Create `assemble_obsidian_note(yaml_data, summary_text, email_content)` function that: 1) Calls subtask functions 1-3, 2) Joins sections: frontmatter + summary_callout + original_content, 3) Ensures exactly one blank line (`\n`) between sections, 4) Returns complete Markdown string. Test full assembly flow.
+Add HTML comments throughout the template that explain: 1) The purpose of each section, 2) How to customize specific elements, 3) Variables/placeholders that will be replaced with actual content, 4) Syntax guidance for advanced formatting options. Ensure comments are clear, helpful for new users, and formatted in a way that won't interfere with the rendered note. Reference the PDD as the authoritative technical specification.
 
-## 5. Add validation, error handling, and testing [done]
+## 5. Create template file with example data and usage instructions [pending]
 ### Dependencies: 8.4
-### Description: Implement input validation, error handling, and comprehensive test suite for production readiness.
+### Description: Finalize the template file with example data and add usage documentation
 ### Details:
-1) Add input validation for all functions (non-null yaml_data, strings for summary/content), 2) Add try-catch for YAML serialization errors, 3) Create test cases covering: empty summary, missing YAML keys, multi-line content, edge cases, 4) Add docstrings with parameter types, 5) Verify output renders correctly in Obsidian.
+Combine all previous components into a single Markdown template file at the location specified in the PDD (paths.template_file: 'config/note_template.md.j2'). Include a complete example with realistic sample data. Add a 'Template Usage' section at the bottom that explains: 1) How the template will be applied to emails, 2) How to create custom templates, 3) Available variables and their usage, 4) Best practices for template modification. Save the file in the appropriate location in the project structure with proper naming convention as specified in the PDD.
 

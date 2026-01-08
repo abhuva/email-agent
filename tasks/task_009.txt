@@ -1,69 +1,43 @@
 # Task ID: 9
-# Title: Implement note creation and email tagging workflow
-# Status: done
-# Dependencies: 2, 3, 8
-# Priority: high
-# Description: Create the core workflow that processes emails, creates notes, and applies appropriate tags
+# Title: Implement local logging of processed emails
+# Status: pending
+# Dependencies: 1
+# Priority: medium
+# Description: Create a local log of processed emails to track processing history and enable debugging.
 # Details:
-Implement the main workflow that: 1) Processes each selected email, 2) Generates the Markdown note content, 3) Writes the file to the configured location, 4) Tags the email with [Obsidian-Note-Created] on success or [Note-Creation-Failed] on failure. Include comprehensive error handling at each step, ensuring the email is always tagged appropriately based on the outcome.
+Implement TWO separate logging systems as specified in the PDD: 1) Unstructured operational logs → agent.log (from paths.log_file) and 2) Structured analytics → analytics.jsonl (from paths.analytics_file) with fields: uid, timestamp, status, scores. Both must be written for every processed email. Include functions to query the log for specific emails. Ensure log entries are created regardless of processing success or failure.
 
 # Test Strategy:
-Test the complete workflow with various email scenarios. Verify files are created correctly and emails are tagged appropriately. Test error handling by simulating failures at different stages of the process.
+Verify log entries are created for successfully processed emails. Check that log entries include all required fields. Test log querying functionality. Verify both logging systems work correctly.
 
 # Subtasks:
-## 1. Implement email processing loop with initial error handling [done]
+## 1. Define log data structure and storage format [pending]
 ### Dependencies: None
-### Description: Create the main workflow function that iterates through selected emails and sets up comprehensive error handling structure with success/failure tracking.
+### Description: Design the data structure for email logs and determine the storage format for both logging systems
 ### Details:
-1. Create async function `processSelectedEmails()` that accepts array of selected email objects. 2. Initialize tracking variables: `successCount`, `failureCount`, `results[]`. 3. Implement try-catch wrapper around entire loop with `finally` block to ensure email tagging occurs regardless of outcome. 4. For each email, extract core metadata (subject, sender, date, body) into structured object. 5. Log processing start for each email with unique identifier.
+Create data models for both logging systems as specified in the PDD: 1) Unstructured operational logs (agent.log) and 2) Structured analytics (analytics.jsonl). For the structured analytics, define fields including uid, timestamp, status, and scores. Create utility functions to serialize and deserialize log entries. Include documentation on the chosen formats and rationale. Use the settings.py facade to access log file paths (settings.get_log_file() and settings.get_analytics_file()).
 
-## 2. Implement Markdown note content generation [done]
+## 2. Implement log file management [pending]
 ### Dependencies: 9.1
-### Description: Create function to convert email data into properly formatted Markdown note content with Obsidian-compatible frontmatter.
+### Description: Create functions to manage log files including creation, rotation, and configuration of storage location
 ### Details:
-1. Create `generateMarkdownNote(emailData)` function that returns complete Markdown string. 2. Add YAML frontmatter with `title: email.subject`, `email: sender.email`, `date: email.date`, `tags: ['email', 'inbox']`. 3. Convert email body to Markdown using HTML-to-Markdown library if HTML, preserve plain text otherwise. 4. Include sender signature block with reply link. 5. Add email metadata section (To/CC, attachments list). 6. Sanitize filename from subject (remove invalid chars, limit length). 7. Include comprehensive error handling with descriptive error messages.
+Develop a LogManager class that handles file operations for both logging systems. Implement functions to create new log files, append to existing ones, and rotate logs when they reach a certain size. Add configuration options for log file locations (using settings.get_log_file() and settings.get_analytics_file()), maximum file size, and retention policy. Include error handling for file system operations. Ensure thread-safety for concurrent logging operations.
 
-## 3. Implement note file writing with path resolution [done]
+## 3. Create core logging functionality [pending]
 ### Dependencies: 9.1, 9.2
-### Description: Create file writing function that resolves configured output path and writes Markdown content with proper filename.
+### Description: Implement the main logging functions to record email processing events in both logging systems
 ### Details:
-1. Create `writeNoteFile(markdownContent, filename)` function. 2. Read configured output directory from settings (e.g., `app.settings.get('notesOutputPath')`). 3. Ensure output directory exists using `fs.ensureDir()`. 4. Generate safe filename: `${sanitizedSubject}-${timestamp}.md`. 5. Write file with UTF-8 encoding using `fs.writeFile()`. 6. Return file path on success or throw specific `FileWriteError` on failure. 7. Implement atomic write (temp file + rename) for reliability. 8. Add file existence check to prevent overwrites.
+Develop a Logger class with methods to log email processing events to both logging systems. Include functions for logging successful processing, failures, and warnings. Ensure each structured analytics log entry contains all required fields (uid, timestamp, status, scores). Implement different log levels (INFO, ERROR, DEBUG) for the operational logs. Add context information to help with debugging. Make sure logs are created for both successful and failed processing. Both logging systems must be written for every processed email as specified in the PDD.
 
-## 4. Implement success email tagging mechanism [done]
-### Dependencies: 9.1
-### Description: Create function to apply [Obsidian-Note-Created] tag to successfully processed emails with note file path reference.
+## 4. Implement log query functionality [pending]
+### Dependencies: 9.1, 9.3
+### Description: Create functions to search and retrieve specific log entries based on various criteria
 ### Details:
-1. Create `tagEmailSuccess(emailId, notePath)` function. 2. Use email client API to add label/tag `[Obsidian-Note-Created]`. 3. Optionally append note filepath to email subject or comments field. 4. Implement idempotency check (don't re-tag if already tagged). 5. Log success with email ID, note path, and timestamp. 6. Return success metadata for workflow tracking.
+Develop query functions to search logs by email UID, subject, date range, or classification result. Implement filtering and sorting capabilities for log retrieval. Create pagination support for large log sets. Add functions to export query results. Ensure query performance is optimized for potentially large log files. Include examples of common query patterns in documentation. Focus primarily on the structured analytics logs for query functionality.
 
-## 5. Implement failure email tagging and complete workflow integration [done]
-### Dependencies: 9.1, 9.2, 9.3, 9.4
-### Description: Integrate all components into complete workflow with failure tagging [Note-Creation-Failed] and detailed error reporting.
+## 5. Integrate logging system with email processor [pending]
+### Dependencies: 9.3
+### Description: Connect the logging system with the existing email processing workflow
 ### Details:
-1. In main workflow loop, call generateMarkdownNote → writeNoteFile → tagEmailSuccess sequence. 2. Catch specific errors at each step and map to `tagEmailFailure(emailId, errorMessage)`. 3. Create `tagEmailFailure(emailId, error)` function that applies [Note-Creation-Failed] tag. 4. Store detailed error info in email comments/subject or separate log. 5. Implement retry logic for transient failures (network, permissions). 6. Add final workflow summary: total processed, successes, failures with error breakdown. 7. Ensure 100% email tagging coverage via finally blocks.
-
-## 6. Perform live end-to-end test with real configuration [done]
-### Dependencies: None
-### Description: After completing the note creation workflow, perform a comprehensive live test with real IMAP credentials, Obsidian vault path, and actual email processing to verify the complete system works end-to-end.
-### Details:
-1. Configure all required settings in config.yaml:
-   - IMAP connection details
-   - obsidian_vault_path (must exist)
-   - summarization_tags (if testing summarization)
-   - summarization_prompt_path (if testing summarization)
-2. Run the program with real credentials
-3. Verify the following:
-   - Notes are created in the Obsidian vault directory
-   - Notes contain correct YAML frontmatter with all required fields
-   - Notes contain summary section (if email has matching tag) formatted as Obsidian callout
-   - Notes contain email body content in Markdown format
-   - Email filenames follow the correct format: YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md
-   - Emails are tagged with 'Obsidian-Note-Created' on successful note creation
-   - Emails are tagged with 'Note-Creation-Failed' on failure
-   - Notes render correctly in Obsidian (open and verify formatting)
-   - No duplicate notes are created (idempotency check)
-4. Test error scenarios:
-   - Invalid vault path (should fail early with clear error)
-   - Missing write permissions (should tag with Note-Creation-Failed)
-   - Network/IMAP errors (should handle gracefully)
-5. Document any issues found and verify all acceptance criteria from PDD V2 are met
+Modify the email processing code to call appropriate logging functions at key points in the workflow. Add log entries at the start and end of processing, and when classification decisions are made. Ensure errors and exceptions are properly logged with relevant context. Add configuration options to control logging verbosity. Test the integrated system with various email processing scenarios to verify all events are properly logged to both logging systems. Update documentation to explain how to use and interpret the logs. Use the settings.py facade to access all configuration values.
 

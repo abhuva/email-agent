@@ -1,43 +1,43 @@
 # Task ID: 13
-# Title: Implement comprehensive error handling and logging
-# Status: done
-# Dependencies: 9, 10, 11
-# Priority: medium
-# Description: Enhance error handling throughout the application with detailed logging
+# Title: Create cleanup-flags command
+# Status: pending
+# Dependencies: 2, 3
+# Priority: low
+# Description: Implement a safeguarded command to remove application-specific flags from the mail server.
 # Details:
-Review and enhance error handling throughout the application. Implement detailed logging for all operations, especially failures. Ensure errors are caught at appropriate levels and don't cause the entire process to fail. Log specific details about failures to aid in troubleshooting.
+Implement the 'cleanup-flags' subcommand that removes only application-specific IMAP flags (as defined in the configuration) from emails on the server. Include a MANDATORY confirmation prompt with clear warnings about the operation as required by the PDD (security requirement). Add a dry-run option for this command to show which flags would be removed without actually removing them. Implement detailed logging of flag removal operations.
 
 # Test Strategy:
-Test error handling by simulating various failure scenarios including network issues, permission problems, and invalid inputs. Verify the application handles errors gracefully and logs appropriate information.
+Test the command with confirmation and cancellation. Verify only application-specific flags are removed. Check that the dry-run option shows flags without removing them. Verify logging of flag removal operations.
 
 # Subtasks:
-## 1. Audit current error handling and define standardized error schema [done]
+## 1. Define configuration structure for application-specific IMAP flags [pending]
 ### Dependencies: None
-### Description: Review existing error handling across the application and establish consistent error response formats and custom exception types.
+### Description: Create a configuration schema to define which IMAP flags are considered application-specific and should be managed by the cleanup command
 ### Details:
-Use API monitoring tools or code review to analyze endpoints for inconsistencies in error handling. Define structured error schema following RFC 9457 (Problem Details) standards including HTTP status codes (400 for client errors, 500 for server), unique error codes, human-readable messages, contextual details, and request IDs. Create custom exception classes like DatabaseException and ValidationException for specific error conditions[1][2][4].
+Implement a configuration section in the application's config file that allows users to define which IMAP flags are considered application-specific. The configuration should include: 1) A list of flag patterns to match (e.g., 'MyApp/*'), 2) Optional exclusion patterns, 3) Documentation on the format and impact of these settings. Ensure the configuration is validated when loaded and provide helpful error messages for invalid configurations. Use the settings.py facade to access these configuration values.
 
-## 2. Implement centralized logging infrastructure [done]
-### Dependencies: None
-### Description: Set up comprehensive logging system to capture detailed operation traces, especially failures, across all application layers.
-### Details:
-Configure structured logging (JSON format preferred) with levels (DEBUG, INFO, WARN, ERROR). Log essential details: timestamp, request ID, user ID, operation context, error codes, stack traces (internal only), and business metrics. Integrate with monitoring tools and ensure logs include enough context for troubleshooting without exposing sensitive data[2][3][4].
-
-## 3. Implement centralized exception handling middleware [done]
+## 2. Implement flag scanning functionality [pending]
 ### Dependencies: 13.1
-### Description: Create global error handling middleware to catch unhandled exceptions and standardize error responses throughout the application.
+### Description: Create a module to scan and identify application-specific flags on emails based on the configuration
 ### Details:
-Develop middleware/global exception handler that intercepts all exceptions, maps them to standardized error responses, logs comprehensive details using the logging infrastructure, and returns secure user-friendly error messages. Ensure proper HTTP status code mapping and graceful degradation without exposing stack traces to clients[1][2][6].
+Develop a function that connects to the IMAP server, scans emails in specified folders, and identifies flags matching the patterns defined in the configuration. The function should: 1) Accept connection parameters and folder specifications, 2) Return a structured report of emails and their matching flags, 3) Include error handling for connection issues, 4) Be optimized for performance with large mailboxes by using appropriate IMAP commands and batching. Use the settings.py facade to access any configuration values needed.
 
-## 4. Enhance layer-specific error handling with detailed operation logging [done]
-### Dependencies: 13.2, 13.3
-### Description: Implement targeted error handling and logging for key application layers (API, business logic, data access) with operation-specific details.
+## 3. Implement dry-run functionality [pending]
+### Dependencies: 13.2
+### Description: Create a command option and supporting code to preview flag removal operations without making changes
 ### Details:
-Add try-catch blocks at appropriate layers with custom exceptions. Log entry/exit points for critical operations, input validation failures, database constraints, external API calls, and business rule violations. Include operation duration, input sanitization (no PII), and failure recovery attempts. Ensure errors bubble up appropriately without cascading failures[2][3][4].
+Implement a '--dry-run' flag for the command that shows which flags would be removed without actually removing them. The output should: 1) List each email that would be affected (showing identifiers like UID and subject), 2) Show which flags would be removed from each email, 3) Provide summary statistics (total emails affected, total flags to be removed), 4) Format the output in a clear, readable way. This functionality should reuse the scanning module from subtask 2 but skip the actual modification steps.
 
-## 5. Test comprehensive error scenarios and validate logging effectiveness [done]
+## 4. Implement flag removal functionality with confirmation prompt [pending]
+### Dependencies: 13.2
+### Description: Create the core functionality to remove identified flags with a mandatory confirmation step as required by the PDD
+### Details:
+Implement the actual flag removal functionality with a MANDATORY confirmation prompt as required by the PDD (security requirement). The implementation should: 1) Present a clear warning about the operation's impact, 2) Show a summary of what will be modified, 3) Require explicit confirmation (e.g., typing 'yes' or similar), 4) Abort if confirmation is not provided, 5) Include safeguards to prevent accidental removal of system or critical flags, 6) Implement the actual IMAP commands to remove the flags when confirmed. Ensure proper error handling and transaction safety where possible.
+
+## 5. Implement detailed logging and integrate command into CLI [pending]
 ### Dependencies: 13.3, 13.4
-### Description: Create automated tests covering all error scenarios and verify logging captures sufficient diagnostic information.
+### Description: Add comprehensive logging of operations and integrate the new subcommand into the application's CLI structure
 ### Details:
-Write unit/integration tests for input validation, authentication failures, database errors, network timeouts, rate limiting, and third-party failures. Validate error responses match defined schema, middleware catches unhandled exceptions, logs contain all required context, and application maintains stability. Use log analysis to confirm troubleshooting capability[3][4][5].
+Complete the command by adding detailed logging and CLI integration. The implementation should: 1) Log all operations with appropriate detail levels (info for summaries, debug for individual operations), 2) Include timestamps, affected email IDs, and specific flags in logs, 3) Log both successful and failed operations, 4) Register the 'cleanup-flags' subcommand in the application's command structure with proper help text and option definitions, 5) Ensure the command follows the application's existing CLI patterns and conventions, 6) Add documentation for the new command in the application's help system and user documentation. Use the settings.py facade to access log file paths and other configuration values.
 

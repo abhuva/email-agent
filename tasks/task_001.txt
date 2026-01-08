@@ -1,43 +1,55 @@
 # Task ID: 1
-# Title: Set up configuration file structure
+# Title: Set up project configuration structure
 # Status: done
 # Dependencies: None
 # Priority: high
-# Description: Create and implement the enhanced configuration file structure with new parameters for Obsidian integration
+# Description: Create a well-structured YAML configuration system that organizes all user-configurable parameters into logical groups according to the PDD.
 # Details:
-Extend the existing config.yaml to include new parameters: obsidian_vault_path, summarization_tags, summarization_prompt_path, changelog_path, and imap_query. Implement validation logic to ensure all required paths exist and parameters are properly formatted. The configuration should fail early with clear error messages if critical paths don't exist.
+Implement a config.yaml file with sections for `imap:`, `paths:`, `openrouter:`, `processing:`, etc. Include parameters for credentials, paths, thresholds, IMAP flags, and LLM parameters (including temperature). Add comprehensive comments for each setting. Create a configuration loader module that validates required fields and provides sensible defaults where appropriate. Implement a settings.py facade that provides getter methods for all configuration values, ensuring all modules access configuration through this facade rather than directly from YAML. Ensure credentials are loaded from environment variables for security.
 
 # Test Strategy:
-Verify configuration loads correctly with valid inputs. Test error handling with missing or invalid paths. Ensure backward compatibility with V1 configuration parameters.
+Verify that the configuration loads correctly with valid YAML, handles missing optional values with defaults, and raises appropriate errors for missing required values. Test that the settings.py facade correctly provides access to all configuration values.
 
 # Subtasks:
-## 1. Extend config.yaml schema with new Obsidian parameters [done]
+## 1. Define YAML configuration structure and sections [done]
 ### Dependencies: None
-### Description: Add the five new configuration parameters to the existing config.yaml structure following YAML best practices.
+### Description: Create the basic structure of the config.yaml file with all required sections and placeholder values as specified in the PDD
 ### Details:
-Update the config.yaml file to include: `obsidian_vault_path` (string path), `summarization_tags` (list of strings), `summarization_prompt_path` (string path), `changelog_path` (string path), and `imap_query` (string). Use 2-space indentation consistently, add descriptive comments for each parameter, and ensure proper YAML structure with quotes around string values that may contain spaces or special characters[1][4].
+Create a config.yaml file with the following sections as specified in the PDD: `imap:`, `paths:`, `openrouter:`, `processing:`. Include placeholder values and comprehensive comments explaining each section's purpose. The structure should be hierarchical with related settings grouped together. Include examples of valid values for each setting, such as `imap.processed_tag: 'AIProcessed'`, `paths.template_file: 'config/note_template.md.j2'`, `openrouter.retry_attempts: 3`, `openrouter.retry_delay_seconds: 5`, `processing.importance_threshold: 8`, `processing.spam_threshold: 5`, etc.
 
-## 2. Implement configuration loading function [done]
+## 2. Implement configuration schema and validation rules [done]
 ### Dependencies: 1.1
-### Description: Create or update the function that loads and parses the extended config.yaml file.
+### Description: Define a schema that specifies required fields, data types, and validation rules for all configuration parameters
 ### Details:
-Modify the existing config loader to use a YAML parser library (PyYAML recommended). Add support for the new fields by defining a config model/data class with all parameters including the new ones. Implement safe loading with error handling for malformed YAML syntax[1]. Return a structured config object.
+Create a configuration schema that defines the expected data types, required vs. optional fields, and validation rules for each configuration parameter. Use a schema validation library (like Pydantic, Marshmallow, or jsonschema) to implement the validation logic. Define sensible default values for optional parameters. Ensure the schema aligns exactly with the structure defined in the PDD.
 
-## 3. Add parameter format validation logic [done]
+## 3. Create configuration loader module [done]
 ### Dependencies: 1.2
-### Description: Implement validation to ensure new parameters have correct data types and formats.
+### Description: Implement a module that loads, parses, and validates the YAML configuration file
 ### Details:
-In the config loader, validate: `obsidian_vault_path`, `summarization_prompt_path`, `changelog_path` are non-empty strings; `summarization_tags` is a list of non-empty strings; `imap_query` is a non-empty string matching IMAP search syntax pattern if applicable. Raise specific `ValidationError` with parameter name and issue description for each failure.
+Create a ConfigLoader class that handles loading the YAML file, parsing it into a Python object, and validating it against the schema. Implement error handling for missing files, syntax errors, and validation failures. The loader should return a validated configuration object that can be used throughout the application. Ensure the loader follows the exact structure specified in the PDD.
 
-## 4. Implement critical path existence validation [done]
-### Dependencies: 1.2
-### Description: Add file/directory existence checks for all required path parameters.
+## 4. Add environment variable overrides [done]
+### Dependencies: 1.3
+### Description: Implement functionality to override configuration values with environment variables
 ### Details:
-Using `os.path.exists()` and `os.path.isdir()`/`os.path.isfile()`, validate that `obsidian_vault_path` is an existing directory, and `summarization_prompt_path` and `changelog_path` are existing files. Check all three paths before proceeding. Collect all path errors into a single validation report.
+Extend the configuration loader to check for environment variables that can override values in the config file. Define a naming convention for environment variables (e.g., APP_API_KEY to override api.key). Document this feature in the config file comments. Ensure environment variables are properly type-converted before being applied. CRITICAL: Ensure credentials MUST be loaded from environment variables as a security requirement specified in the PDD.
 
-## 5. Implement early failure with clear error messaging [done]
+## 5. Create configuration documentation and example file [done]
+### Dependencies: 1.1, 1.2
+### Description: Generate comprehensive documentation and an example configuration file with comments
+### Details:
+Create a well-documented example configuration file (config.example.yaml) with detailed comments explaining each setting, its purpose, valid values, and defaults. Include instructions for users on how to create their own config.yaml file. Add a README section explaining the configuration system, environment variable overrides, and validation process. Ensure the documentation references the PDD as the authoritative technical specification.
+
+## 6. Create `settings.py` Configuration Facade [done]
 ### Dependencies: 1.3, 1.4
-### Description: Create comprehensive error handling that fails fast with user-friendly error messages.
+### Description: Implement a central facade module that provides getter methods for all configuration values
 ### Details:
-Wrap config loading and validation in a try-catch block. If format validation fails, raise `ConfigFormatError` listing invalid parameters. If paths don't exist, raise `ConfigPathError` with bullet-point list of missing paths and their expected types (file/dir). Log full error details for debugging. Exit application with status code 1 on config failure.
+Create a settings.py module that acts as a facade for accessing all configuration values. Implement getter methods like `settings.get_openrouter_api_url()`, `settings.get_openrouter_api_key()`, `settings.get_imap_processed_tag()`, etc. for all configuration parameters. Ensure all modules access configuration through this facade, not directly from YAML. Include proper error handling and default values. Document the facade pattern in the module docstring.
+
+## 7. Refactor existing codebase to use `settings.py` facade [done]
+### Dependencies: 1.6
+### Description: Update all code to access configuration through the settings facade rather than directly
+### Details:
+Identify all instances of direct configuration access in the codebase (e.g., `config['key']`) and replace them with calls to the settings.py facade methods (e.g., `settings.get_key()`). Ensure all modules import and use the settings module for configuration access. Test thoroughly to verify no direct configuration access remains in the codebase. Document the pattern in the developer guidelines.
 

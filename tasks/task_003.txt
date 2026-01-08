@@ -1,43 +1,43 @@
 # Task ID: 3
-# Title: Create file system utilities for Obsidian integration
+# Title: Create IMAP connection and email retrieval module
 # Status: done
 # Dependencies: 1
 # Priority: high
-# Description: Develop utility functions for file path handling, sanitization, and I/O operations
+# Description: Develop a module to handle IMAP server connection and email retrieval with support for UID-based targeting.
 # Details:
-Create a module with functions for: 1) Sanitizing email subjects for filenames (removing invalid characters), 2) Generating unique, timestamped filenames following the YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md format, 3) Safely writing files with proper error handling, 4) Checking for file existence and path validity. Include comprehensive error handling for all file operations.
+Implement an IMAP client module (src/imap_client.py) that connects to the server using credentials from the settings.py facade. Create functions to retrieve emails by UID, fetch all unprocessed emails, and handle IMAP flags. Include error handling for connection issues and authentication failures. Implement a function to check if an email has already been processed based on IMAP flags. All configuration access must be through the settings.py facade, not directly from YAML.
 
 # Test Strategy:
-Test filename generation with various email subjects including special characters. Verify file writing works with proper permissions and fails gracefully with insufficient permissions.
+Test connection with valid and invalid credentials. Verify email retrieval by UID works correctly. Test flag checking functionality with processed and unprocessed emails.
 
 # Subtasks:
-## 1. Implement email subject sanitization function [done]
+## 1. Implement IMAP connection setup with settings facade [done]
 ### Dependencies: None
-### Description: Create a utility function to sanitize email subjects by removing invalid filename characters and handling special cases for Obsidian compatibility.
+### Description: Create a module that establishes a connection to an IMAP server using credentials from settings.py facade
 ### Details:
-Develop `sanitizeFilename(subject: string): string` function that: 1) Removes or replaces invalid filename characters (/, \, :, *, ?, ", <, >, |), 2) Trims whitespace, 3) Replaces multiple spaces with single hyphen, 4) Converts to lowercase or keeps original case based on Obsidian conventions, 5) Limits length to prevent filesystem issues (e.g., 200 chars), 6) Add comprehensive JSDoc with examples. Test with edge cases: subjects with emojis, long subjects, subjects with only invalid chars.
+Create an ImapClient class in src/imap_client.py that loads server details (host, port, username, password) from the settings.py facade, not directly from config.yaml. Implement a connect() method that establishes a secure connection to the IMAP server using the imaplib library. Include proper error handling for connection failures, authentication issues, and configuration errors. The connection should be reusable and support timeout configurations.
 
-## 2. Implement timestamped unique filename generator [done]
+## 2. Develop email retrieval by UID functionality [done]
 ### Dependencies: 3.1
-### Description: Create function to generate Obsidian-compatible filenames in 'YYYY-MM-DD-HHMMSS - <Sanitized-Subject>.md' format using the sanitizer from subtask 1.
+### Description: Create functions to fetch specific emails by their unique identifiers (UIDs)
 ### Details:
-Develop `generateUniqueFilename(subject: string, basePath?: string): string` using: 1) `new Date()` for precise UTC timestamp formatting, 2) Call `sanitizeFilename()` from subtask 1, 3) Format as `YYYY-MM-DD-HHMMSS - ${sanitizedSubject}.md`, 4) If `basePath` provided, use `normalizePath()` from Obsidian API for cross-platform compatibility[1], 5) Return full path if basePath provided. Include JSDoc showing timestamp precision and path normalization.
+Add a get_email_by_uid(uid) method to the ImapClient class that retrieves a specific email using its UID. The method should return the email in a structured format (headers, body parts, attachments). Implement proper error handling for cases where the UID doesn't exist or when fetch operations fail. Include support for different email formats (plain text, HTML, multipart). Use the settings.py facade for any configuration values needed.
 
-## 3. Implement file existence and path validation utilities [done]
-### Dependencies: 3.2
-### Description: Create functions to check file existence, validate paths, and ensure write permissions using Obsidian Vault API.
+## 3. Implement batch email retrieval for unprocessed messages [done]
+### Dependencies: 3.1
+### Description: Create functionality to fetch all unprocessed emails from the IMAP server
 ### Details:
-Implement: 1) `fileExists(path: string): Promise<boolean>` using `app.vault.adapter.exists(path)`[1], 2) `isValidPath(path: string): boolean` using `normalizePath()` and regex validation, 3) `getUniquePath(basePath: string): Promise<string>` that appends numbers if file exists (e.g., 'note (1).md'), 4) `hasWritePermission(path: string): Promise<boolean>` checking parent directory existence. Use async/await consistently with proper error typing.
+Add a get_unprocessed_emails() method to the ImapClient class that searches for and retrieves all emails that haven't been processed yet (based on absence of specific flags from settings.get_imap_processed_tag()). The method should return a list of email objects with their UIDs. Implement pagination or batching for servers with many emails to prevent memory issues. Include search criteria customization options. Use the settings.py facade for all configuration values.
 
-## 4. Implement safe file writing with error handling [done]
-### Dependencies: 3.1, 3.2, 3.3
-### Description: Create robust file writing function that integrates filename generation, existence checking, and path validation with comprehensive error handling.
+## 4. Develop IMAP flag management functionality [done]
+### Dependencies: 3.1
+### Description: Create methods to check, set, and clear IMAP flags on email messages
 ### Details:
-Develop `safeWriteFile(pathOrSubject: string, content: string, options?: {basePath?: string, overwrite?: boolean}): Promise<string>` that: 1) Determines if input is subject or path, 2) Calls `generateUniqueFilename()` or validates path, 3) Uses `fileExists()` and `getUniquePath()` to avoid conflicts, 4) Writes using `app.vault.adapter.write()`[1] with try-catch, 5) Returns actual written path, 6) Throws custom typed errors (InvalidPathError, WritePermissionError, etc.) with user-friendly messages.
+Add methods to the ImapClient class for flag management: set_flag(uid, flag), clear_flag(uid, flag), and has_flag(uid, flag). These methods should handle standard IMAP flags (\Seen, \Answered, \Flagged, \Deleted, \Draft) as well as custom flags. Implement proper error handling for flag operations and support batch operations for multiple UIDs. Use the settings.py facade to access the processed tag name (settings.get_imap_processed_tag()).
 
-## 5. Create module with exports, types, and comprehensive tests [done]
-### Dependencies: 3.1, 3.2, 3.3, 3.4
-### Description: Package all functions into a cohesive module with TypeScript interfaces, error types, and integration tests.
+## 5. Implement processed email tracking mechanism [done]
+### Dependencies: 3.2, 3.4
+### Description: Create functionality to track which emails have already been processed
 ### Details:
-1) Create `index.ts` exporting all functions with named exports, 2) Define `FileSystemError` union type and specific error classes, 3) Create `types.ts` with interfaces for options objects, 4) Add barrel export, 5) Write integration tests covering: sanitization edge cases, timestamp uniqueness, file existence scenarios, write failures, path normalization[1], 6) Include usage example in JSDoc for main `safeWriteFile()` function showing complete workflow.
+Implement a is_processed(uid) method that checks if an email has been processed based on IMAP flags (using the processed tag from settings.get_imap_processed_tag(), which should be 'AIProcessed' according to the PDD). Add a mark_as_processed(uid) method that sets the appropriate flag. Create a helper function get_next_unprocessed_email() that returns the next email that needs processing. Include options to customize which flags indicate processed status. All configuration values must be accessed through the settings.py facade.
 

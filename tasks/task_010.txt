@@ -1,51 +1,43 @@
 # Task ID: 10
-# Title: Develop changelog/audit log functionality
-# Status: done
-# Dependencies: 3, 9
+# Title: Develop error handling for LLM failures
+# Status: pending
+# Dependencies: 4, 5, 8
 # Priority: medium
-# Description: Create the system to maintain a Markdown table of processed emails
+# Description: Implement robust error handling for LLM API failures to ensure the system continues functioning.
 # Details:
-Implement functionality to create and update a Markdown changelog file at the configured path. The file should contain a table with columns for Timestamp, Email Account, Subject, From, and Filename. Each execution run should be visually separated. The function should handle cases where the file doesn't exist yet and where it needs to be appended to.
+Create a comprehensive error handling system for LLM API failures. After exhausting retry attempts, generate a note with default error values (spam_score: -1, importance_score: -1) and tag it with #process_error. Status must be set to "error" in processing_meta. Include detailed error information in the note. Ensure the system continues processing other emails after an LLM failure.
 
 # Test Strategy:
-Test with new and existing changelog files. Verify the table format is maintained correctly when appending new entries. Check that all required information is included and properly formatted.
+Simulate LLM API failures and verify error notes are generated correctly. Check that the error tag is applied and status is set to "error". Verify that processing continues with subsequent emails after a failure.
 
 # Subtasks:
-## 1. Create Markdown table header and file initialization function [done]
+## 1. Implement retry mechanism for LLM API calls [pending]
 ### Dependencies: None
-### Description: Implement a function that creates the changelog file with proper Markdown table header if it doesn't exist, or reads existing file safely.
+### Description: Create a configurable retry system for LLM API calls that handles temporary failures
 ### Details:
-Create `initialize_changelog(path)` function that: 1) Checks if file exists at configured path using `os.path.exists()` 2) If not exists, writes Markdown header `# Email Processing Changelog` followed by table header `| Timestamp | Email Account | Subject | From | Filename |` and separator `|---|` 3) If exists, reads file content safely with UTF-8 encoding handling. Use `pathlib.Path` for cross-platform path handling. Return file content as string.
+Develop a retry mechanism with exponential backoff that attempts to reconnect to the LLM API when failures occur. Include configurable parameters for maximum retry attempts, initial delay, and maximum delay between retries. Implement proper logging for each retry attempt with relevant error information. Use the settings.py facade to access retry configuration (settings.get_openrouter_retry_attempts() and settings.get_openrouter_retry_delay_seconds()).
 
-## 2. Implement email run data collection and formatting [done]
-### Dependencies: None
-### Description: Create function to collect processed email data and format it as Markdown table row with current timestamp.
+## 2. Create default error response generator [pending]
+### Dependencies: 10.1
+### Description: Develop a function that generates standardized error responses when LLM processing fails
 ### Details:
-Create `format_email_row(email_data)` function that takes dict with keys `email_account`, `subject`, `from_addr`, `filename` and: 1) Gets current UTC timestamp using `datetime.datetime.now(datetime.timezone.utc).isoformat()` 2) Escapes Markdown special characters (`|`, `\`) in fields using `str.replace()` 3) Returns pipe-formatted row string like `| 2026-01-06T23:00:00Z | account@example.com | Subject | sender@domain.com | file.eml |`. Handle None/empty values as empty cells.
+Implement a function that creates a standardized error response object with default values (spam_score: -1, importance_score: -1) when the LLM API fails after exhausting retry attempts, as specified in the PDD. The function should accept the original email data and error information as input parameters and return a properly formatted response object. Ensure the status is set to "error" in the processing_meta section as required by the PDD.
 
-## 3. Develop visual run separator generation [done]
-### Dependencies: 10.1, 10.2
-### Description: Create function to generate visual separator between execution runs using Markdown horizontal rule and run metadata.
+## 3. Implement error note creation with detailed error information [pending]
+### Dependencies: 10.2
+### Description: Create a system to generate detailed error notes with the #process_error tag
 ### Details:
-Create `generate_run_separator(run_count, run_timestamp)` function that returns Markdown string like:
-```
+Develop functionality to create comprehensive error notes when LLM processing fails. Each note should include: the #process_error tag, default error values (spam_score: -1, importance_score: -1), original email metadata, error type, error message, timestamp, and any relevant context about the failure. Structure the note in a way that makes debugging easier. Ensure the status is set to "error" in the processing_meta section as required by the PDD.
 
----
-
-**Run #{run_count} - {timestamp}**
-
-```
-Use timestamp format `YYYY-MM-DD HH:MM UTC`. `run_count` increments per execution (track via file parsing or external counter). Place separator before new table rows to visually separate runs.
-
-## 4. Build core changelog update function [done]
-### Dependencies: 10.1, 10.2, 10.3
-### Description: Implement main function to append new email rows with proper separators to existing changelog.
+## 4. Develop error isolation and system continuity mechanism [pending]
+### Dependencies: 10.3
+### Description: Ensure LLM failures for one email don't affect processing of other emails
 ### Details:
-Create `update_changelog(path, email_list, run_count)` function that: 1) Calls `initialize_changelog(path)` 2) Generates run separator via `generate_run_separator(run_count)` 3) Formats each email as row via `format_email_row()` 4) Appends `separator + '\n'.join(rows) + '\n'` to file content 5) Writes back using `with open(path, 'w', encoding='utf-8') as f:`. Ensure atomic writes using temporary file or `os.rename()`.
+Implement error isolation that prevents failures in processing one email from affecting others. Use try-catch blocks or equivalent error boundaries around individual email processing. Ensure the main processing loop continues to the next email after properly handling and logging any errors. Test with simulated failures to verify system resilience. Log all errors to both logging systems (operational logs and structured analytics) as specified in the PDD.
 
-## 5. Integrate changelog functionality into main execution workflow [done]
+## 5. Create monitoring and alerting for LLM failures [pending]
 ### Dependencies: 10.4
-### Description: Add changelog update calls to main email processing pipeline with configuration and error handling.
+### Description: Implement a system to track and alert on LLM failure patterns
 ### Details:
-1) Add `changelog_path` to config (default `./changelog.md`) 2) In main execution loop, collect `processed_emails = []` list 3) After processing batch, call `update_changelog(config.changelog_path, processed_emails, get_run_count())` 4) Implement `get_run_count()` by counting `**Run #` occurrences in file or use simple incrementing counter 5) Add try/except with logging for file I/O errors, continue execution if changelog fails. Test file locking/concurrency if multi-process.
+Develop monitoring that tracks LLM failure rates and patterns. Implement counters for different error types, track retry success rates, and monitor the frequency of #process_error notes. Create an alerting mechanism that notifies administrators when error rates exceed configurable thresholds. Include a dashboard or reporting feature to visualize error trends over time. Use the settings.py facade to access any configuration values needed for monitoring and alerting.
 

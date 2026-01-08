@@ -1,43 +1,43 @@
 # Task ID: 2
-# Title: Implement flexible IMAP query system
+# Title: Implement CLI argument parsing
 # Status: done
 # Dependencies: 1
 # Priority: high
-# Description: Develop a system to use configurable IMAP queries while maintaining idempotency
+# Description: Create a robust CLI interface with support for the required command flags and subcommands using the click library.
 # Details:
-Modify the email selection logic to use the user-defined imap_query from config.yaml. Implement logic to combine this query with a NOT condition for emails already tagged with [Obsidian-Note-Created] or [Note-Creation-Failed]. This ensures the agent won't reprocess emails even with changing queries. Include proper error handling for malformed IMAP queries.
+Use click (not argparse) to implement CLI argument parsing as specified in the PDD. Support the following structure: `python main.py process` with flags `--uid <ID>` for targeting specific emails, `--force-reprocess` flag to overwrite existing notes, `--dry-run` flag for testing without side effects, and a separate 'cleanup-flags' subcommand (`python main.py cleanup-flags`). Include help text for each option and implement proper argument validation. For the cleanup-flags command, implement a mandatory confirmation prompt for safety as required by the PDD.
 
 # Test Strategy:
-Test with various IMAP query strings including UNSEEN, date-based queries, and complex conditions. Verify idempotency by running the same query twice and confirming no duplicate processing.
+Test each flag combination to ensure proper parsing. Verify help text is displayed correctly. Test invalid arguments to ensure appropriate error messages. Verify the confirmation prompt works correctly for the cleanup-flags command.
 
 # Subtasks:
-## 1. Load and validate user-defined IMAP query from config.yaml [done]
+## 1. Set up basic CLI framework with click [done]
 ### Dependencies: None
-### Description: Implement configuration loading logic to read the imap_query parameter from config.yaml and validate its format before use.
+### Description: Initialize the CLI framework using click and create the basic command structure
 ### Details:
-Use a YAML parsing library (e.g., PyYAML for Python) to load config.yaml. Access the 'imap_query' field as a string. Add validation to check if it's a valid IMAP SEARCH criteria string by testing basic syntax (parentheses matching, valid keywords like SUBJECT, FROM, SINCE). Raise ConfigError with clear message if malformed. Log the loaded query for debugging.
+Set up click as the CLI framework as required by the PDD. Create the main command group and set up the basic command structure with subcommands 'process' and 'cleanup-flags'. Include program name, description, and version information. Implement the basic error handling for invalid commands. Ensure the CLI structure follows exactly: `python main.py process` with flags and `python main.py cleanup-flags` as specified in the PDD.
 
-## 2. Create IMAP query builder with NOT condition for processed tags [done]
+## 2. Implement core flags and options for the process subcommand [done]
 ### Dependencies: 2.1
-### Description: Develop a query builder function that combines the user-defined query with NOT conditions excluding emails tagged with [Obsidian-Note-Created] or [Note-Creation-Failed].
+### Description: Add the primary flags and options to the process subcommand
 ### Details:
-Create function build_final_query(user_query: str) -> str. Construct combined query: '(user_query) NOT (FLAGS.ANSWERED OR FLAGS.\Seen OR KEYWORD "[Obsidian-Note-Created]" OR KEYWORD "[Note-Creation-Failed]")'. Use IMAP library's query builder if available (e.g., Aspose.Email ImapQueryBuilder) or raw IMAP SEARCH string. Test with sample queries to ensure proper parentheses balancing.
+Implement the following options for the 'process' subcommand: '--uid <ID>' for targeting specific emails with appropriate type validation, '--force-reprocess' flag to overwrite existing notes, and '--dry-run' flag for testing without side effects. Add detailed help text for each option explaining its purpose and usage. Implement basic argument validation for each option. Ensure the implementation follows the exact structure specified in the PDD.
 
-## 3. Modify email selection logic to use combined IMAP query [done]
-### Dependencies: 2.2
-### Description: Replace existing email selection code with the new configurable query system while preserving connection and folder selection logic.
+## 3. Implement the cleanup-flags subcommand [done]
+### Dependencies: 2.1
+### Description: Create the cleanup-flags subcommand with its specific options and behavior
 ### Details:
-In the existing email fetching function, replace hardcoded SEARCH criteria with build_final_query(config.imap_query). Execute via IMAP client.ListMessages() or equivalent (e.g., client.search(query)). Preserve existing folder selection (INBOX) and connection handling. Log query string and result count before processing.
+Add the 'cleanup-flags' subcommand to the CLI parser. Define any specific options needed for this subcommand. Implement the command structure but leave the actual confirmation prompt implementation for the next subtask. Add appropriate help text explaining the purpose and potential impact of this command. Ensure the implementation follows the exact structure specified in the PDD: `python main.py cleanup-flags`.
 
-## 4. Implement comprehensive IMAP query error handling [done]
+## 4. Implement confirmation prompt for cleanup-flags [done]
 ### Dependencies: 2.3
-### Description: Add robust error handling for malformed queries, IMAP server errors, and connection issues with graceful recovery.
+### Description: Add a mandatory confirmation prompt for the cleanup-flags command as required by the PDD
 ### Details:
-Wrap query execution in try-catch. Handle IMAP-specific exceptions (MalformedSearchCriteria, SearchFailed, ConnectionLost). On query error, log full error + attempted query string, fallback to empty result set, and continue without crashing. Implement retry logic (max 3 attempts) for transient errors. Add connection health check before query execution.
+Implement a clear and explicit confirmation prompt that warns the user about the effects of the cleanup-flags command. Use a yes/no prompt that requires explicit confirmation (e.g., 'yes' typed out fully) before proceeding. Handle user input validation and provide appropriate feedback. Ensure the command aborts if confirmation is not provided. This is a MANDATORY security requirement from the PDD.
 
-## 5. Add idempotency verification and comprehensive testing [done]
-### Dependencies: 2.4
-### Description: Verify the NOT condition prevents reprocessing, add unit tests for all query scenarios, and validate end-to-end idempotency.
+## 5. Integrate argument parsing with main application flow [done]
+### Dependencies: 2.2, 2.4
+### Description: Connect the CLI parser to the main application logic
 ### Details:
-Create test cases: 1) Valid query finds untagged emails only; 2) Tagged emails excluded regardless of user query; 3) Malformed query handled gracefully; 4) Changing user_query doesn't reprocess tagged emails. Add integration test with real IMAP server using test account. Verify idempotency by running same query twice - second run returns 0 emails.
+Create a function that parses the arguments using click and returns a structured object with the parsed values. Implement comprehensive error handling for all possible input errors with clear error messages. Add input validation to ensure all required arguments are provided and have valid values. Test the CLI with various combinations of arguments to ensure correct behavior. Document the available commands and options in the help text and in a README section. Ensure all code references the settings.py facade for configuration access.
 

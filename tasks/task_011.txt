@@ -1,43 +1,43 @@
 # Task ID: 11
-# Title: Update analytics tracking system
-# Status: done
-# Dependencies: 9
-# Priority: low
-# Description: Enhance the analytics system to track new metrics for note creation and summarization
+# Title: Implement dry-run functionality
+# Status: pending
+# Dependencies: 2, 3, 6, 7
+# Priority: medium
+# Description: Create a non-destructive testing mode that outputs results without writing files or setting flags.
 # Details:
-Update the analytics tracking to include new metrics: notes_created, summaries_generated, and note_creation_failures. Modify the JSON schema and file writing logic to include these new fields. Ensure backward compatibility with existing analytics files.
+Implement the --dry-run flag functionality that processes emails and generates output but doesn't write files or set IMAP flags. Output detailed processing information to the console, including classification scores, decision logic results, and the generated note content. Format console output for readability with clear section headers and color coding if possible.
 
 # Test Strategy:
-Test analytics recording with various processing scenarios. Verify the JSON structure is correct and all metrics are accurately tracked. Test with existing analytics files to ensure backward compatibility.
+Run with --dry-run flag and verify no files are written and no IMAP flags are set. Check that console output includes all relevant processing information. Test with various email types to ensure comprehensive output.
 
 # Subtasks:
-## 1. Update JSON schema to include new metrics [done]
+## 1. Add command-line argument parsing for --dry-run flag [pending]
 ### Dependencies: None
-### Description: Modify the existing JSON schema definition to add the new fields: notes_created, summaries_generated, and note_creation_failures as optional integer fields.
+### Description: Implement the ability to detect and process the --dry-run flag from command-line arguments
 ### Details:
-Locate the JSON schema file (likely schema.json or similar in the analytics module). Add the new properties under the root object with type: 'integer', default: 0, and description for each. Use 'required' array exclusion to ensure backward compatibility. Validate the updated schema using a JSON schema validator tool.
+Modify the click-based argument parsing logic to recognize the --dry-run flag. Create a global or context variable to track dry-run mode. Update help documentation to describe the new flag. Ensure the dry-run state is accessible throughout the application execution flow. Implement this as part of the 'process' subcommand as specified in the PDD.
 
-## 2. Update analytics data collection logic [done]
+## 2. Create conditional logic to bypass file writing operations [pending]
 ### Dependencies: 11.1
-### Description: Modify the code responsible for collecting and populating analytics data to increment the new metrics: notes_created on successful note creation, summaries_generated on successful summarization, and note_creation_failures on note creation errors.
+### Description: Modify file writing operations to be conditional based on dry-run mode
 ### Details:
-Identify event handlers for note creation, summarization success/failure (likely in services like NoteService or AnalyticsTracker). Use atomic counters (e.g., Redis increment or in-memory with locks) to track per-session or global counts. Initialize new fields to 0 if absent in existing data objects. Add unit tests for each increment scenario.
+Identify all locations in the codebase where files are written. Wrap these operations in conditional checks that verify if dry-run mode is active. If in dry-run mode, skip the actual file writing but maintain all the preparation logic. Log what would have been written and where. Use the settings.py facade to access any configuration values needed.
 
-## 3. Modify file writing logic for new schema [done]
-### Dependencies: 11.1, 11.2
-### Description: Update the JSON serialization and file append/write logic to include the new fields while preserving backward compatibility with existing analytics files.
+## 3. Implement conditional IMAP flag setting [pending]
+### Dependencies: 11.1
+### Description: Modify IMAP flag setting operations to be conditional based on dry-run mode
 ### Details:
-In the file writer (likely AnalyticsFileWriter class), ensure JSON marshal/unmarshal handles optional fields gracefully. When reading existing files, merge new fields with default 0 values. When writing, always include all fields. Use json.MarshalIndent for consistent formatting. Test with mixed old/new data files.
+Locate all code that sets IMAP flags on emails. Add conditional logic to bypass the actual flag setting when in dry-run mode. Ensure the application still processes the logic of which flags would be set, but doesn't perform the actual IMAP operations to modify the flags. Use the settings.py facade to access any configuration values needed, including the processed tag name (settings.get_imap_processed_tag()).
 
-## 4. Add comprehensive unit and integration tests [done]
-### Dependencies: 11.1, 11.2, 11.3
-### Description: Create tests to verify new metrics tracking, schema validation, file compatibility, and edge cases like failures and zero values.
+## 4. Develop enhanced console output formatting [pending]
+### Dependencies: 11.1
+### Description: Create structured, readable console output for dry-run results
 ### Details:
-Write unit tests for data collection increments, schema validation, and file I/O. Create integration tests simulating note creation/summarization flows with mock failures. Test reading/writing mixed files. Use test fixtures with real old analytics files. Aim for 90%+ code coverage on modified paths.
+Implement a formatting system for console output that includes section headers, indentation, and optional color coding (using a library like chalk for Node.js or colorama for Python). Create helper functions for formatting different types of output (headers, details, success/warning messages). Design a consistent visual hierarchy for the output information. Ensure the formatting is clear and helpful for understanding what would happen in a real run.
 
-## 5. Perform end-to-end testing and deployment validation [done]
+## 5. Implement detailed processing information output [pending]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4
-### Description: Run full system tests, validate backward compatibility with production files, and deploy with monitoring.
+### Description: Output comprehensive processing details during dry-run mode
 ### Details:
-Test in staging: generate notes/summaries, trigger failures, verify metrics in output files. Backup production analytics files, deploy incrementally, monitor file writes for errors. Validate old files remain readable. Add logging for new metrics. Roll back plan if compatibility issues detected.
+Modify the email processing logic to output detailed information when in dry-run mode, including: classification scores with explanation of thresholds, decision logic results showing why certain actions were taken, generated note content in a preview format, file paths where content would have been written, and IMAP flags that would have been set. Use the formatting system from subtask 4 to ensure readability. Include summary statistics at the end of processing. Use the settings.py facade to access any configuration values needed for the output.
 

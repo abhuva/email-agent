@@ -11,14 +11,14 @@ alwaysApply: true
 ## Required Reading Order
 
 1. **[README-AI.md](mdc:README-AI.md)** - Complete project structure, architecture, and development context (optimized for AI agents)
-2. **[pdd_v2.md](mdc:pdd_v2.md)** - Current product requirements and V2 features
+2. **[pdd.md](mdc:pdd.md)** - Current product requirements and V3 features
 3. **Task Master:** Run `task-master next` to see current task context
 4. **Module docs:** Review relevant docs in `docs/` as needed
 
 ## Key Files for AI Agents
 
 - **[README-AI.md](mdc:README-AI.md)** - Primary entry point (project structure, architecture, key concepts)
-- **[pdd_v2.md](mdc:pdd_v2.md)** - Product requirements (current focus: V2)
+- **[pdd.md](mdc:pdd.md)** - Product requirements (current focus: V3)
 - **[docs/MAIN_DOCS.md](mdc:docs/MAIN_DOCS.md)** - Documentation index
 - **[tasks/tasks.json](mdc:tasks/tasks.json)** - Current task state
 

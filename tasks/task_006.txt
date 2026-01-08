@@ -1,43 +1,43 @@
 # Task ID: 6
-# Title: Implement conditional summarization logic
-# Status: done
-# Dependencies: 1, 2
-# Priority: medium
-# Description: Create the system to conditionally generate summaries based on email tags
+# Title: Implement decision logic with configurable thresholds
+# Status: pending
+# Dependencies: 1, 5
+# Priority: high
+# Description: Replace the rigid classification system with threshold-based decision logic using numerical scores.
 # Details:
-Develop logic that checks if an email has any tags matching those in the summarization_tags configuration. If it does, load the summarization prompt from the configured path and prepare for an LLM call. Include error handling for missing prompt files and invalid configurations. The system should gracefully continue without summarization if any part fails.
+Create a module that processes the numerical scores from the LLM and applies configurable thresholds to determine email categorization. Implement logic to handle edge cases and score combinations. Use thresholds from the configuration file through the settings.py facade (processing.importance_threshold: 8, processing.spam_threshold: 5). The module should output a classification result that can be used for both note generation and IMAP flag setting.
 
 # Test Strategy:
-Test with emails having various tag combinations, including those that should and shouldn't trigger summarization. Verify the system correctly identifies emails for summarization based on configuration.
+Test with various score combinations to verify threshold application. Verify that changing thresholds in the configuration affects classification results appropriately.
 
 # Subtasks:
-## 1. Implement tag matching configuration access [done]
+## 1. Create configuration schema for thresholds [pending]
 ### Dependencies: None
-### Description: Create a function to safely access the summarization_tags configuration and validate its structure.
+### Description: Define the structure for threshold configuration in the configuration file
 ### Details:
-Read the summarization_tags from the configuration file/system. Add validation to ensure it's a non-empty list of strings. Return empty list if config is missing or invalid. Log warning message for invalid config but do not raise exceptions.
+Design and implement a schema for threshold configuration that will be used in the decision logic. This should include threshold values for different classification categories (e.g., importance, urgency, actionability), ranges for scores, and any other parameters needed for the decision logic. Update the configuration file loading mechanism to parse and validate these threshold settings. Ensure the schema aligns with the PDD specifications (processing.importance_threshold: 8, processing.spam_threshold: 5). All threshold values must be accessible through the settings.py facade.
 
-## 2. Implement email tag checking logic [done]
+## 2. Develop score processing module [pending]
 ### Dependencies: 6.1
-### Description: Create a function that checks if an email's tags intersect with summarization_tags.
+### Description: Create a module to process and normalize numerical scores from the LLM
 ### Details:
-Accept email object with tags array and summarization_tags list. Use set intersection (e.g., `set(email_tags) & set(summarization_tags)`) to check for matches. Return boolean `should_summarize`. Handle cases where email has no tags (return false).
+Implement a module that takes raw numerical scores from the LLM and processes them into a standardized format. This should handle different score ranges, normalize values if needed, and prepare them for threshold comparison. Include validation to ensure scores are within expected ranges and handle cases where scores might be missing or invalid. Use the settings.py facade to access any configuration values needed.
 
-## 3. Implement prompt file loading with error handling [done]
-### Dependencies: None
-### Description: Create a function to load the summarization prompt from the configured file path with comprehensive error handling.
+## 3. Implement threshold-based decision logic [pending]
+### Dependencies: 6.1, 6.2
+### Description: Create the core decision logic that applies thresholds to scores
 ### Details:
-Read prompt file from configured path using filesystem API. Catch FileNotFoundError, PermissionError, and other IO exceptions. Return None on any file error and log specific error message. Validate loaded content is non-empty string.
+Develop the main decision logic that compares processed scores against the configured thresholds from the settings.py facade. This should determine email categorization based on the comparison results. Implement conditional logic that can handle various combinations of scores and their relationships to thresholds. The logic should be flexible enough to accommodate different threshold configurations without code changes. Ensure alignment with the PDD specifications.
 
-## 4. Create main conditional summarization decision function [done]
-### Dependencies: 6.1, 6.2, 6.3
-### Description: Implement the core function that orchestrates tag checking and prompt loading to determine if summarization should proceed.
+## 4. Add edge case handling [pending]
+### Dependencies: 6.3
+### Description: Implement logic to handle edge cases and special score combinations
 ### Details:
-Accept email object and config. First call tag checking function. If should_summarize is false, return {summarize: false}. If true, load prompt. If prompt loads successfully, return {summarize: true, prompt: loaded_prompt}. If prompt fails, return {summarize: false, reason: 'prompt_load_failed'}.
+Extend the decision logic to handle edge cases such as scores at exactly the threshold value, conflicting classifications, or unusual score combinations. Implement fallback logic for when scores don't clearly fit into defined categories. Add logging for edge cases to help with future refinement of the threshold values. Consider implementing confidence scores for classifications. Use the settings.py facade to access any configuration values needed.
 
-## 5. Integrate into email processing pipeline with graceful degradation [done]
-### Dependencies: 6.4
-### Description: Add the conditional summarization logic to the main email processing flow with comprehensive logging.
+## 5. Create classification result output interface [pending]
+### Dependencies: 6.3, 6.4
+### Description: Develop a standardized output format for classification results
 ### Details:
-In main email handler, call summarization decision function before LLM processing step. If summarize:true, prepare LLM call parameters with prompt. If false, log reason (tags/no tags/prompt error) at debug level and continue pipeline without summarization. Ensure no exceptions bubble up from summarization logic.
+Design and implement a standardized output format for the classification results that can be consumed by both the note generation module and the IMAP flag setting module. This should include the final classification, confidence levels, the processed scores that led to the decision, and any relevant metadata. Create helper methods to convert the classification result into formats needed by dependent modules. Ensure the output format aligns with the PDD specifications.
 

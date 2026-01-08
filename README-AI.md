@@ -336,7 +336,7 @@ email-agent/
 
 - **V1:** Email tagging (complete)
 - **V2:** Obsidian integration (in progress)
-- **Current Focus:** V2 features (see `pdd_v2.md`)
+- **Current Focus:** V3 features (see `pdd.md`)
 
 ---
 
@@ -351,4 +351,3 @@ email-agent/
 
 ---
 
-*Last Updated: 2026-01-07 (Task 17 Complete)*

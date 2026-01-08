@@ -1,43 +1,49 @@
 # Task ID: 14
-# Title: Create integration tests for the complete workflow
-# Status: done
-# Dependencies: 9, 10, 11, 12, 13
-# Priority: medium
-# Description: Develop comprehensive tests for the end-to-end email processing workflow
+# Title: Integrate all components into main processing flow
+# Status: pending
+# Dependencies: 3, 4, 6, 7, 9, 10, 11, 12
+# Priority: high
+# Description: Combine all modules into a cohesive email processing pipeline with appropriate control flow.
 # Details:
-Create integration tests that verify the complete workflow from email selection to note creation and tagging. Include test cases for various scenarios including emails that should trigger summarization, emails that shouldn't, and error conditions. Use mock objects where appropriate to simulate IMAP and LLM API interactions.
+Integrate all components into a main processing flow that handles: email retrieval (all or by UID), LLM classification, decision logic application, note generation, file writing, and IMAP flag setting. Implement appropriate control flow based on CLI arguments (--dry-run, --force-reprocess, --uid). Include comprehensive logging throughout the process. Ensure proper error handling at each step to prevent crashes. Create src/orchestrator.py for high-level business logic orchestration. Add performance requirement: Local operations < 1s, no memory leaks during batch processing. Update to use click (not argparse) for CLI parsing. Reference settings.py facade throughout.
 
 # Test Strategy:
-Run tests with various email scenarios and verify all outputs (files created, tags applied, changelog entries, analytics) match expectations. Test both success paths and failure scenarios.
+Test the complete processing flow with various CLI argument combinations. Verify correct behavior for single email processing and batch processing. Check error handling with simulated failures at different stages. Verify performance meets requirements.
 
 # Subtasks:
-## 1. Set up integration test framework and mock IMAP/LLM dependencies [done]
+## 1. Create core pipeline architecture and CLI argument handling [pending]
 ### Dependencies: None
-### Description: Configure the test environment with mock objects for IMAP client and LLM API to isolate the email processing workflow for reliable testing.
+### Description: Establish the main program structure with click-based CLI argument parsing and basic control flow
 ### Details:
-Use a testing framework like pytest (Python) or Jest (Node.js). Create mock classes for IMAP connections that simulate email fetching/selection and return predefined email payloads. Mock LLM API responses with configurable outputs for summarization success/failure. Ensure mocks support async operations if the workflow is asynchronous. Verify setup with a simple smoke test that initializes mocks without errors.
+Implement the main entry point that parses CLI arguments (--dry-run, --force-reprocess, --uid) using click as specified in the PDD. Create a Pipeline class in src/orchestrator.py that will orchestrate the entire email processing flow. Set up the basic program structure with configuration loading through the settings.py facade, logging initialization, and error handling framework. Define the high-level pipeline steps as methods that will be implemented in subsequent tasks. Ensure the CLI structure follows exactly: `python main.py process` with flags as specified in the PDD.
 
-## 2. Implement tests for emails that trigger summarization workflow [done]
+## 2. Implement email retrieval and selection logic [pending]
 ### Dependencies: 14.1
-### Description: Develop test cases verifying the full workflow (email selection → processing → summarization → note creation → tagging) for emails meeting trigger criteria.
+### Description: Add the ability to retrieve emails from IMAP and select which ones to process based on CLI arguments
 ### Details:
-Write end-to-end tests using mocked IMAP to select qualifying emails (e.g., specific subjects/senders/content patterns). Assert successful LLM summarization call, note creation in storage/database, and correct tagging applied. Include assertions for workflow completion status, note content matching summary, and tags persisted correctly. Test multiple email variations that should trigger (e.g., different trigger keywords).
+Integrate the email retrieval module (src/imap_client.py) into the pipeline. Implement logic to either retrieve all emails or specific emails by UID based on CLI arguments. Add filtering to exclude already processed emails unless --force-reprocess is specified. Include appropriate logging for the retrieval process and error handling for IMAP connection issues. Return a collection of email objects that will be passed to the next pipeline stage. Use the settings.py facade to access all configuration values, including the processed tag name (settings.get_imap_processed_tag()).
 
-## 3. Implement tests for emails that should not trigger workflow [done]
-### Dependencies: 14.1
-### Description: Create test cases ensuring emails not meeting criteria are correctly filtered out without note creation or tagging.
+## 3. Integrate LLM classification and decision logic [pending]
+### Dependencies: 14.2
+### Description: Connect the LLM classification module and implement the decision tree for email processing
 ### Details:
-Use IMAP mocks to provide non-qualifying emails (e.g., spam, newsletters, excluded senders/domains). Verify workflow skips processing—no LLM calls, no note creation, no tags added. Assert logging/auditing records the skip decision with correct reason. Test boundary cases like emails just outside criteria thresholds.
+For each email retrieved in the previous step, call the LLM classification module (src/llm_client.py) to categorize the email. Implement the decision logic that determines what actions to take based on the classification results. Include conditional logic that respects the --dry-run flag to prevent actual modifications when in dry run mode. Add comprehensive logging of classification results and decisions to both logging systems. Implement error handling for LLM API failures with appropriate fallback strategies. Use the settings.py facade to access all configuration values, including thresholds (settings.get_importance_threshold() and settings.get_spam_threshold()).
 
-## 4. Add test cases for error conditions and failure scenarios [done]
-### Dependencies: 14.1
-### Description: Cover error handling across the workflow including IMAP failures, LLM API errors, storage issues, and network timeouts.
+## 4. Add note generation and file writing capabilities [pending]
+### Dependencies: 14.3
+### Description: Integrate note generation for classified emails and implement file writing functionality
 ### Details:
-Configure mocks to simulate failures: IMAP connection timeout, LLM API 500 errors, database write failures during note creation. Verify graceful error handling—proper exception catching, rollback of partial operations, error logging, and user notifications/retries where applicable. Assert no data corruption or infinite loops occur. Include recovery tests where possible (e.g., retry logic).
+For emails that require notes based on the decision logic, call the note generation module (src/note_generator.py). Implement the file writing functionality to save generated notes to the appropriate location with proper naming conventions. Create directory structures if they don't exist. Add logging for file operations and implement error handling for file system issues. Ensure the --dry-run flag prevents actual file writing while still logging what would have been written. Use the settings.py facade to access all configuration values, including file paths.
 
-## 5. Enhance tests with assertions, cleanup, and documentation [done]
-### Dependencies: 14.2, 14.3, 14.4
-### Description: Add comprehensive assertions, test data cleanup, performance checks, and documentation to complete the test suite.
+## 5. Implement IMAP flag setting and finalize pipeline execution flow [pending]
+### Dependencies: 14.4
+### Description: Add the ability to mark emails as processed in IMAP and complete the end-to-end pipeline
 ### Details:
-Implement database cleanup fixtures to reset state between tests. Add performance assertions (workflow completes under time limits). Verify audit logs capture full workflow traces. Document each test case with scenario descriptions, expected vs actual behavior, and coverage notes. Run full suite to achieve 100% workflow path coverage and fix any gaps.
+Integrate the IMAP flag setting module to mark emails as processed after successful handling. Respect the --dry-run flag to prevent actual flag modifications in dry run mode. Implement the final pipeline execution flow that chains all components together with proper error propagation. Add summary logging at the end of processing with statistics (emails processed, errors encountered, etc.). Implement cleanup operations for resources like IMAP connections. Test the entire pipeline with various combinations of CLI arguments to ensure proper functioning. Ensure performance meets requirements: Local operations < 1s, no memory leaks during batch processing. Use the settings.py facade to access all configuration values.
+
+## 6. Create src/orchestrator.py for high-level business logic orchestration [pending]
+### Dependencies: 14.5
+### Description: Implement a central orchestration module to coordinate all components of the system
+### Details:
+Create src/orchestrator.py to serve as the central coordination point for the application's business logic. This module should: 1) Define high-level workflow functions that coordinate the interactions between other modules, 2) Implement the main processing pipeline that handles the end-to-end email processing flow, 3) Manage state and context throughout the processing lifecycle, 4) Handle error propagation and recovery strategies, 5) Implement performance optimizations to meet the requirement of local operations < 1s and no memory leaks during batch processing. Use the settings.py facade to access all configuration values. Document the orchestrator's architecture and responsibilities clearly.
 

@@ -1,43 +1,43 @@
 # Task ID: 12
-# Title: Enhance CLI user experience
-# Status: done
-# Dependencies: 9, 10, 11
-# Priority: low
-# Description: Update the terminal UI to show progress and results for new functionality
+# Title: Implement force-reprocess capability
+# Status: pending
+# Dependencies: 2, 3, 6
+# Priority: medium
+# Description: Add functionality to reprocess already processed emails when explicitly requested.
 # Details:
-Enhance the CLI interface to show progress during note creation and summarization. Update the final summary report to include new metrics: Notes Created, Summaries Generated, and Note Creation Failures. Improve error messaging to be more informative about specific failures.
+Implement the --force-reprocess flag functionality that allows reprocessing of emails that have already been processed. This should override the normal flag-based skipping mechanism. Include logic to handle existing output files (overwrite them). Update IMAP flags as needed after reprocessing. Log reprocessing events distinctly in the local log.
 
 # Test Strategy:
-Test the CLI with various processing scenarios including successful and failed operations. Verify the progress indicators and summary report accurately reflect the processing results.
+Test reprocessing of already processed emails with and without the flag. Verify files are overwritten when reprocessing. Check that IMAP flags are updated correctly. Verify log entries reflect reprocessing events.
 
 # Subtasks:
-## 1. Implement progress bars for note creation and summarization [done]
+## 1. Add command-line flag for force-reprocessing [pending]
 ### Dependencies: None
-### Description: Add visual progress indicators during note creation and summarization operations using a terminal-friendly library.
+### Description: Implement the --force-reprocess command-line flag in the application's click-based argument parser
 ### Details:
-Install and use the **rich** library (pip install rich) for modern progress bars. Wrap note creation loops with `rich.progress.Progress()` context manager, adding tasks like `p.add_task('Creating notes...', total=note_count)`. Update progress with `p.update(task_id, advance=1)` after each note. Repeat for summarization process. Use `BarColumn()`, `TextColumn()`, and `TimeElapsedColumn()` for clear UX. Test with sample data to ensure bars display correctly in terminal.[1][3][5]
+Modify the click-based argument parser to accept a new boolean flag '--force-reprocess'. Update the help documentation to explain that this flag allows reprocessing of emails that have already been processed. Store this flag value in the application configuration or context object so it can be accessed by the email processing logic. Implement this as part of the 'process' subcommand as specified in the PDD.
 
-## 2. Add metrics tracking counters [done]
-### Dependencies: None
-### Description: Implement counters to track Notes Created, Summaries Generated, and Note Creation Failures throughout CLI operations.
+## 2. Modify email processing logic to check force-reprocess flag [pending]
+### Dependencies: 12.1
+### Description: Update the email processing decision logic to consider the force-reprocess flag when determining whether to process an email
 ### Details:
-Create a metrics dictionary or class with keys: `notes_created=0`, `summaries_generated=0`, `note_creation_failures=0`. Increment `notes_created` after successful note creation, `summaries_generated` after successful summarization, and `note_creation_failures` in exception handlers during note creation. Use these counters in both progress bar updates and final reporting. Ensure thread-safe incrementing if operations are parallelized.
+Locate the code that checks whether an email has already been processed (likely using IMAP flags). Modify this logic to override the normal skip behavior when the --force-reprocess flag is active. The updated logic should process the email even if it has the processed tag (settings.get_imap_processed_tag()) if force-reprocess is enabled. Use the settings.py facade to access any configuration values needed.
 
-## 3. Update final summary report with new metrics [done]
-### Dependencies: 12.1, 12.2
-### Description: Modify the existing summary report to display the three new metrics at operation completion.
-### Details:
-After all operations complete, use **rich** `Table` or styled text to display: 'Notes Created: {metrics['notes_created']}', 'Summaries Generated: {metrics['summaries_generated']}', 'Note Creation Failures: {metrics['note_creation_failures']}'. Add success rate calculation: `success_rate = (notes_created / (notes_created + note_creation_failures)) * 100 if (notes_created + note_creation_failures) > 0 else 0`. Position report after progress bars complete.
-
-## 4. Implement context-specific error messaging [done]
+## 3. Implement output file handling for reprocessed emails [pending]
 ### Dependencies: 12.2
-### Description: Replace generic error messages with detailed, actionable error information for note creation failures.
+### Description: Add logic to handle existing output files when reprocessing emails
 ### Details:
-In note creation exception handlers, capture specific error details: file I/O errors ('Failed to write note to {path}'), API errors ('Note service unavailable'), validation errors ('Invalid note content length'). Format messages as: 'Note creation failed for item {index}: {specific_error}. Skipping...'. Log full traceback to debug file. Increment failure counter and continue processing other notes. Display summary of failure types in final report.
+When reprocessing an email that was previously processed, there may be existing output files. Implement logic to detect these files and overwrite them with the new processing results. This may involve checking for file existence before writing and ensuring proper cleanup of old files if the new processing generates different filenames. Use the settings.py facade to access any file path configuration values needed.
 
-## 5. Integrate all components and test end-to-end workflow [done]
-### Dependencies: 12.1, 12.2, 12.3, 12.4
-### Description: Combine progress bars, metrics, reporting, and error handling into cohesive CLI experience with comprehensive testing.
+## 4. Update IMAP flag handling for reprocessed emails [pending]
+### Dependencies: 12.2
+### Description: Ensure IMAP flags are correctly updated after reprocessing an email
 ### Details:
-Create test scenarios: normal operation (100 notes, 0 failures), partial failures (20% failure rate), edge cases (0 notes, all failures). Verify progress bars update smoothly, metrics are accurate, error messages are informative, and final report displays correctly. Test terminal resizing, interruption handling (Ctrl+C), and color support across terminals. Add progress bar cleanup in exception handlers using `progress.update(task_id, completed=True)`.
+After successfully reprocessing an email, the IMAP flags may need to be updated. This could involve temporarily removing the processed tag (settings.get_imap_processed_tag()) before reprocessing and then re-adding it afterward, or implementing a more sophisticated flagging system that tracks reprocessing events. Ensure the flags accurately reflect the email's processing status after reprocessing. Use the settings.py facade to access the processed tag name.
+
+## 5. Enhance logging for reprocessing events [pending]
+### Dependencies: 12.2, 12.3, 12.4
+### Description: Add distinct logging for email reprocessing events to both logging systems
+### Details:
+Implement enhanced logging specifically for reprocessing events in both logging systems (operational logs and structured analytics). Log messages should clearly indicate when an email is being reprocessed (as opposed to processed for the first time). Include relevant details such as email ID, subject, and timestamp. These logs should help administrators track and audit reprocessing activities. Consider adding a specific log level or tag for reprocessing events to make them easily filterable. Use the settings.py facade to access log file paths and other configuration values.
 
