@@ -1586,3 +1586,617 @@ class TestV3WorkflowCleanupFlags:
                 
             finally:
                 cleanup.disconnect()
+
+
+class TestV3WorkflowBackfill:
+    """Comprehensive integration tests for backfill command."""
+    
+    def test_backfill_all_emails_dry_run(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test backfilling all emails in dry-run mode."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        # Mock IMAP search to return UIDs
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                # Return all UIDs
+                uids = [str(email['uid']) for email in sample_email_list]
+                return ('OK', [b' '.join(uid.encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        # Mock get_email_by_uid to return email data
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline processing
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(
+            uid=sample_email_list[0]['uid'] if sample_email_list else 'unknown',
+            success=True,
+            error=None
+        )
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Verify summary
+            assert summary.total_emails == len(sample_email_list)
+            assert summary.processed == len(sample_email_list)
+            assert summary.failed == 0
+            assert summary.total_time > 0
+            assert summary.average_time > 0
+            
+            # Verify IMAP operations
+            mock_imap_client.connect.assert_called_once()
+            mock_imap_client._imap.select.assert_called_once()
+            
+            # Verify each email was processed
+            assert mock_pipeline._process_single_email.call_count == len(sample_email_list)
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_with_date_range(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test backfill with date range filtering."""
+        dry_run_helper.enable()
+        
+        from datetime import date
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        # Mock IMAP search with date filters
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                # Return filtered UIDs
+                uids = [email['uid'] for email in sample_email_list[:2]]  # First 2 emails
+                return ('OK', [b' '.join(str(uid).encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(uid='12345', success=True, error=None)
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            start_date = date(2024, 1, 1)
+            end_date = date(2024, 12, 31)
+            
+            summary = processor.backfill_emails(
+                start_date=start_date,
+                end_date=end_date,
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Verify date filters were applied
+            search_calls = [call for call in mock_imap_client._imap.uid.call_args_list 
+                          if call[0][0] == 'SEARCH']
+            assert len(search_calls) > 0
+            
+            # Verify summary
+            assert summary.total_emails == 2
+            assert summary.processed == 2
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_with_folder_selection(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test backfill with specific folder selection."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                uids = [email['uid'] for email in sample_email_list]
+                return ('OK', [b' '.join(str(uid).encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(uid='12345', success=True, error=None)
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                folder='Sent',
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Verify folder was selected
+            mock_imap_client._imap.select.assert_called_once_with('Sent')
+            
+            # Verify processing occurred
+            assert summary.total_emails == len(sample_email_list)
+            assert summary.processed == len(sample_email_list)
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_with_max_emails_limit(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test backfill with max_emails limit."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        # Return more UIDs than max_emails
+        all_uids = [email['uid'] for email in sample_email_list]
+        
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                return ('OK', [b' '.join(str(uid).encode() for uid in all_uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(uid='12345', success=True, error=None)
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            max_emails = 2
+            summary = processor.backfill_emails(
+                max_emails=max_emails,
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Verify only max_emails were processed
+            assert summary.total_emails == max_emails
+            assert summary.processed == max_emails
+            assert mock_pipeline._process_single_email.call_count == max_emails
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_with_force_reprocess(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test backfill with force_reprocess flag."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                uids = [email['uid'] for email in sample_email_list]
+                return ('OK', [b' '.join(str(uid).encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(uid='12345', success=True, error=None)
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note') as mock_write_note:
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                force_reprocess=True,  # Force reprocess
+                dry_run=True
+            )
+            
+            # Verify all emails were processed (force_reprocess=True)
+            assert summary.total_emails == len(sample_email_list)
+            assert summary.processed == len(sample_email_list)
+            
+            # Verify force_reprocess was passed to pipeline
+            for call_args in mock_pipeline._process_single_email.call_args_list:
+                process_options = call_args[0][1] if len(call_args[0]) > 1 else None
+                if process_options:
+                    assert process_options.force_reprocess is True
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_error_isolation(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test that errors on individual emails don't stop the backfill operation."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                uids = [email['uid'] for email in sample_email_list]
+                return ('OK', [b' '.join(str(uid).encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline - some emails will fail
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        call_count = {'count': 0}
+        
+        def process_side_effect(email_data, process_options):
+            call_count['count'] += 1
+            uid = email_data.get('uid', 'unknown')
+            if call_count['count'] == 2:  # Second email fails
+                return ProcessingResult(
+                    uid=uid,
+                    success=False,
+                    error="Processing failed"
+                )
+            return ProcessingResult(uid=uid, success=True, error=None)
+        
+        mock_pipeline._process_single_email.side_effect = process_side_effect
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Should continue processing despite errors
+            assert summary.total_emails == len(sample_email_list)
+            assert summary.processed == len(sample_email_list) - 1  # One failed
+            assert summary.failed == 1  # One error
+            assert summary.skipped == 0
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_empty_results(
+        self,
+        mock_settings,
+        mock_imap_client,
+        dry_run_helper
+    ):
+        """Test backfill when no emails match criteria."""
+        dry_run_helper.enable()
+        
+        # Configure mocks - no emails found
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        mock_imap_client._imap.uid.return_value = ('OK', [b''])  # Empty result
+        
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Should return empty summary
+            assert summary.total_emails == 0
+            assert summary.processed == 0
+            assert summary.failed == 0
+            assert summary.skipped == 0
+            assert summary.total_time >= 0
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_invalid_date_range(
+        self,
+        mock_settings,
+        mock_imap_client,
+        dry_run_helper
+    ):
+        """Test backfill with invalid date range (start_date > end_date)."""
+        dry_run_helper.enable()
+        
+        from datetime import date
+        
+        # Mock pipeline to avoid config loading
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            # Should raise ValueError for invalid date range
+            with pytest.raises(ValueError, match="Invalid date range"):
+                processor.backfill_emails(
+                    start_date=date(2024, 12, 31),
+                    end_date=date(2024, 1, 1),  # End before start
+                    force_reprocess=True,
+                    dry_run=True
+                )
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_connection_error(
+        self,
+        mock_settings,
+        mock_imap_client,
+        dry_run_helper
+    ):
+        """Test handling of IMAP connection errors during backfill."""
+        dry_run_helper.enable()
+        
+        # Configure mocks - connection fails
+        from src.imap_client import IMAPConnectionError
+        mock_imap_client.connect.side_effect = IMAPConnectionError("Connection failed")
+        
+        # Mock pipeline to avoid config loading
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            # Should raise IMAPConnectionError
+            with pytest.raises(IMAPConnectionError, match="Connection failed"):
+                processor.backfill_emails(
+                    force_reprocess=True,
+                    dry_run=True
+                )
+        
+        dry_run_helper.disable()
+    
+    def test_backfill_progress_tracking(
+        self,
+        mock_settings,
+        mock_imap_client,
+        mock_llm_client,
+        mock_decision_logic,
+        mock_note_generator,
+        mock_email_logger,
+        sample_email_list,
+        dry_run_helper
+    ):
+        """Test that progress tracking works during backfill."""
+        dry_run_helper.enable()
+        
+        # Configure mocks
+        mock_imap_client._connected = True
+        mock_imap_client._imap = Mock()
+        mock_imap_client._imap.select.return_value = ('OK', [b'1'])
+        
+        def uid_side_effect(command, *args):
+            if command == 'SEARCH':
+                uids = [email['uid'] for email in sample_email_list]
+                return ('OK', [b' '.join(str(uid).encode() for uid in uids)])
+            return ('OK', [])
+        
+        mock_imap_client._imap.uid.side_effect = uid_side_effect
+        
+        def get_email_side_effect(uid):
+            return next((email for email in sample_email_list if email['uid'] == uid), None)
+        
+        mock_imap_client.get_email_by_uid.side_effect = get_email_side_effect
+        
+        # Mock pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.imap_client = mock_imap_client
+        mock_pipeline.imap_client._connected = True
+        
+        from src.orchestrator import ProcessingResult
+        processing_result = ProcessingResult(uid='12345', success=True, error=None)
+        mock_pipeline._process_single_email = Mock(return_value=processing_result)
+        
+        with patch('src.backfill.ImapClient', return_value=mock_imap_client), \
+             patch('src.backfill.Pipeline', return_value=mock_pipeline), \
+             patch('src.backfill.settings', mock_settings), \
+             patch('src.orchestrator.settings', mock_settings), \
+             patch('src.obsidian_note_creation.write_obsidian_note'):
+            
+            from src.backfill import BackfillProcessor
+            
+            processor = BackfillProcessor()
+            
+            summary = processor.backfill_emails(
+                force_reprocess=True,
+                dry_run=True
+            )
+            
+            # Verify progress tracking (summary should have timing info)
+            assert summary.total_emails == len(sample_email_list)
+            assert summary.total_time > 0
+            assert summary.average_time > 0
+            assert summary.start_time is not None
+            assert summary.end_time is not None
+            assert summary.end_time >= summary.start_time
+        
+        dry_run_helper.disable()

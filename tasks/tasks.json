@@ -1223,7 +1223,7 @@
           "id": "18.8",
           "title": "Implement integration tests for backfill command",
           "description": "Develop integration tests for the backfill command, verifying its ability to process historical emails according to specified parameters.",
-          "status": "pending",
+          "status": "done",
           "priority": "medium"
         },
         {
