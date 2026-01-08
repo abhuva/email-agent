@@ -663,6 +663,15 @@ class Pipeline:
         """
         Generate note content from email data and classification result.
         
+        This method:
+        - Calls the note generation module (src/note_generator.py)
+        - Handles template rendering errors with fallback
+        - Logs note generation operations
+        - Uses decision logic results to determine note content (tags, classification)
+        
+        Notes are generated for all emails. The decision logic affects the content
+        (tags, classification metadata) but not whether a note is generated.
+        
         Args:
             email_data: Email data dictionary
             classification_result: Classification result from decision logic
@@ -671,16 +680,54 @@ class Pipeline:
             Generated note content (Markdown)
             
         Raises:
-            TemplateRenderError: If note generation fails
+            TemplateRenderError: If both primary and fallback template rendering fails
         """
-        return self.note_generator.generate_note(
-            email_data=email_data,
-            classification_result=classification_result
+        uid = email_data.get('uid', 'unknown')
+        email_subject = email_data.get('subject', '[No Subject]')
+        
+        logger.info(f"Generating note for email UID: {uid}")
+        logger.debug(f"Email subject: {email_subject[:60]}...")
+        logger.debug(
+            f"Classification: important={classification_result.is_important}, "
+            f"spam={classification_result.is_spam}, status={classification_result.status.value}"
         )
+        
+        try:
+            # Generate note using note generator
+            # The note generator uses the classification result to determine:
+            # - Tags (important, spam, #process_error)
+            # - Frontmatter metadata (scores, status)
+            # - Conditional content sections
+            note_content = self.note_generator.generate_note(
+                email_data=email_data,
+                classification_result=classification_result
+            )
+            
+            logger.info(f"Successfully generated note for UID {uid} ({len(note_content)} characters)")
+            logger.debug(f"Note preview (first 200 chars): {note_content[:200]}...")
+            
+            return note_content
+            
+        except TemplateRenderError as e:
+            error_msg = f"Note generation failed for email UID {uid}: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise
+        except Exception as e:
+            error_msg = f"Unexpected error generating note for email UID {uid}: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise TemplateRenderError(error_msg) from e
     
     def _write_note(self, email_data: Dict[str, Any], note_content: str, options: ProcessOptions) -> Optional[str]:
         """
         Write note to file system.
+        
+        This method handles:
+        - Note generation for all emails (decision logic affects content, not generation)
+        - File writing with proper naming conventions
+        - Directory structure creation (handled by safe_write_file)
+        - Comprehensive logging of file operations
+        - Error handling for file system issues
+        - Dry-run mode support (logs what would be written)
         
         Args:
             email_data: Email data dictionary
@@ -688,43 +735,102 @@ class Pipeline:
             options: Processing options
             
         Returns:
-            Path to written file (or None if dry-run)
+            Path to written file (or path that would be used in dry-run mode)
+            
+        Raises:
+            FileWriteError: If file writing fails
+            InvalidPathError: If vault path is invalid
+            WritePermissionError: If write permission is denied
         """
         from src.obsidian_note_creation import write_obsidian_note
+        from src.obsidian_utils import InvalidPathError, WritePermissionError, FileWriteError
         from datetime import datetime
         
-        # Get vault path from settings
-        vault_path = settings.get_obsidian_vault()
+        uid = email_data.get('uid', 'unknown')
         email_subject = email_data.get('subject', '[No Subject]')
         
-        # Get email date for timestamp
-        email_date = email_data.get('date')
-        timestamp = None
-        if email_date:
-            try:
-                # Try to parse email date
-                from email.utils import parsedate_to_datetime
-                timestamp = parsedate_to_datetime(email_date)
-            except Exception:
-                # If parsing fails, use current time
-                timestamp = datetime.now(timezone.utc)
+        # Check if in dry-run mode
+        dry_run_mode = is_dry_run() or options.dry_run
+        
+        # Log file operation start
+        if dry_run_mode:
+            logger.info(f"[DRY RUN] Would write note for email UID: {uid}")
         else:
-            timestamp = datetime.now(timezone.utc)
+            logger.info(f"Writing note for email UID: {uid}")
         
-        # Determine if we should overwrite (force_reprocess means overwrite)
-        overwrite = options.force_reprocess
+        logger.debug(f"Email subject: {email_subject[:60]}...")
+        logger.debug(f"Note content length: {len(note_content)} characters")
         
-        # Write note (safe_write_file respects dry-run mode)
-        file_path = write_obsidian_note(
-            note_content=note_content,
-            email_subject=email_subject,
-            vault_path=vault_path,
-            timestamp=timestamp,
-            overwrite=overwrite
-        )
-        
-        logger.info(f"Note written to: {file_path}")
-        return file_path
+        try:
+            # Get vault path from settings facade
+            vault_path = settings.get_obsidian_vault()
+            logger.debug(f"Obsidian vault path: {vault_path}")
+            
+            # Get email date for timestamp
+            email_date = email_data.get('date')
+            timestamp = None
+            if email_date:
+                try:
+                    # Try to parse email date
+                    from email.utils import parsedate_to_datetime
+                    timestamp = parsedate_to_datetime(email_date)
+                    logger.debug(f"Using email date for timestamp: {timestamp}")
+                except Exception as e:
+                    # If parsing fails, use current time
+                    logger.warning(f"Failed to parse email date '{email_date}': {e}, using current time")
+                    timestamp = datetime.now(timezone.utc)
+            else:
+                timestamp = datetime.now(timezone.utc)
+                logger.debug("No email date available, using current time")
+            
+            # Determine if we should overwrite (force_reprocess means overwrite)
+            overwrite = options.force_reprocess
+            if overwrite:
+                logger.info(f"Force reprocess mode: will overwrite existing file if present")
+            
+            # Write note (safe_write_file respects dry-run mode and handles directory creation)
+            file_path = write_obsidian_note(
+                note_content=note_content,
+                email_subject=email_subject,
+                vault_path=vault_path,
+                timestamp=timestamp,
+                overwrite=overwrite
+            )
+            
+            # Log successful file operation
+            if dry_run_mode:
+                logger.info(f"[DRY RUN] Would write note to: {file_path}")
+                # In dry-run mode, also log what would be written
+                try:
+                    from src.dry_run_output import DryRunOutput
+                    output = DryRunOutput()
+                    output.info(f"File Writing (UID {uid}):")
+                    output.detail("Path", file_path)
+                    output.detail("Content length", f"{len(note_content)} characters")
+                    output.detail("Overwrite", str(overwrite))
+                except ImportError:
+                    pass  # DryRunOutput not available, skip
+            else:
+                logger.info(f"Successfully wrote note to: {file_path}")
+            
+            return file_path
+            
+        except InvalidPathError as e:
+            error_msg = f"Invalid vault path for email UID {uid}: {e}"
+            logger.error(error_msg)
+            raise
+        except WritePermissionError as e:
+            error_msg = f"Write permission denied for email UID {uid}: {e}"
+            logger.error(error_msg)
+            raise
+        except FileWriteError as e:
+            error_msg = f"Failed to write note for email UID {uid}: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise
+        except Exception as e:
+            error_msg = f"Unexpected error writing note for email UID {uid}: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise FileWriteError(error_msg) from e
     
     def _set_imap_flags(self, uid: str, options: ProcessOptions) -> None:
         """
