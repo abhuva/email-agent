@@ -1,0 +1,71 @@
+---
+{# YAML Frontmatter Section - PDD Section 3.2 #}
+uid: {{ uid }}
+subject: "{{ subject }}"
+from: "{{ from }}"
+to: {{ to | tojson }}
+date: "{{ date | format_datetime }}"
+tags: {{ tags | tojson }}
+llm_output:
+  importance_score: {{ importance_score }}
+  spam_score: {{ spam_score }}
+  model_used: "{{ llm_output.model_used }}"
+processing_meta:
+  script_version: "3.0"
+  processed_at: "{{ processing_meta.processed_at }}"
+  status: "{{ status }}"
+---
+
+{# Main Email Content Section #}
+# {{ subject }}
+
+{# Email Metadata Section #}
+**From:** {{ from }}  
+**To:** {{ to | join(', ') }}  
+**Date:** {{ date }}
+
+{# Classification Indicators #}
+{% if is_important %}
+> ⚠️ **Important Email** (Score: {{ importance_score }}/10, Threshold: {{ importance_threshold }})
+{% endif %}
+
+{% if is_spam %}
+> 🚨 **Spam Email** (Score: {{ spam_score }}/10, Threshold: {{ spam_threshold }})
+{% endif %}
+
+{% if status == 'error' %}
+> ❌ **Processing Error** - Classification failed
+{% endif %}
+
+{# Classification Details Section #}
+{% if status == 'success' %}
+## Classification Details
+
+- **Importance Score:** {{ importance_score }}/10 {% if is_important %}(Above threshold: {{ importance_threshold }}){% endif %}
+- **Spam Score:** {{ spam_score }}/10 {% if is_spam %}(Above threshold: {{ spam_threshold }}){% endif %}
+- **Confidence:** {{ "%.1f" | format(confidence * 100) }}%
+- **Model Used:** {{ llm_output.model_used }}
+{% endif %}
+
+{# Email Body Section #}
+## Content
+
+{% if body %}
+{{ body }}
+{% elif html_body %}
+{# HTML body available but no plain text - would need HTML to Markdown conversion #}
+{{ html_body | truncate(500) }}
+{% else %}
+*No content available*
+{% endif %}
+
+{# Attachments Section (if available in future) #}
+{% if headers.get('Content-Disposition') %}
+## Attachments
+
+*Attachments would be listed here if available*
+{% endif %}
+
+{# Processing Metadata Footer #}
+---
+*Processed on {{ processing_meta.processed_at }} using script version {{ processing_meta.script_version }}*

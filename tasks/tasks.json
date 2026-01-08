@@ -405,7 +405,7 @@
       "id": 7,
       "title": "Integrate templating engine",
       "description": "Set up a templating system for generating Markdown notes based on email content and classification results.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -417,7 +417,7 @@
           "id": 1,
           "title": "Install and configure templating engine",
           "description": "Set up Jinja2 or a similar templating engine in the project environment",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Add Jinja2 to project dependencies. Create a configuration module in src/note_generator.py that defines template-related settings such as template directory paths, file extensions, and caching options. Implement a basic initialization function that creates and configures the templating environment with appropriate settings for the application context. Use the settings.py facade to access the template file path (settings.get_template_file(), which should be 'config/note_template.md.j2' according to the PDD)."
         },
@@ -425,7 +425,7 @@
           "id": 2,
           "title": "Implement template loader",
           "description": "Create a template loader that reads template files from a configurable location",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -435,7 +435,7 @@
           "id": 3,
           "title": "Create base templates for email-to-markdown conversion",
           "description": "Design and implement the base Markdown templates for different types of email content",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -445,7 +445,7 @@
           "id": 4,
           "title": "Implement template renderer",
           "description": "Develop a renderer that combines email data and classification results with templates",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -456,7 +456,7 @@
           "id": 5,
           "title": "Add error handling and logging for template rendering",
           "description": "Implement comprehensive error handling for template rendering failures",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
