@@ -6,12 +6,79 @@ as YAML frontmatter for Obsidian notes.
 """
 
 import logging
+import re
 import yaml
 from datetime import datetime
 from email.utils import parsedate_to_datetime, parseaddr
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_email_address(from_value: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Parse email address string into name and email address.
+    
+    Handles various formats:
+    - "Name <email@domain.com>"
+    - "Lastname, Firstname <email@domain.com>"
+    - "email@domain.com"
+    - MIME-encoded headers
+    
+    Args:
+        from_value: Email address string to parse
+        
+    Returns:
+        Tuple of (name, email_address). Either can be None.
+    """
+    if not from_value:
+        return None, None
+    
+    from_value = str(from_value).strip()
+    
+    # First try parseaddr (standard library function)
+    name, email_addr = parseaddr(from_value)
+    
+    # If parseaddr didn't work, try regex fallback
+    if not email_addr:
+        # Try pattern: "Name <email@domain.com>" or "Lastname, Firstname <email@domain.com>"
+        match = re.match(r'^(.+?)\s*<(.+?)>$', from_value)
+        if match:
+            name = match.group(1).strip()
+            email_addr = match.group(2).strip()
+            # Remove quotes if present
+            if name.startswith('"') and name.endswith('"'):
+                name = name[1:-1]
+            if email_addr.startswith('<') and email_addr.endswith('>'):
+                email_addr = email_addr[1:-1]
+    
+    # If still no email, check if the whole string is an email
+    if not email_addr:
+        # Simple email regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if re.match(email_pattern, from_value):
+            email_addr = from_value
+            name = None
+    
+    # Clean up name - remove extra whitespace
+    if name:
+        name = name.strip()
+        # Remove quotes if still present
+        if (name.startswith('"') and name.endswith('"')) or (name.startswith("'") and name.endswith("'")):
+            name = name[1:-1].strip()
+        if not name:
+            name = None
+    
+    # Clean up email
+    if email_addr:
+        email_addr = email_addr.strip()
+        # Remove angle brackets if still present
+        if email_addr.startswith('<') and email_addr.endswith('>'):
+            email_addr = email_addr[1:-1].strip()
+        if not email_addr:
+            email_addr = None
+    
+    return name if name else None, email_addr if email_addr else None
 
 
 def extract_email_metadata(email: Dict[str, Any]) -> Dict[str, Any]:
@@ -23,7 +90,7 @@ def extract_email_metadata(email: Dict[str, Any]) -> Dict[str, Any]:
                May also contain raw email message object in 'raw_message' key.
     
     Returns:
-        Dictionary with keys: subject, from, to, cc, date, source_message_id
+        Dictionary with keys: subject, from_name, from_mail, from, to, cc, date, source_message_id
         Missing fields will be None.
     """
     metadata = {
@@ -42,32 +109,61 @@ def extract_email_metadata(email: Dict[str, Any]) -> Dict[str, Any]:
     # Extract subject
     metadata['subject'] = email.get('subject') or None
     
-    # Extract from (sender)
-    metadata['from'] = email.get('sender') or email.get('from') or None
+    # Extract from (sender) and parse into name and email
+    from_value = email.get('sender') or email.get('from') or None
+    if from_value:
+        # Parse email address format: "Name <email@domain.com>" or just "email@domain.com"
+        name, email_addr = _parse_email_address(str(from_value))
+        metadata['from_name'] = name
+        metadata['from_mail'] = email_addr
+        # Keep original for backward compatibility (but won't be used in frontmatter)
+        metadata['from'] = from_value
+    else:
+        metadata['from_name'] = None
+        metadata['from_mail'] = None
+        metadata['from'] = None
     
-    # Extract to (recipients)
+    # Extract to (recipients) and parse email addresses
     # Can be string or list
     to_value = email.get('to') or email.get('recipients')
     if to_value:
+        to_list = []
         if isinstance(to_value, str):
             # Parse comma-separated addresses
-            metadata['to'] = [addr.strip() for addr in to_value.split(',') if addr.strip()]
+            to_list = [addr.strip() for addr in to_value.split(',') if addr.strip()]
         elif isinstance(to_value, list):
-            metadata['to'] = [str(addr).strip() for addr in to_value if addr]
+            to_list = [str(addr).strip() for addr in to_value if addr]
         else:
-            metadata['to'] = [str(to_value)]
+            to_list = [str(to_value)]
+        
+        # Parse each address to extract just the email part
+        parsed_to = []
+        for addr in to_list:
+            _, email_addr = _parse_email_address(addr)
+            # Use email if found, otherwise use original (fallback)
+            parsed_to.append(email_addr if email_addr else addr)
+        metadata['to'] = parsed_to
     else:
         metadata['to'] = []
     
-    # Extract cc
+    # Extract cc and parse email addresses
     cc_value = email.get('cc')
     if cc_value:
+        cc_list = []
         if isinstance(cc_value, str):
-            metadata['cc'] = [addr.strip() for addr in cc_value.split(',') if addr.strip()]
+            cc_list = [addr.strip() for addr in cc_value.split(',') if addr.strip()]
         elif isinstance(cc_value, list):
-            metadata['cc'] = [str(addr).strip() for addr in cc_value if addr]
+            cc_list = [str(addr).strip() for addr in cc_value if addr]
         else:
-            metadata['cc'] = [str(cc_value)]
+            cc_list = [str(cc_value)]
+        
+        # Parse each address to extract just the email part
+        parsed_cc = []
+        for addr in cc_list:
+            _, email_addr = _parse_email_address(addr)
+            # Use email if found, otherwise use original (fallback)
+            parsed_cc.append(email_addr if email_addr else addr)
+        metadata['cc'] = parsed_cc
     else:
         metadata['cc'] = []
     
@@ -109,7 +205,12 @@ def extract_email_metadata(email: Dict[str, Any]) -> Dict[str, Any]:
             if not metadata['from']:
                 from_header = raw_msg.get('From')
                 if from_header:
-                    metadata['from'] = str(from_header).strip()
+                    from_value = str(from_header).strip()
+                    # Parse email address format: "Name <email@domain.com>" or just "email@domain.com"
+                    name, email_addr = _parse_email_address(from_value)
+                    metadata['from_name'] = name
+                    metadata['from_mail'] = email_addr
+                    metadata['from'] = from_value
             
             # Extract Date if not already present
             if not metadata['date']:
@@ -227,7 +328,7 @@ def generate_yaml_frontmatter(metadata: Dict[str, Any]) -> str:
     Handles null values, arrays, and special characters correctly.
     
     Args:
-        metadata: Dictionary with keys: subject, from, to, cc, date, source_message_id
+        metadata: Dictionary with keys: subject, from_name, from_mail, to, cc, date, source_message_id
     
     Returns:
         YAML frontmatter string with --- delimiters
@@ -257,18 +358,20 @@ def generate_yaml_frontmatter(metadata: Dict[str, Any]) -> str:
     
     # Add other fields
     yaml_data['subject'] = metadata.get('subject')
-    yaml_data['from'] = metadata.get('from')
+    # Use from_name and from_mail instead of from to avoid YAML parsing issues
+    yaml_data['from_name'] = metadata.get('from_name')
+    yaml_data['from_mail'] = metadata.get('from_mail')
     yaml_data['to'] = metadata.get('to', [])
     yaml_data['cc'] = metadata.get('cc', [])
     yaml_data['source_message_id'] = metadata.get('source_message_id')
     
     # Generate YAML using PyYAML
     # Use default_flow_style=False for block style (lists as - item)
-    # Use allow_unicode=True to handle unicode characters
+    # Use allow_unicode=True to handle unicode characters properly (no escaping)
     yaml_str = yaml.dump(
         yaml_data,
         default_flow_style=False,
-        allow_unicode=True,
+        allow_unicode=True,  # This ensures Unicode characters are not escaped
         sort_keys=False,  # Preserve order
         width=1000,  # Prevent line wrapping
         default_style=None  # Use default YAML style (quotes only when needed)
@@ -306,7 +409,8 @@ def generate_email_yaml_frontmatter(email: Dict[str, Any]) -> str:
         >>> print(frontmatter)
         ---
         subject: Test Email
-        from: test@example.com
+        from_name: null
+        from_mail: test@example.com
         ...
         ---
     """

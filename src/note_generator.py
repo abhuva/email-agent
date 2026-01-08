@@ -25,9 +25,11 @@ Usage:
 """
 import os
 import logging
+import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+from email.utils import parseaddr
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, TemplateError, select_autoescape
 
 from src.settings import settings
@@ -154,6 +156,7 @@ class TemplateRenderer:
         env.filters['format_date'] = self._format_date_filter
         env.filters['format_datetime'] = self._format_datetime_filter
         env.filters['truncate'] = self._truncate_filter
+        env.filters['yaml_string'] = self._yaml_string_filter
         
         logger.debug(f"Jinja2 environment created with template directory: {template_dir}")
         return env
@@ -263,6 +266,48 @@ class TemplateRenderer:
             return value
         return value[:length] + '...'
     
+    def _yaml_string_filter(self, value: Any) -> str:
+        """
+        Jinja2 filter for formatting values as YAML strings.
+        
+        Handles None values, preserves Unicode characters, and quotes only when necessary.
+        This is better than tojson which escapes Unicode characters.
+        
+        Args:
+            value: Value to format (string, None, list, etc.)
+            
+        Returns:
+            YAML-formatted string representation
+        """
+        import yaml
+        
+        if value is None:
+            return 'null'
+        
+        # For lists, use flow style (inline with brackets) for frontmatter
+        flow_style = isinstance(value, list)
+        
+        # Use YAML to format the value properly
+        # This preserves Unicode and handles quoting correctly
+        yaml_str = yaml.dump(
+            value,
+            default_flow_style=flow_style,  # Use flow style for lists (inline)
+            allow_unicode=True,  # Preserves Unicode characters
+            default_style=None
+        ).strip()
+        
+        # Remove document end marker (...\n) that PyYAML adds for single values
+        if yaml_str.endswith('...'):
+            yaml_str = yaml_str[:-3].strip()
+        
+        # Remove trailing newline if present
+        if yaml_str.endswith('\n'):
+            yaml_str = yaml_str[:-1]
+        
+        # For simple strings, YAML might add quotes - that's fine
+        # For None, we already handled it
+        return yaml_str
+    
     def _prepare_context(
         self,
         email_data: Dict[str, Any],
@@ -281,10 +326,21 @@ class TemplateRenderer:
         Returns:
             Dictionary of template variables
         """
+        # Parse from field into name and email using improved parsing
+        from_value = email_data.get('from') or email_data.get('sender') or '[Unknown Sender]'
+        from src.yaml_frontmatter import _parse_email_address
+        from_name, from_mail = _parse_email_address(str(from_value))
+        # If parsing didn't find an email, use the original value as email
+        if not from_mail and from_value != '[Unknown Sender]':
+            from_mail = str(from_value).strip()
+            from_name = None
+        
         context = {
             'uid': email_data.get('uid', ''),
             'subject': email_data.get('subject', '[No Subject]'),
-            'from': email_data.get('from', '[Unknown Sender]'),
+            'from': from_value,  # Keep for backward compatibility
+            'from_name': from_name if from_name else None,
+            'from_mail': from_mail if from_mail else None,
             'to': email_data.get('to', []),
             'date': email_data.get('date', ''),
             'body': email_data.get('body', ''),
@@ -428,7 +484,8 @@ class NoteGenerator:
         return """---
 uid: {{ uid }}
 subject: "{{ subject }}"
-from: "{{ from }}"
+from_name: {{ from_name | yaml_string }}
+from_mail: {{ from_mail | yaml_string }}
 to: {{ to | tojson }}
 date: "{{ date }}"
 tags: {{ tags | tojson }}
@@ -444,7 +501,7 @@ processing_meta:
 
 # {{ subject }}
 
-**From:** {{ from }}  
+**From:** {% if from_name %}{{ from_name }} <{{ from_mail }}>{% else %}{{ from_mail }}{% endif %}  
 **To:** {{ to | join(', ') }}  
 **Date:** {{ date }}
 
@@ -480,11 +537,22 @@ processing_meta:
             from jinja2 import Template
             template = Template(self._fallback_template)
             
+            # Parse from field into name and email using improved parsing
+            from_value = email_data.get('from') or email_data.get('sender') or '[Unknown Sender]'
+            from src.yaml_frontmatter import _parse_email_address
+            from_name, from_mail = _parse_email_address(str(from_value))
+            # If parsing didn't find an email, use the original value as email
+            if not from_mail and from_value != '[Unknown Sender]':
+                from_mail = str(from_value).strip()
+                from_name = None
+            
             # Prepare minimal context
             context = {
                 'uid': email_data.get('uid', ''),
                 'subject': email_data.get('subject', '[No Subject]'),
-                'from': email_data.get('from', '[Unknown Sender]'),
+                'from': from_value,  # Keep for backward compatibility
+                'from_name': from_name if from_name else None,
+                'from_mail': from_mail if from_mail else None,
                 'to': email_data.get('to', []),
                 'date': email_data.get('date', ''),
                 'body': email_data.get('body', ''),

@@ -29,7 +29,8 @@ class TestExtractEmailMetadata:
         }
         metadata = extract_email_metadata(email)
         assert metadata['subject'] == 'Test Subject'
-        assert metadata['from'] == 'sender@example.com'
+        assert metadata['from_mail'] == 'sender@example.com'
+        assert metadata['from_name'] is None  # No name in simple email
         assert metadata['to'] == ['recipient@example.com']
         assert metadata['cc'] == ['cc@example.com']
         assert metadata['date'] == 'Mon, 27 Oct 2023 10:00:00 +0000'
@@ -40,7 +41,8 @@ class TestExtractEmailMetadata:
         email = {'subject': 'Test'}
         metadata = extract_email_metadata(email)
         assert metadata['subject'] == 'Test'
-        assert metadata['from'] is None
+        assert metadata['from_mail'] is None
+        assert metadata['from_name'] is None
         assert metadata['to'] == []
         assert metadata['cc'] == []
         assert metadata['date'] is None
@@ -86,6 +88,35 @@ class TestExtractEmailMetadata:
         assert 'user1@example.com' in metadata['to']
         assert 'cc@example.com' in metadata['cc']
         assert metadata['source_message_id'] == '<msg123@example.com>'
+    
+    def test_from_with_name_and_email(self):
+        """Test parsing from field with both name and email address."""
+        email = {
+            'subject': 'Test',
+            'sender': '"Kulturelle Themenjahre" <info@themenjahre-halle.de>',
+        }
+        metadata = extract_email_metadata(email)
+        assert metadata['from_name'] == 'Kulturelle Themenjahre'
+        assert metadata['from_mail'] == 'info@themenjahre-halle.de'
+        # Original should still be preserved
+        assert '"Kulturelle Themenjahre" <info@themenjahre-halle.de>' in metadata['from']
+    
+    def test_from_with_only_email(self):
+        """Test parsing from field with only email address."""
+        email = {
+            'subject': 'Test',
+            'sender': 'info@themenjahre-halle.de',
+        }
+        metadata = extract_email_metadata(email)
+        assert metadata['from_name'] is None or metadata['from_name'] == ''
+        assert metadata['from_mail'] == 'info@themenjahre-halle.de'
+    
+    def test_from_with_comma_separated_name(self):
+        """Test parsing from field with 'Lastname, Firstname <email>' format."""
+        from src.yaml_frontmatter import _parse_email_address
+        name, email_addr = _parse_email_address('Müller, Anne <Anne.Mueller@halle.de>')
+        assert name == 'Müller, Anne'
+        assert email_addr == 'Anne.Mueller@halle.de'
 
 
 class TestNormalizeDate:
@@ -162,7 +193,8 @@ class TestGenerateYamlFrontmatter:
         """Test generation of basic frontmatter."""
         metadata = {
             'subject': 'Test Subject',
-            'from': 'sender@example.com',
+            'from_name': None,
+            'from_mail': 'sender@example.com',
             'to': ['recipient@example.com'],
             'cc': [],
             'date': '2023-10-27T10:00:00+00:00',
@@ -176,7 +208,8 @@ class TestGenerateYamlFrontmatter:
         
         # Check content
         assert 'subject: Test Subject' in frontmatter
-        assert 'from: sender@example.com' in frontmatter
+        assert 'from_mail: sender@example.com' in frontmatter
+        assert 'from_name' in frontmatter
         assert 'to:' in frontmatter
         assert 'cc:' in frontmatter
     
@@ -205,7 +238,8 @@ class TestGenerateYamlFrontmatter:
         """Test frontmatter with multiple recipients."""
         metadata = {
             'subject': 'Test',
-            'from': 'sender@example.com',
+            'from_name': None,
+            'from_mail': 'sender@example.com',
             'to': ['user1@example.com', 'user2@example.com'],
             'cc': ['cc1@example.com'],
             'date': '2023-10-27T10:00:00+00:00',
@@ -223,7 +257,8 @@ class TestGenerateYamlFrontmatter:
         """Test that generated frontmatter is valid YAML."""
         metadata = {
             'subject': 'Test Subject: With Colon',
-            'from': 'sender@example.com',
+            'from_name': None,
+            'from_mail': 'sender@example.com',
             'to': ['recipient@example.com'],
             'cc': [],
             'date': '2023-10-27T10:00:00+00:00',
@@ -260,7 +295,30 @@ class TestGenerateEmailYamlFrontmatter:
         assert frontmatter.startswith('---')
         assert frontmatter.endswith('---')
         assert 'subject: Test Email' in frontmatter
-        assert 'from: sender@example.com' in frontmatter
+        assert 'from_mail: sender@example.com' in frontmatter
+    
+    def test_complete_workflow_with_name(self):
+        """Test complete workflow with name and email in from field."""
+        email = {
+            'subject': 'Test Email',
+            'sender': '"Kulturelle Themenjahre" <info@themenjahre-halle.de>',
+            'to': 'recipient@example.com',
+            'date': 'Mon, 27 Oct 2023 10:00:00 +0000',
+        }
+        frontmatter = generate_email_yaml_frontmatter(email)
+        
+        # Should be valid YAML frontmatter
+        assert frontmatter.startswith('---')
+        assert frontmatter.endswith('---')
+        assert 'subject: Test Email' in frontmatter
+        assert 'from_name: Kulturelle Themenjahre' in frontmatter
+        assert 'from_mail: info@themenjahre-halle.de' in frontmatter
+        
+        # Verify it's valid YAML (should not break on angle brackets)
+        yaml_content = frontmatter.strip('---').strip()
+        parsed = yaml.safe_load(yaml_content)
+        assert parsed['from_name'] == 'Kulturelle Themenjahre'
+        assert parsed['from_mail'] == 'info@themenjahre-halle.de'
     
     def test_with_special_characters(self):
         """Test handling of special characters in subject."""
@@ -321,7 +379,8 @@ class TestGenerateEmailYamlFrontmatter:
         
         # Check required fields are present
         assert 'subject' in parsed
-        assert 'from' in parsed
+        assert 'from_name' in parsed
+        assert 'from_mail' in parsed
         assert 'to' in parsed
         assert 'cc' in parsed
         assert 'date' in parsed
