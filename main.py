@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Main entry point for the email agent.
-Provides a simple command-line interface for running the agent.
+Main entry point for the email agent V3.
+Provides a command-line interface using click.
 
 Usage:
-    python main.py [options]
+    python main.py process [--uid <ID>] [--force-reprocess] [--dry-run]
+    python main.py cleanup-flags
 
 See --help for available options.
 """
 
 import sys
-from src.cli import main
+from src.cli_v3 import cli
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Use click's CLI entry point
+    cli()
