@@ -1237,7 +1237,7 @@
           "id": "18.10",
           "title": "Create E2E tests with live LLM API",
           "description": "Develop end-to-end tests using actual LLM API calls (with staging API key), verifying prompt construction, response handling, and error recovery.",
-          "status": "pending",
+          "status": "done",
           "priority": "low"
         },
         {
