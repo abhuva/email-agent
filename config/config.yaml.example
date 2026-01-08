@@ -48,13 +48,27 @@ processing:
   max_emails_per_run: 15                # Maximum number of emails to process per execution
 
 # Environment Variable Overrides
-# You can override any config value using environment variables
-# Format: EMAIL_AGENT_<SECTION>_<KEY> (uppercase, underscores)
+# You can override any config value using environment variables.
+# This is useful for deployment-specific settings or secrets.
+#
+# Naming Convention: EMAIL_AGENT_<SECTION>_<KEY> (uppercase, underscores)
+#
 # Examples:
 #   EMAIL_AGENT_IMAP_SERVER=imap.custom.com
+#   EMAIL_AGENT_IMAP_PORT=993
 #   EMAIL_AGENT_OPENROUTER_MODEL=openai/gpt-4
+#   EMAIL_AGENT_OPENROUTER_TEMPERATURE=0.3
 #   EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD=7
+#   EMAIL_AGENT_PATHS_OBSIDIAN_VAULT=/custom/path/to/vault
 #
-# Required Environment Variables (MUST be set):
-#   - IMAP_PASSWORD: Your IMAP account password
-#   - OPENROUTER_API_KEY: Your OpenRouter API key
+# Type Conversion:
+#   - Integer values are automatically converted (port, thresholds, retry settings)
+#   - Float values are automatically converted (temperature)
+#   - String values remain as strings
+#
+# Required Environment Variables (MUST be set for security):
+#   - IMAP_PASSWORD: Your IMAP account password (specified in imap.password_env)
+#   - OPENROUTER_API_KEY: Your OpenRouter API key (specified in openrouter.api_key_env)
+#
+# Note: Credentials MUST come from environment variables. The config file only
+# specifies which environment variable names to use, not the actual values.

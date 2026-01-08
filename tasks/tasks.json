@@ -42,7 +42,7 @@
           "id": 4,
           "title": "Add environment variable overrides",
           "description": "Implement functionality to override configuration values with environment variables",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
