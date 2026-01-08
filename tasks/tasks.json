@@ -340,7 +340,7 @@
       "id": 6,
       "title": "Implement decision logic with configurable thresholds",
       "description": "Replace the rigid classification system with threshold-based decision logic using numerical scores.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1,
         5
@@ -353,7 +353,7 @@
           "id": 1,
           "title": "Create configuration schema for thresholds",
           "description": "Define the structure for threshold configuration in the configuration file",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Design and implement a schema for threshold configuration that will be used in the decision logic. This should include threshold values for different classification categories (e.g., importance, urgency, actionability), ranges for scores, and any other parameters needed for the decision logic. Update the configuration file loading mechanism to parse and validate these threshold settings. Ensure the schema aligns with the PDD specifications (processing.importance_threshold: 8, processing.spam_threshold: 5). All threshold values must be accessible through the settings.py facade."
         },
@@ -361,7 +361,7 @@
           "id": 2,
           "title": "Develop score processing module",
           "description": "Create a module to process and normalize numerical scores from the LLM",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -371,7 +371,7 @@
           "id": 3,
           "title": "Implement threshold-based decision logic",
           "description": "Create the core decision logic that applies thresholds to scores",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -382,7 +382,7 @@
           "id": 4,
           "title": "Add edge case handling",
           "description": "Implement logic to handle edge cases and special score combinations",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -392,7 +392,7 @@
           "id": 5,
           "title": "Create classification result output interface",
           "description": "Develop a standardized output format for classification results",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4
