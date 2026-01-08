@@ -1,115 +1,60 @@
-# Example configuration for email-agent
+# V3 Email Processor Configuration
 # Copy this file to config.yaml and customize for your setup
+# 
+# This configuration follows the V3 architecture as specified in pdd.md
+# All configuration values can be overridden via environment variables
+# Credentials MUST be loaded from environment variables for security
 
+# IMAP Server Configuration
+# Connection settings for the email server
 imap:
-  server: 'imap.example.com'          # Your IMAP server hostname
-  port: 993                            # IMAP port (993 for SSL, 143 for STARTTLS)
-  username: 'your-email@example.com'   # Your email address
-  password_env: 'IMAP_PASSWORD'        # Environment variable name for password
+  server: 'imap.example.com'          # IMAP server hostname
+  port: 143                            # IMAP port (143 for STARTTLS, 993 for SSL)
+  username: 'your-email@example.com'   # Email account username
+  password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
+                                       # CRITICAL: Password MUST come from environment variable
+  query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
+                                       # The processed_tag exclusion is automatically added
+  processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
 
-# IMAP search queries (list of IMAP search criteria)
-# Examples:
-#   - 'UNSEEN'           # Unread emails (default)
-#   - 'ALL'              # All emails
-#   - 'FROM "sender@example.com"'  # From specific sender
-#   - 'SUBJECT "important"'        # With specific subject
-# The processed_tag exclusion (AIProcessed) is automatically added to exclude already processed emails
-# NOTE: For V2, use imap_query (singular) instead. imap_queries is kept for backward compatibility.
-imap_queries:
-  - 'UNSEEN'
+# File and Directory Paths
+# All paths relative to project root unless absolute path specified
+paths:
+  template_file: 'config/note_template.md.j2'  # Jinja2 template for generating Markdown notes
+  obsidian_vault: '/path/to/obsidian/vault'    # Obsidian vault directory (must exist)
+  log_file: 'logs/agent.log'                   # Unstructured operational log file
+  analytics_file: 'logs/analytics.jsonl'        # Structured analytics log (JSONL format)
+  changelog_path: 'logs/email_changelog.md'    # Changelog/audit log file
+  prompt_file: 'config/prompt.md'              # LLM prompt file for email classification
 
-# V2: Primary IMAP query string (takes precedence over imap_queries if set)
-# Examples:
-#   imap_query: 'UNSEEN'                    # Unread emails
-#   imap_query: 'UNSEEN SENTSINCE 07-Jan-2026'  # Unread emails sent from today onwards (update date as needed)
-#   imap_query: 'ALL'                       # All emails
-#   imap_query: 'SENTSINCE 01-Jan-2024'     # All emails sent since specific date
-#   imap_query: 'SINCE 01-Jan-2024'         # All emails received since specific date (uses internal date)
-#   imap_query: 'FROM "sender@example.com"'  # From specific sender
-# The ObsidianNoteCreated exclusion is automatically added to exclude already processed emails
-# Note: 
-#   - IMAP date format is DD-MMM-YYYY (e.g., 07-Jan-2026)
-#   - SENTSINCE filters by Date header (sent date) - use this for filtering by when email was sent
-#   - SINCE filters by internal date (received date) - use this for filtering by when email was received
-imap_query: 'UNSEEN'
-
-# Path to the Markdown prompt file used for AI classification
-prompt_file: 'config/prompt.md'
-
-# Mapping from AI response keywords to IMAP tag names
-tag_mapping:
-  urgent: 'Urgent'    # Tag for urgent/important emails
-  neutral: 'Neutral'  # Default/fallback tag
-  spam: 'Spam'        # Tag for spam emails
-
-# Tag name for emails that have been processed by the AI
-processed_tag: 'AIProcessed'
-
-# Maximum characters to send to AI (truncates longer emails)
-max_body_chars: 4000
-
-# Maximum number of emails to process per run
-max_emails_per_run: 15
-
-# Logging configuration
-log_file: 'logs/agent.log'            # Path to log file
-log_level: 'INFO'                     # Log level: DEBUG, INFO, WARNING, ERROR
-analytics_file: 'logs/analytics.jsonl' # Path to analytics JSONL file
-
-# OpenRouter API configuration
+# OpenRouter API Configuration
+# Settings for LLM API interactions via OpenRouter
 openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name for API key
-  api_url: 'https://openrouter.ai/api/v1'
-  # Model to use (optional, defaults to openai/gpt-3.5-turbo if not specified)
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
-  # Alternative models you can use:
-  # model: 'openai/gpt-3.5-turbo'
-  # model: 'openai/gpt-4o-mini'
-  # model: 'anthropic/claude-3-haiku'
+  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name containing API key
+                                      # CRITICAL: API key MUST come from environment variable
+  api_url: 'https://openrouter.ai/api/v1'  # OpenRouter API endpoint
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use
+                                                         # Examples: 'openai/gpt-3.5-turbo', 'anthropic/claude-3-haiku'
+  temperature: 0.2                     # LLM temperature (0.0-2.0, lower = more deterministic)
+  retry_attempts: 3                     # Number of retry attempts for failed API calls
+  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
 
-# V2: Obsidian Integration Configuration
-# Path to the Obsidian vault directory where email notes will be created
-# This directory must exist - the script will fail if it doesn't
-obsidian_vault_path: '/path/to/obsidian/vault/emails'
+# Processing Configuration
+# Thresholds and limits for email processing
+processing:
+  importance_threshold: 8               # Minimum importance score (0-10) to mark email as important
+  spam_threshold: 5                     # Maximum spam score (0-10) to consider email as spam
+  max_body_chars: 4000                  # Maximum characters to send to LLM (truncates longer emails)
+  max_emails_per_run: 15                # Maximum number of emails to process per execution
 
-# V2: List of IMAP tags that trigger AI summarization
-# Only emails with these tags will have summaries generated (saves API costs)
+# Environment Variable Overrides
+# You can override any config value using environment variables
+# Format: EMAIL_AGENT_<SECTION>_<KEY> (uppercase, underscores)
 # Examples:
-#   summarization_tags: ['Urgent', 'Important']
-#   summarization_tags: ['Urgent']  # Only urgent emails get summaries
-#   summarization_tags: []          # No summarization (base notes only)
-summarization_tags:
-  - 'Urgent'
-
-# V2: Path to the Markdown prompt file used for email summarization
-# This prompt is separate from the classification prompt and is only used
-# when an email has a tag matching one in summarization_tags
-summarization_prompt_path: 'config/summarization_prompt.md'
-
-# V2: Path to the changelog/audit log file
-# This file tracks all processed emails in a Markdown table format
-# The file will be created if it doesn't exist
-changelog_path: 'logs/email_changelog.md'
-
-# V2: IMAP Query Exclusions Configuration (Task 16)
-# Configure which tags to exclude from IMAP queries for idempotency
-# If not specified, defaults to: ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
-imap_query_exclusions:
-  # Tags to exclude from IMAP queries (for idempotency)
-  # Default: ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
-  # IMPORTANT: IMAP flags must follow RFC3501 - only alphanumeric, underscore, period allowed
-  # No hyphens, spaces, or special characters!
-  exclude_tags:
-    - 'AIProcessed'                    # V1: Emails processed by AI classification
-    - 'ObsidianNoteCreated'            # V2: Notes successfully created
-    - 'NoteCreationFailed'             # V2: Note creation failed
-  
-  # Optional: Additional tags to exclude (beyond idempotency)
-  # Example: ['Archived', 'ProcessedByOtherTool']
-  additional_exclude_tags: []
-  
-  # Optional: Disable idempotency checks (NOT RECOMMENDED)
-  # If true, only user_query is used (no exclusions)
-  # WARNING: This may cause emails to be reprocessed!
-  # Default: false
-  disable_idempotency: false
+#   EMAIL_AGENT_IMAP_SERVER=imap.custom.com
+#   EMAIL_AGENT_OPENROUTER_MODEL=openai/gpt-4
+#   EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD=7
+#
+# Required Environment Variables (MUST be set):
+#   - IMAP_PASSWORD: Your IMAP account password
+#   - OPENROUTER_API_KEY: Your OpenRouter API key
