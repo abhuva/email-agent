@@ -29,6 +29,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V3 Note Generator](v3-note-generator.md)** — Jinja2 templating system for Markdown note generation (Tasks 7-8)
 - **[V3 Logging Integration](v3-logging-integration.md)** — Dual logging system (operational logs + structured analytics) (Task 9)
 - **[V3 Force-Reprocess](v3-force-reprocess.md)** — Force-reprocess capability for reprocessing already-processed emails (Task 12)
+- **[V3 Cleanup Flags](v3-cleanup-flags.md)** — Safeguarded command to remove application-specific IMAP flags (Task 13)
 - **[V3 Orchestrator](v3-orchestrator.md)** — High-level pipeline orchestration coordinating all components (Task 14.1)
 
 ## Historical Documentation

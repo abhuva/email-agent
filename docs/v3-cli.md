@@ -50,22 +50,32 @@ python main.py process --uid 12345 --dry-run
 
 ### Cleanup Flags Command
 
-The `cleanup-flags` command removes application-specific IMAP flags:
+The `cleanup-flags` command removes application-specific IMAP flags from emails on the server:
 
 ```bash
-python main.py cleanup-flags
+python main.py cleanup-flags [--dry-run]
 ```
+
+**Options:**
+- `--dry-run`: Preview which flags would be removed without actually removing them
 
 **Features:**
 - **Mandatory confirmation prompt** (security requirement from PDD)
-- Removes only application-specific flags (as configured)
+- Removes only application-specific flags (as configured in `imap.application_flags`)
 - Includes safety warnings before execution
+- Comprehensive scanning and logging
 
-**Example:**
+**Examples:**
 ```bash
+# Preview what would be removed (dry-run)
+python main.py cleanup-flags --dry-run
+
+# Actually remove flags (requires confirmation)
 python main.py cleanup-flags
-# Will prompt: "Are you sure you want to remove application flags? (yes/no): "
+# Will prompt: "Type 'yes' to confirm and proceed, or anything else to cancel: "
 ```
+
+**See Also:** [V3 Cleanup Flags Documentation](v3-cleanup-flags.md) for complete details.
 
 ## Configuration Options
 
