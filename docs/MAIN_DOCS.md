@@ -26,6 +26,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V3 LLM Client](v3-llm-client.md)** — LLM API interactions with retry logic (Task 4)
 - **[Scoring Criteria](scoring-criteria.md)** — Email scoring criteria and thresholds (Task 5)
 - **[V3 Decision Logic](v3-decision-logic.md)** — Threshold-based classification system (Task 6)
+- **[V3 Note Generator](v3-note-generator.md)** — Jinja2 templating system for Markdown note generation (Tasks 7-8)
 
 ## Historical Documentation
 The following documents provide historical context and implementation decisions:
@@ -46,7 +47,7 @@ The following documents provide historical context and implementation decisions:
 > - Always load this file and README.md first!
 > - Then, review the PDD V3 and module docs as needed.
 > - **Current Focus:** V3 (Foundational Upgrade) - see [pdd.md](../pdd.md)
-> - **V3 Status:** Tasks 1-6 complete (Configuration, CLI, IMAP, LLM, Prompts, Decision Logic)
+> - **V3 Status:** Tasks 1-8 complete (Configuration, CLI, IMAP, LLM, Prompts, Decision Logic, Templating)
 
 > **For End Users:**
 > - Start with the [Complete Guide](COMPLETE_GUIDE.md) for installation and usage
