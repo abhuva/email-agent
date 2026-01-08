@@ -378,6 +378,23 @@ class ImapClient:
         Raises:
             IMAPConnectionError: If not connected
         """
+        # Check if in dry-run mode
+        try:
+            from src.dry_run import is_dry_run
+            from src.dry_run_output import DryRunOutput
+            dry_run = is_dry_run()
+        except ImportError:
+            dry_run = False
+        
+        if dry_run:
+            # In dry-run mode, just log what would be set
+            try:
+                output = DryRunOutput()
+                output.warning(f"Would set IMAP flag '{flag}' on email UID {uid}")
+            except Exception:
+                logger.info(f"[DRY RUN] Would set flag '{flag}' on email UID {uid}")
+            return True  # Return True to indicate "would succeed"
+        
         self._ensure_connected()
         
         try:
@@ -407,6 +424,23 @@ class ImapClient:
         Raises:
             IMAPConnectionError: If not connected
         """
+        # Check if in dry-run mode
+        try:
+            from src.dry_run import is_dry_run
+            from src.dry_run_output import DryRunOutput
+            dry_run = is_dry_run()
+        except ImportError:
+            dry_run = False
+        
+        if dry_run:
+            # In dry-run mode, just log what would be cleared
+            try:
+                output = DryRunOutput()
+                output.warning(f"Would clear IMAP flag '{flag}' from email UID {uid}")
+            except Exception:
+                logger.info(f"[DRY RUN] Would clear flag '{flag}' from email UID {uid}")
+            return True  # Return True to indicate "would succeed"
+        
         self._ensure_connected()
         
         try:

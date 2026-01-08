@@ -239,6 +239,7 @@ def safe_write_file(
     - Handles file existence (creates unique path if needed)
     - Writes content with proper error handling
     - Returns the actual path written to
+    - Respects dry-run mode (skips actual writing, returns path that would be used)
     
     Args:
         content: Content to write to the file
@@ -246,7 +247,7 @@ def safe_write_file(
         overwrite: If True, overwrite existing file. If False, find unique path.
         
     Returns:
-        Actual file path written to
+        Actual file path written to (or path that would be used in dry-run mode)
         
     Raises:
         InvalidPathError: If the path is invalid
@@ -259,6 +260,14 @@ def safe_write_file(
         >>> safe_write_file("# Note", "/path/to/note.md", overwrite=True)
         '/path/to/note.md'  # overwrites if exists
     """
+    # Check if in dry-run mode
+    try:
+        from src.dry_run import is_dry_run
+        from src.dry_run_output import DryRunOutput
+        dry_run = is_dry_run()
+    except ImportError:
+        dry_run = False
+    
     # Validate path
     if not is_valid_path(file_path):
         raise InvalidPathError(f"Invalid file path: {file_path}")
@@ -266,33 +275,49 @@ def safe_write_file(
     path = Path(file_path)
     directory = path.parent
     
-    # Check if directory exists, create if needed
-    if not directory.exists():
-        try:
-            directory.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
+    # Check if directory exists, create if needed (skip in dry-run)
+    if not dry_run:
+        if not directory.exists():
+            try:
+                directory.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                raise WritePermissionError(
+                    f"Cannot create directory {directory}: {e}"
+                ) from e
+        
+        # Check write permission
+        if not has_write_permission(str(directory)):
             raise WritePermissionError(
-                f"Cannot create directory {directory}: {e}"
-            ) from e
-    
-    # Check write permission
-    if not has_write_permission(str(directory)):
-        raise WritePermissionError(
-            f"No write permission for directory: {directory}"
-        )
+                f"No write permission for directory: {directory}"
+            )
     
     # Handle file existence
     actual_path = file_path
     if not overwrite and file_exists(file_path):
         actual_path = get_unique_path(file_path)
     
-    # Write file
-    try:
-        with open(actual_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-    except OSError as e:
-        raise FileWriteError(
-            f"Failed to write file {actual_path}: {e}"
-        ) from e
+    # Write file (skip in dry-run mode)
+    if dry_run:
+        # In dry-run mode, just log what would be written
+        try:
+            output = DryRunOutput()
+            output.warning(f"Would write file: {actual_path}")
+            output.detail("Content length", f"{len(content)} characters")
+            if len(content) < 500:
+                # Show preview for small files
+                preview = content[:200] + "..." if len(content) > 200 else content
+                output.code_block(preview, "markdown")
+        except Exception:
+            # If output formatter fails, just print basic message
+            print(f"[DRY RUN] Would write file: {actual_path}")
+    else:
+        # Actually write the file
+        try:
+            with open(actual_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except OSError as e:
+            raise FileWriteError(
+                f"Failed to write file {actual_path}: {e}"
+            ) from e
     
     return actual_path

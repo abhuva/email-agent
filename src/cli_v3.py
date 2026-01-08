@@ -158,15 +158,38 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
         except AttributeError:
             raise click.BadParameter("UID must be a valid string")
     
-    # TODO: This will be connected to orchestrator in Task 14
+    # Set dry-run mode globally if enabled
     if dry_run:
-        click.echo("[DRY RUN MODE] No files will be written or flags set")
+        from src.dry_run import set_dry_run
+        set_dry_run(True)
+        try:
+            from src.dry_run_output import DryRunOutput, Colors, _colorize
+            click.echo(_colorize("[DRY RUN MODE] No files will be written or flags set", Colors.YELLOW, bold=True))
+        except ImportError:
+            click.echo("[DRY RUN MODE] No files will be written or flags set")
     
-    click.echo("Process command called with:")
-    click.echo(f"  UID: {uid if uid else '(all unprocessed)'}")
-    click.echo(f"  Force reprocess: {force_reprocess}")
-    click.echo(f"  Dry run: {dry_run}")
-    click.echo("\n[INFO] Processing logic will be implemented in Task 14 (orchestrator integration)")
+    # TODO: This will be connected to orchestrator in Task 14
+    # For now, just show what would happen
+    if dry_run:
+        try:
+            from src.dry_run_output import DryRunOutput
+            output = DryRunOutput()
+            output.header("Dry-Run Mode Active")
+            output.info("Processing logic will be implemented in Task 14 (orchestrator integration)")
+            output.detail("UID", uid if uid else "(all unprocessed)")
+            output.detail("Force reprocess", force_reprocess)
+            output.detail("Dry run", dry_run)
+        except ImportError:
+            click.echo("Process command called with:")
+            click.echo(f"  UID: {uid if uid else '(all unprocessed)'}")
+            click.echo(f"  Force reprocess: {force_reprocess}")
+            click.echo(f"  Dry run: {dry_run}")
+    else:
+        click.echo("Process command called with:")
+        click.echo(f"  UID: {uid if uid else '(all unprocessed)'}")
+        click.echo(f"  Force reprocess: {force_reprocess}")
+        click.echo(f"  Dry run: {dry_run}")
+        click.echo("\n[INFO] Processing logic will be implemented in Task 14 (orchestrator integration)")
     
     # Return options for programmatic use
     return options

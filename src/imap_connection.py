@@ -394,6 +394,7 @@ def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
     Returns True on OK, False on error.
     Email UIDs are bytes or string.
     Tags should be IMAP-compliant (escaped if needed).
+    Respects dry-run mode (skips actual IMAP operations).
     """
     try:
         # Accept bytes or int, ensure string UID
@@ -407,6 +408,23 @@ def add_tags_to_email(imap, email_uid, tags: List[str]) -> bool:
         # Log UID type and value for debugging
         logger = logging.getLogger(__name__)
         logger.info(f"[IMAP] Attempting to add tags {tags} to email UID {uid_str} (input type: {type(email_uid).__name__})")
+        
+        # Check if in dry-run mode
+        try:
+            from src.dry_run import is_dry_run
+            from src.dry_run_output import DryRunOutput
+            dry_run = is_dry_run()
+        except ImportError:
+            dry_run = False
+        
+        if dry_run:
+            # In dry-run mode, just log what would be set
+            try:
+                output = DryRunOutput()
+                output.warning(f"Would add IMAP tags {tags} to email UID {uid_str}")
+            except Exception:
+                logger.info(f"[DRY RUN] Would add tags {tags} to email UID {uid_str}")
+            return True  # Return True to indicate "would succeed"
         
         # IMAP expects tags as a space-separated string, in parens
         tagset = "(" + " ".join(tags) + ")"

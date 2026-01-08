@@ -1,6 +1,6 @@
 # Task ID: 5
 # Title: Design and implement score-based classification prompt
-# Status: pending
+# Status: done
 # Dependencies: 4
 # Priority: high
 # Description: Create an effective LLM prompt that produces numerical scores for email importance and spam likelihood.
@@ -11,31 +11,31 @@ Design a prompt that instructs the LLM to analyze email content and return a JSO
 Test the prompt with various email types (important, spam, neutral) and verify score consistency. Check that scores are within the expected 0-10 range. Verify JSON parsing works reliably with the prompt's output.
 
 # Subtasks:
-## 1. Define scoring criteria for email importance and spam detection [pending]
+## 1. Define scoring criteria for email importance and spam detection [done]
 ### Dependencies: None
 ### Description: Create detailed criteria for scoring email importance (0-10) and spam likelihood (0-10)
 ### Details:
 Research and define specific factors that determine email importance (e.g., sender relationship, urgency indicators, content relevance) and spam likelihood (e.g., suspicious links, keyword patterns, solicitation language). For each factor, specify how it contributes to the numerical score. Document these criteria in a structured format that can be incorporated into the prompt. Include edge cases and examples for each scoring level (0-10) to ensure consistent evaluation. Reference the PDD thresholds (processing.importance_threshold: 8, processing.spam_threshold: 5) to ensure alignment.
 
-## 2. Draft initial LLM prompt template with scoring instructions [pending]
+## 2. Draft initial LLM prompt template with scoring instructions [done]
 ### Dependencies: 5.1
 ### Description: Create the core prompt that instructs the LLM how to analyze emails and generate numerical scores
 ### Details:
 Write a comprehensive prompt that includes: 1) Clear instructions for the LLM to analyze email content, 2) The scoring criteria defined in subtask 1, 3) Explicit instructions to return a JSON object with importance_score and spam_score fields (both 0-10), 4) Examples of correct scoring for sample emails, and 5) Specific formatting requirements for the JSON output. The prompt should be well-structured with clear sections for instructions, criteria, examples, and output format. Ensure the prompt aligns with the PDD specifications.
 
-## 3. Implement configuration file structure for prompt customization [pending]
+## 3. Implement configuration file structure for prompt customization [done]
 ### Dependencies: 5.2
 ### Description: Design and implement a configuration file format that allows for easy prompt modification
 ### Details:
 Create a YAML or JSON configuration file structure that allows for customization of the prompt without changing code. The configuration should include: 1) The base prompt template, 2) Scoring criteria parameters that can be adjusted, 3) Example threshold values, and 4) Any other customizable elements. Implement a parser that can read this configuration file and generate the final prompt by substituting variables. Document the configuration options thoroughly. Ensure the configuration can be accessed through the settings.py facade.
 
-## 4. Develop prompt rendering function with configuration integration [pending]
+## 4. Develop prompt rendering function with configuration integration [done]
 ### Dependencies: 5.2, 5.3
 ### Description: Create a function that generates the final prompt by combining the template with configuration values
 ### Details:
 Implement a function that: 1) Loads the configuration file through the settings.py facade, 2) Validates the configuration values, 3) Substitutes configuration values into the prompt template, and 4) Returns the fully rendered prompt ready for submission to the LLM. Include error handling for missing or invalid configuration values. The function should be flexible enough to accommodate future changes to the prompt structure without requiring code changes.
 
-## 5. Test and refine the prompt with sample emails [pending]
+## 5. Test and refine the prompt with sample emails [done]
 ### Dependencies: 5.4
 ### Description: Evaluate the prompt's effectiveness with diverse email samples and refine as needed
 ### Details:
