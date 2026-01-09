@@ -33,30 +33,87 @@ jobs:
         pip install pytest-cov pytest-html pytest-xdist
     
     - name: Create test config directory
-      shell: bash
       run: |
-        mkdir -p config
-        if [ ! -f config/config.yaml ]; then
-          cp config/config.yaml.example config/config.yaml 2>/dev/null || echo "No example config found"
-        fi
+        python -c "from pathlib import Path; Path('config').mkdir(exist_ok=True)"
     
-    - name: Create test environment file
-      shell: bash
+    - name: Create test config file
       run: |
-        echo "# Test environment variables" > .env
-        echo "IMAP_PASSWORD=test_password" >> .env
-        echo "OPENROUTER_API_KEY=test_api_key" >> .env
+        python -c "
+        from pathlib import Path
+        import shutil
+        import os
+        
+        # Create required directories
+        Path('config').mkdir(exist_ok=True)
+        Path('logs').mkdir(exist_ok=True)
+        
+        # Create obsidian vault directory (use temp dir that works on both OS)
+        if os.name == 'nt':  # Windows
+            vault_path = os.path.join(os.environ.get('TEMP', 'C:\\temp'), 'test_vault')
+        else:  # Unix/Linux
+            vault_path = '/tmp/test_vault'
+        Path(vault_path).mkdir(parents=True, exist_ok=True)
+        
+        # Create minimal required files if they don't exist
+        prompt_file = Path('config/prompt.md')
+        if not prompt_file.exists():
+            prompt_file.write_text('# Test Prompt\n\nAnalyze this email.')
+        
+        template_file = Path('config/note_template.md.j2')
+        if not template_file.exists():
+            template_file.write_text('---\nuid: {{ uid }}\n---\n\n# {{ subject }}\n\n{{ body }}')
+        
+        # Copy example config or create minimal one
+        config_example = Path('config/config.yaml.example')
+        config_file = Path('config/config.yaml')
+        if config_example.exists() and not config_file.exists():
+            shutil.copy(config_example, config_file)
+        elif not config_file.exists():
+            # Create minimal config using string formatting (no yaml dependency needed)
+            config_content = f'''imap:
+  server: test.imap.com
+  port: 993
+  username: test@example.com
+  password_env: IMAP_PASSWORD
+  query: ALL
+  processed_tag: AIProcessed
+  application_flags:
+    - AIProcessed
+    - ObsidianNoteCreated
+    - NoteCreationFailed
+paths:
+  template_file: config/note_template.md.j2
+  obsidian_vault: {vault_path}
+  log_file: logs/agent.log
+  analytics_file: logs/analytics.jsonl
+  changelog_path: logs/email_changelog.md
+  prompt_file: config/prompt.md
+openrouter:
+  api_key_env: OPENROUTER_API_KEY
+  api_url: https://openrouter.ai/api/v1
+classification:
+  model: google/gemini-2.5-flash-lite-preview-09-2025
+  temperature: 0.2
+  retry_attempts: 3
+  retry_delay_seconds: 5
+processing:
+  importance_threshold: 8
+  spam_threshold: 5
+  max_body_chars: 4000
+  max_emails_per_run: 15
+'''
+            config_file.write_text(config_content)
+        "
       continue-on-error: true
     
-    - name: Run unit tests
+    - name: Create test environment file
       run: |
-        pytest tests/ -v -m "unit" --tb=short --junitxml=junit-unit.xml --cov=src --cov-report=xml --cov-report=term-missing
-      continue-on-error: false
-    
-    - name: Run integration tests
-      run: |
-        pytest tests/ -v -m "integration" --tb=short --junitxml=junit-integration.xml
-      continue-on-error: false
+        python -c "
+        from pathlib import Path
+        env_file = Path('.env')
+        env_file.write_text('IMAP_PASSWORD=test_password\nOPENROUTER_API_KEY=test_api_key\n')
+        "
+      continue-on-error: true
     
     - name: Run all non-E2E tests
       run: |
@@ -109,54 +166,77 @@ jobs:
         pip install -r requirements.txt
     
     - name: Create test config
-      shell: bash
+      env:
+        TEST_IMAP_SERVER: ${{ secrets.TEST_IMAP_SERVER }}
+        TEST_IMAP_USERNAME: ${{ secrets.TEST_IMAP_USERNAME }}
       run: |
-        mkdir -p config
-        # Use provided config or create minimal test config
-        if [ ! -f config/config.yaml ]; then
-          cat > config/config.yaml << 'EOF'
-        imap:
-          server: \${{ secrets.TEST_IMAP_SERVER }}
-          port: 993
-          username: \${{ secrets.TEST_IMAP_USERNAME }}
-          password_env: 'IMAP_PASSWORD'
-          query: 'UNSEEN'
-          processed_tag: 'AIProcessed'
-          application_flags:
-            - 'AIProcessed'
-            - 'ObsidianNoteCreated'
-            - 'NoteCreationFailed'
-        paths:
-          template_file: 'config/note_template.md.j2'
-          obsidian_vault: '/tmp/test_vault'
-          log_file: 'logs/agent.log'
-          analytics_file: 'logs/analytics.jsonl'
-          changelog_path: 'logs/email_changelog.md'
-          prompt_file: 'config/prompt.md'
-        openrouter:
-          api_key_env: 'OPENROUTER_API_KEY'
-          api_url: 'https://openrouter.ai/api/v1'
-        classification:
-          model: 'google/gemini-2.5-flash-lite-preview-09-2025'
-          temperature: 0.2
-          retry_attempts: 3
-          retry_delay_seconds: 5
-        processing:
-          importance_threshold: 8
-          spam_threshold: 5
-          max_body_chars: 4000
-          max_emails_per_run: 15
-        EOF
-        fi
+        python -c "
+        from pathlib import Path
+        import os
+        
+        Path('config').mkdir(exist_ok=True)
+        Path('logs').mkdir(exist_ok=True)
+        Path('/tmp/test_vault').mkdir(parents=True, exist_ok=True)
+        
+        # Create required files
+        prompt_file = Path('config/prompt.md')
+        if not prompt_file.exists():
+            prompt_file.write_text('# Test Prompt\n\nAnalyze this email.')
+        
+        template_file = Path('config/note_template.md.j2')
+        if not template_file.exists():
+            template_file.write_text('---\nuid: {{ uid }}\n---\n\n# {{ subject }}\n\n{{ body }}')
+        
+        config_file = Path('config/config.yaml')
+        if not config_file.exists():
+            imap_server = os.environ.get('TEST_IMAP_SERVER', 'test.imap.com')
+            imap_username = os.environ.get('TEST_IMAP_USERNAME', 'test@example.com')
+            config_content = f'''imap:
+  server: {imap_server}
+  port: 993
+  username: {imap_username}
+  password_env: IMAP_PASSWORD
+  query: UNSEEN
+  processed_tag: AIProcessed
+  application_flags:
+    - AIProcessed
+    - ObsidianNoteCreated
+    - NoteCreationFailed
+paths:
+  template_file: config/note_template.md.j2
+  obsidian_vault: /tmp/test_vault
+  log_file: logs/agent.log
+  analytics_file: logs/analytics.jsonl
+  changelog_path: logs/email_changelog.md
+  prompt_file: config/prompt.md
+openrouter:
+  api_key_env: OPENROUTER_API_KEY
+  api_url: https://openrouter.ai/api/v1
+classification:
+  model: google/gemini-2.5-flash-lite-preview-09-2025
+  temperature: 0.2
+  retry_attempts: 3
+  retry_delay_seconds: 5
+processing:
+  importance_threshold: 8
+  spam_threshold: 5
+  max_body_chars: 4000
+  max_emails_per_run: 15
+'''
+            config_file.write_text(config_content)
+        "
     
     - name: Set up environment variables
-      shell: bash
       env:
         IMAP_PASSWORD: ${{ secrets.TEST_IMAP_PASSWORD }}
         OPENROUTER_API_KEY: ${{ secrets.TEST_OPENROUTER_API_KEY }}
       run: |
-        echo "IMAP_PASSWORD=$IMAP_PASSWORD" > .env
-        echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env
+        python -c "
+        from pathlib import Path
+        import os
+        env_file = Path('.env')
+        env_file.write_text(f'IMAP_PASSWORD={os.environ[\"IMAP_PASSWORD\"]}\nOPENROUTER_API_KEY={os.environ[\"OPENROUTER_API_KEY\"]}\n')
+        "
     
     - name: Run E2E IMAP tests
       env:
