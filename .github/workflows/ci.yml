@@ -10,6 +10,10 @@ jobs:
   test:
     name: Run Test Suite
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
