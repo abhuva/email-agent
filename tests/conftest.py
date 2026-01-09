@@ -45,9 +45,17 @@ def v3_config_dict():
         },
         'openrouter': {
             'api_key_env': 'OPENROUTER_API_KEY',
-            'api_url': 'https://openrouter.ai/api/v1',
+            'api_url': 'https://openrouter.ai/api/v1'
+        },
+        'classification': {
             'model': 'test-model',
             'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 1
+        },
+        'summarization': {
+            'model': 'test-model',
+            'temperature': 0.3,
             'retry_attempts': 3,
             'retry_delay_seconds': 1
         },

@@ -52,9 +52,17 @@ def temp_config_file(tmp_path):
         },
         'openrouter': {
             'api_key_env': 'TEST_OPENROUTER_API_KEY',
-            'api_url': 'https://openrouter.ai/api/v1',
+            'api_url': 'https://openrouter.ai/api/v1'
+        },
+        'classification': {
             'model': 'test-model',
             'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 5
+        },
+        'summarization': {
+            'model': 'test-model',
+            'temperature': 0.3,
             'retry_attempts': 3,
             'retry_delay_seconds': 5
         },
@@ -87,7 +95,7 @@ def test_v3_config_schema_validation(temp_config_file, test_env_vars):
     assert isinstance(config, V3ConfigSchema)
     assert config.imap.server == 'test.imap.com'
     assert config.imap.port == 143
-    assert config.openrouter.model == 'test-model'
+    assert config.classification.model == 'test-model'
     assert config.processing.importance_threshold == 8
     assert os.path.exists(config.paths.prompt_file)
     assert os.path.exists(config.paths.template_file)
@@ -184,7 +192,7 @@ def test_v3_config_env_overrides(temp_config_file, test_env_vars, monkeypatch):
     
     # Verify overrides were applied
     assert config.imap.server == 'override.imap.com'
-    assert config.openrouter.model == 'override-model'
+    assert config.classification.model == 'override-model'
     assert config.processing.importance_threshold == 7
 
 
