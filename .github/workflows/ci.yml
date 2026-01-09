@@ -69,39 +69,41 @@ jobs:
         if config_example.exists() and not config_file.exists():
             shutil.copy(config_example, config_file)
         elif not config_file.exists():
-            # Create minimal config using string formatting (no yaml dependency needed)
-            config_content = f'''imap:
-  server: test.imap.com
-  port: 993
-  username: test@example.com
-  password_env: IMAP_PASSWORD
-  query: ALL
-  processed_tag: AIProcessed
-  application_flags:
-    - AIProcessed
-    - ObsidianNoteCreated
-    - NoteCreationFailed
-paths:
-  template_file: config/note_template.md.j2
-  obsidian_vault: {vault_path}
-  log_file: logs/agent.log
-  analytics_file: logs/analytics.jsonl
-  changelog_path: logs/email_changelog.md
-  prompt_file: config/prompt.md
-openrouter:
-  api_key_env: OPENROUTER_API_KEY
-  api_url: https://openrouter.ai/api/v1
-classification:
-  model: google/gemini-2.5-flash-lite-preview-09-2025
-  temperature: 0.2
-  retry_attempts: 3
-  retry_delay_seconds: 5
-processing:
-  importance_threshold: 8
-  spam_threshold: 5
-  max_body_chars: 4000
-  max_emails_per_run: 15
-'''
+            # Create minimal config using string formatting
+            config_lines = [
+                'imap:',
+                '  server: test.imap.com',
+                '  port: 993',
+                '  username: test@example.com',
+                '  password_env: IMAP_PASSWORD',
+                '  query: ALL',
+                '  processed_tag: AIProcessed',
+                '  application_flags:',
+                '    - AIProcessed',
+                '    - ObsidianNoteCreated',
+                '    - NoteCreationFailed',
+                'paths:',
+                '  template_file: config/note_template.md.j2',
+                f'  obsidian_vault: {vault_path}',
+                '  log_file: logs/agent.log',
+                '  analytics_file: logs/analytics.jsonl',
+                '  changelog_path: logs/email_changelog.md',
+                '  prompt_file: config/prompt.md',
+                'openrouter:',
+                '  api_key_env: OPENROUTER_API_KEY',
+                '  api_url: https://openrouter.ai/api/v1',
+                'classification:',
+                '  model: google/gemini-2.5-flash-lite-preview-09-2025',
+                '  temperature: 0.2',
+                '  retry_attempts: 3',
+                '  retry_delay_seconds: 5',
+                'processing:',
+                '  importance_threshold: 8',
+                '  spam_threshold: 5',
+                '  max_body_chars: 4000',
+                '  max_emails_per_run: 15'
+            ]
+            config_content = '\\n'.join(config_lines)
             config_file.write_text(config_content)
         "
       continue-on-error: true
@@ -191,38 +193,40 @@ processing:
         if not config_file.exists():
             imap_server = os.environ.get('TEST_IMAP_SERVER', 'test.imap.com')
             imap_username = os.environ.get('TEST_IMAP_USERNAME', 'test@example.com')
-            config_content = f'''imap:
-  server: {imap_server}
-  port: 993
-  username: {imap_username}
-  password_env: IMAP_PASSWORD
-  query: UNSEEN
-  processed_tag: AIProcessed
-  application_flags:
-    - AIProcessed
-    - ObsidianNoteCreated
-    - NoteCreationFailed
-paths:
-  template_file: config/note_template.md.j2
-  obsidian_vault: /tmp/test_vault
-  log_file: logs/agent.log
-  analytics_file: logs/analytics.jsonl
-  changelog_path: logs/email_changelog.md
-  prompt_file: config/prompt.md
-openrouter:
-  api_key_env: OPENROUTER_API_KEY
-  api_url: https://openrouter.ai/api/v1
-classification:
-  model: google/gemini-2.5-flash-lite-preview-09-2025
-  temperature: 0.2
-  retry_attempts: 3
-  retry_delay_seconds: 5
-processing:
-  importance_threshold: 8
-  spam_threshold: 5
-  max_body_chars: 4000
-  max_emails_per_run: 15
-'''
+            config_lines = [
+                'imap:',
+                f'  server: {imap_server}',
+                '  port: 993',
+                f'  username: {imap_username}',
+                '  password_env: IMAP_PASSWORD',
+                '  query: UNSEEN',
+                '  processed_tag: AIProcessed',
+                '  application_flags:',
+                '    - AIProcessed',
+                '    - ObsidianNoteCreated',
+                '    - NoteCreationFailed',
+                'paths:',
+                '  template_file: config/note_template.md.j2',
+                '  obsidian_vault: /tmp/test_vault',
+                '  log_file: logs/agent.log',
+                '  analytics_file: logs/analytics.jsonl',
+                '  changelog_path: logs/email_changelog.md',
+                '  prompt_file: config/prompt.md',
+                'openrouter:',
+                '  api_key_env: OPENROUTER_API_KEY',
+                '  api_url: https://openrouter.ai/api/v1',
+                'classification:',
+                '  model: google/gemini-2.5-flash-lite-preview-09-2025',
+                '  temperature: 0.2',
+                '  retry_attempts: 3',
+                '  retry_delay_seconds: 5',
+                'processing:',
+                '  importance_threshold: 8',
+                '  spam_threshold: 5',
+                '  max_body_chars: 4000',
+                '  max_emails_per_run: 15'
+            ]
+            config_content = '\\n'.join(config_lines)
             config_file.write_text(config_content)
         "
     
