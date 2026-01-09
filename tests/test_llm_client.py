@@ -26,10 +26,10 @@ def mock_settings(monkeypatch):
     settings_mock = Mock(spec=Settings)
     settings_mock.get_openrouter_api_key.return_value = 'test_api_key'
     settings_mock.get_openrouter_api_url.return_value = 'https://openrouter.ai/api/v1'
-    settings_mock.get_openrouter_model.return_value = 'test-model'
-    settings_mock.get_openrouter_temperature.return_value = 0.2
-    settings_mock.get_openrouter_retry_attempts.return_value = 3
-    settings_mock.get_openrouter_retry_delay_seconds.return_value = 1  # Short delay for tests
+    settings_mock.get_classification_model.return_value = 'test-model'
+    settings_mock.get_classification_temperature.return_value = 0.2
+    settings_mock.get_classification_retry_attempts.return_value = 3
+    settings_mock.get_classification_retry_delay_seconds.return_value = 1  # Short delay for tests
     settings_mock.get_max_body_chars.return_value = 4000
     
     # Patch the settings singleton

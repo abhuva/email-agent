@@ -1,5 +1,6 @@
 import pytest
 import logging
+from unittest.mock import patch
 from src.email_tagging import tag_email_safely
 from src.imap_connection import add_tags_to_email
 
@@ -26,7 +27,8 @@ def tag_mapping():
         'spam': 'Spam'
     }
 
-def test_tag_email_safely_urgent(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_urgent(mock_dry_run, mock_imap, tag_mapping):
     """Test that 'urgent' AI response maps to 'Urgent' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, b'42', 'urgent', tag_mapping)
     assert result is True
@@ -36,21 +38,24 @@ def test_tag_email_safely_urgent(mock_imap, tag_mapping):
     assert 'Urgent' in call[3]
     assert 'AIProcessed' in call[3]
 
-def test_tag_email_safely_neutral(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_neutral(mock_dry_run, mock_imap, tag_mapping):
     """Test that 'neutral' AI response maps to 'Neutral' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, '99', 'neutral', tag_mapping)
     assert result is True
     assert 'Neutral' in mock_imap.calls[0][3]
     assert 'AIProcessed' in mock_imap.calls[0][3]
 
-def test_tag_email_safely_spam(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_spam(mock_dry_run, mock_imap, tag_mapping):
     """Test that 'spam' AI response maps to 'Spam' tag + AIProcessed"""
     result = tag_email_safely(mock_imap, 123, 'spam', tag_mapping)
     assert result is True
     assert 'Spam' in mock_imap.calls[0][3]
     assert 'AIProcessed' in mock_imap.calls[0][3]
 
-def test_tag_email_safely_always_adds_processed_tag(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_always_adds_processed_tag(mock_dry_run, mock_imap, tag_mapping):
     """Test that AIProcessed is always added regardless of AI response"""
     for ai_resp in ['urgent', 'neutral', 'spam', 'invalid', '', None]:
         mock_imap.calls = []
@@ -58,14 +63,16 @@ def test_tag_email_safely_always_adds_processed_tag(mock_imap, tag_mapping):
         assert len(mock_imap.calls) == 1
         assert 'AIProcessed' in mock_imap.calls[0][3]
 
-def test_tag_email_safely_fallback_to_neutral(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_fallback_to_neutral(mock_dry_run, mock_imap, tag_mapping):
     """Test that invalid AI response falls back to Neutral + AIProcessed"""
     result = tag_email_safely(mock_imap, '1', 'gibberish response', tag_mapping)
     assert result is True
     assert 'Neutral' in mock_imap.calls[0][3]
     assert 'AIProcessed' in mock_imap.calls[0][3]
 
-def test_tag_email_safely_handles_imap_failure(mock_imap, tag_mapping):
+@patch('src.dry_run.is_dry_run', return_value=False)
+def test_tag_email_safely_handles_imap_failure(mock_dry_run, mock_imap, tag_mapping):
     """Test that IMAP failures are handled gracefully"""
     mock_imap.should_fail = True
     result = tag_email_safely(mock_imap, '1', 'urgent', tag_mapping)
