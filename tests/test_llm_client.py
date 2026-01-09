@@ -56,16 +56,18 @@ def test_llm_client_initialization():
 @patch('src.llm_client.requests.post')
 def test_llm_client_classify_email_success(mock_post, mock_settings):
     """Test successful email classification."""
-    # Mock API response
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    # Mock API response - return dict directly from json() method
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 2, "importance_score": 8}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    # Ensure json() returns the actual dict, not a Mock
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -87,15 +89,16 @@ def test_llm_client_classify_email_success(mock_post, mock_settings):
 @patch('src.llm_client.requests.post')
 def test_llm_client_classify_email_with_user_prompt(mock_post, mock_settings):
     """Test email classification with custom user prompt."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 1, "importance_score": 9}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -118,15 +121,16 @@ def test_llm_client_classify_email_truncation(mock_post, mock_settings):
     """Test that email content is truncated if too long."""
     mock_settings.get_max_body_chars.return_value = 100
     
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 3, "importance_score": 7}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -142,15 +146,16 @@ def test_llm_client_classify_email_truncation(mock_post, mock_settings):
 @patch('src.llm_client.requests.post')
 def test_llm_client_parse_json_response(mock_post, mock_settings):
     """Test parsing of valid JSON response."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 5, "importance_score": 6}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -163,15 +168,16 @@ def test_llm_client_parse_json_response(mock_post, mock_settings):
 @patch('src.llm_client.requests.post')
 def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
     """Test parsing JSON wrapped in markdown code blocks."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '```json\n{"spam_score": 4, "importance_score": 7}\n```'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -185,15 +191,16 @@ def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
 @patch('src.llm_client.time.sleep')
 def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
     """Test handling of invalid JSON response (triggers retries, then raises LLMAPIError)."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": "This is not valid JSON"
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -209,15 +216,16 @@ def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
 @patch('src.llm_client.time.sleep')
 def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
     """Test handling of response with missing required fields (triggers retries)."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 3}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -232,15 +240,16 @@ def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
 @patch('src.llm_client.requests.post')
 def test_llm_client_parse_out_of_range_scores(mock_post, mock_settings):
     """Test that out-of-range scores are clamped."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 15, "importance_score": -5}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -278,14 +287,15 @@ def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
     mock_response_fail.raise_for_status.side_effect = http_error
     
     mock_response_success = MagicMock()
-    mock_response_success.json.return_value = {
+    api_response_dict_success = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 2, "importance_score": 8}'
             }
         }]
     }
-    mock_response_success.raise_for_status.return_value = None
+    mock_response_success.json = MagicMock(return_value=api_response_dict_success)
+    mock_response_success.raise_for_status = MagicMock(return_value=None)
     
     mock_post.side_effect = [mock_response_fail, mock_response_fail, mock_response_success]
     
@@ -344,7 +354,7 @@ def test_llm_client_invalid_json_response(mock_post, mock_settings):
     """Test handling of invalid JSON in API response."""
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
+    mock_response.json = MagicMock(side_effect=json.JSONDecodeError("Invalid JSON", "", 0))
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -356,15 +366,16 @@ def test_llm_client_invalid_json_response(mock_post, mock_settings):
 @patch('src.llm_client.time.sleep')
 def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
     """Test handling of empty response content (triggers retries)."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": ""
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -379,15 +390,16 @@ def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
 @patch('src.llm_client.requests.post')
 def test_llm_client_response_format_instructions(mock_post, mock_settings):
     """Test that prompt includes JSON format instructions."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
+    api_response_dict = {
         "choices": [{
             "message": {
                 "content": '{"spam_score": 3, "importance_score": 7}'
             }
         }]
     }
-    mock_response.raise_for_status.return_value = None
+    mock_response = MagicMock()
+    mock_response.json = MagicMock(return_value=api_response_dict)
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()

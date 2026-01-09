@@ -16,7 +16,7 @@ class DummyIMAP:
         self.uid_results.append((uid, tagset))
         return ('OK', [b'success'])
 
-@patch('src.imap_connection.is_dry_run', return_value=False)
+@patch('src.dry_run.is_dry_run', return_value=False)
 def test_add_tags_to_email_success(mock_dry_run):
     imap = DummyIMAP()
     assert add_tags_to_email(imap, b'42', ['Important', 'AIProcessed']) is True
@@ -27,7 +27,7 @@ def test_add_tags_to_email_success(mock_dry_run):
     assert 'Important' in tagset_str
     assert 'AIProcessed' in tagset_str
 
-@patch('src.imap_connection.is_dry_run', return_value=False)
+@patch('src.dry_run.is_dry_run', return_value=False)
 def test_add_tags_to_email_failure(mock_dry_run):
     imap = DummyIMAP()
     imap.simulate_fail = True

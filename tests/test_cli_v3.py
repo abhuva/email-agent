@@ -110,7 +110,7 @@ def test_process_command_help(runner):
     assert '--dry-run' in result.output
 
 
-@patch('src.cli_v3.Pipeline')
+@patch('src.orchestrator.Pipeline')
 def test_process_command_defaults(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with default options."""
     # Mock the pipeline and its return value
@@ -132,7 +132,7 @@ def test_process_command_defaults(mock_pipeline_class, runner, temp_config_file,
     assert 'Processing complete' in result.output or 'successful' in result.output.lower()
 
 
-@patch('src.cli_v3.Pipeline')
+@patch('src.orchestrator.Pipeline')
 def test_process_command_with_uid(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --uid option."""
     # Mock the pipeline and its return value
@@ -157,7 +157,7 @@ def test_process_command_with_uid(mock_pipeline_class, runner, temp_config_file,
     assert call_args.uid == '12345'
 
 
-@patch('src.cli_v3.Pipeline')
+@patch('src.orchestrator.Pipeline')
 def test_process_command_force_reprocess(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --force-reprocess flag."""
     # Mock the pipeline and its return value
@@ -182,7 +182,7 @@ def test_process_command_force_reprocess(mock_pipeline_class, runner, temp_confi
     assert call_args.force_reprocess is True
 
 
-@patch('src.cli_v3.Pipeline')
+@patch('src.orchestrator.Pipeline')
 def test_process_command_dry_run(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --dry-run flag."""
     # Mock the pipeline and its return value
@@ -208,7 +208,7 @@ def test_process_command_dry_run(mock_pipeline_class, runner, temp_config_file, 
     assert call_args.dry_run is True
 
 
-@patch('src.cli_v3.Pipeline')
+@patch('src.orchestrator.Pipeline')
 def test_process_command_all_flags(mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with all flags."""
     # Mock the pipeline and its return value
@@ -247,7 +247,7 @@ def test_cleanup_flags_command_help(runner):
     assert 'WARNING' in result.output or 'confirmation' in result.output.lower() or 'maintenance' in result.output.lower()
 
 
-@patch('src.cli_v3.CleanupFlags')
+@patch('src.cleanup_flags.CleanupFlags')
 def test_cleanup_flags_confirmation_cancel(mock_cleanup_class, runner, temp_config_file, test_env_vars):
     """Test cleanup-flags command with cancelled confirmation."""
     result = runner.invoke(cli, [
@@ -259,7 +259,7 @@ def test_cleanup_flags_confirmation_cancel(mock_cleanup_class, runner, temp_conf
     assert 'Operation cancelled' in result.output or 'cancelled' in result.output.lower()
 
 
-@patch('src.cli_v3.CleanupFlags')
+@patch('src.cleanup_flags.CleanupFlags')
 def test_cleanup_flags_confirmation_yes(mock_cleanup_class, runner, temp_config_file, test_env_vars):
     """Test cleanup-flags command with confirmed execution."""
     mock_cleanup = MagicMock()

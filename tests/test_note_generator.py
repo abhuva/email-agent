@@ -271,7 +271,8 @@ class TestNoteGenerator:
         
         # Should use fallback template which includes UID in frontmatter
         # The fallback template includes frontmatter with uid, subject, etc.
-        assert '12345' in note or 'uid: 12345' in note or 'uid: "12345"' in note
+        # Check that the note contains the UID (in frontmatter) and subject
+        assert '12345' in note, f"UID not found in note: {note[:200]}"
         assert 'Test Email' in note or sample_email_data['subject'] in note
     
     def test_generate_note_error_handling(self, mock_settings, temp_template_dir, sample_email_data):

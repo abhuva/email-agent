@@ -20,7 +20,7 @@ class TestGetSummarizationTags:
     
     def test_returns_valid_tags(self):
         """Test that valid tags are returned."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = ['Urgent', 'Important']
             mock_settings._config = mock_config
@@ -30,7 +30,7 @@ class TestGetSummarizationTags:
     
     def test_returns_empty_list_when_not_configured(self):
         """Test that empty list is returned when not configured."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing = Mock()
             del mock_config.processing.summarization_tags  # Attribute doesn't exist
@@ -41,7 +41,7 @@ class TestGetSummarizationTags:
     
     def test_handles_none_value(self):
         """Test handling of None value."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = None
             mock_settings._config = mock_config
@@ -51,7 +51,7 @@ class TestGetSummarizationTags:
     
     def test_handles_non_list_value(self):
         """Test handling of non-list value."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = 'Urgent'  # String instead of list
             mock_settings._config = mock_config
@@ -61,7 +61,7 @@ class TestGetSummarizationTags:
     
     def test_filters_invalid_tags(self):
         """Test that invalid tags are filtered out."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = ['Urgent', '', 'Important', None, 123]
             mock_settings._config = mock_config
@@ -71,7 +71,7 @@ class TestGetSummarizationTags:
     
     def test_handles_empty_list(self):
         """Test handling of empty list."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = []
             mock_settings._config = mock_config
@@ -81,7 +81,7 @@ class TestGetSummarizationTags:
     
     def test_strips_whitespace(self):
         """Test that whitespace is stripped from tags."""
-        with patch('src.summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_config = Mock()
             mock_config.processing.summarization_tags = [' Urgent ', '  Important  ']
             mock_settings._config = mock_config

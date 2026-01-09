@@ -323,7 +323,7 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.email_summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
             mock_settings.get_summarization_temperature.return_value = 0.3
             
@@ -348,7 +348,7 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.email_summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
             mock_settings.get_summarization_temperature.return_value = 0.3
             
@@ -374,7 +374,7 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.email_summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
             mock_settings.get_summarization_temperature.return_value = 0.3
             
@@ -407,7 +407,7 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.email_summarization.settings') as mock_settings:
+        with patch('src.settings.settings') as mock_settings:
             mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
             mock_settings.get_summarization_temperature.return_value = 0.3
             
