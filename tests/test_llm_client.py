@@ -65,9 +65,12 @@ def test_llm_client_classify_email_success(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    # Ensure json() is a callable that returns the actual dict
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    # Ensure json() returns the actual dict, not a Mock
+    # Use side_effect to ensure it's called as a method
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -97,8 +100,10 @@ def test_llm_client_classify_email_with_user_prompt(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -129,8 +134,10 @@ def test_llm_client_classify_email_truncation(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -154,8 +161,10 @@ def test_llm_client_parse_json_response(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -176,8 +185,10 @@ def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -199,8 +210,10 @@ def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -224,8 +237,10 @@ def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -248,8 +263,10 @@ def test_llm_client_parse_out_of_range_scores(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -294,8 +311,10 @@ def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
             }
         }]
     }
-    mock_response_success.json = lambda: api_response_dict_success
-    mock_response_success.raise_for_status = lambda: None
+    def json_method_success():
+        return api_response_dict_success
+    mock_response_success.json = json_method_success
+    mock_response_success.raise_for_status = MagicMock(return_value=None)
     
     mock_post.side_effect = [mock_response_fail, mock_response_fail, mock_response_success]
     
@@ -376,8 +395,10 @@ def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()
@@ -400,8 +421,10 @@ def test_llm_client_response_format_instructions(mock_post, mock_settings):
         }]
     }
     mock_response = MagicMock()
-    mock_response.json = lambda: api_response_dict
-    mock_response.raise_for_status = lambda: None
+    def json_method():
+        return api_response_dict
+    mock_response.json = json_method
+    mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
     client = LLMClient()

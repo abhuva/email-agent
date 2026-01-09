@@ -115,8 +115,10 @@ def test_process_command_help(runner):
 def test_process_command_defaults(mock_settings, mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with default options."""
     # Mock settings singleton to prevent initialization errors
+    from pathlib import Path
     mock_settings._ensure_initialized = MagicMock()
-    mock_settings.get_log_file.return_value = str(temp_config_file.parent / "logs" / "test.log")
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
     # Mock the pipeline and its return value - use new_callable to prevent constructor from running
@@ -143,8 +145,10 @@ def test_process_command_defaults(mock_settings, mock_pipeline_class, runner, te
 def test_process_command_with_uid(mock_settings, mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --uid option."""
     # Mock settings singleton to prevent initialization errors
+    from pathlib import Path
     mock_settings._ensure_initialized = MagicMock()
-    mock_settings.get_log_file.return_value = str(temp_config_file.parent / "logs" / "test.log")
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
     # Mock the pipeline and its return value
@@ -174,8 +178,10 @@ def test_process_command_with_uid(mock_settings, mock_pipeline_class, runner, te
 def test_process_command_force_reprocess(mock_settings, mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --force-reprocess flag."""
     # Mock settings singleton to prevent initialization errors
+    from pathlib import Path
     mock_settings._ensure_initialized = MagicMock()
-    mock_settings.get_log_file.return_value = str(temp_config_file.parent / "logs" / "test.log")
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
     # Mock the pipeline and its return value
@@ -205,8 +211,10 @@ def test_process_command_force_reprocess(mock_settings, mock_pipeline_class, run
 def test_process_command_dry_run(mock_settings, mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with --dry-run flag."""
     # Mock settings singleton to prevent initialization errors
+    from pathlib import Path
     mock_settings._ensure_initialized = MagicMock()
-    mock_settings.get_log_file.return_value = str(temp_config_file.parent / "logs" / "test.log")
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
     # Mock the pipeline and its return value
@@ -237,8 +245,10 @@ def test_process_command_dry_run(mock_settings, mock_pipeline_class, runner, tem
 def test_process_command_all_flags(mock_settings, mock_pipeline_class, runner, temp_config_file, test_env_vars):
     """Test process command with all flags."""
     # Mock settings singleton to prevent initialization errors
+    from pathlib import Path
     mock_settings._ensure_initialized = MagicMock()
-    mock_settings.get_log_file.return_value = str(temp_config_file.parent / "logs" / "test.log")
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
     # Mock the pipeline and its return value
@@ -278,8 +288,16 @@ def test_cleanup_flags_command_help(runner):
 
 
 @patch('src.cleanup_flags.CleanupFlags')
-def test_cleanup_flags_confirmation_cancel(mock_cleanup_class, runner, temp_config_file, test_env_vars):
+@patch('src.settings.settings')
+def test_cleanup_flags_confirmation_cancel(mock_settings, mock_cleanup_class, runner, temp_config_file, test_env_vars):
     """Test cleanup-flags command with cancelled confirmation."""
+    from pathlib import Path
+    # Mock settings to prevent initialization errors
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
+    mock_settings.get_imap_application_flags.return_value = ['AIProcessed']
+    mock_settings.initialize = MagicMock()
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'cleanup-flags'
@@ -290,8 +308,16 @@ def test_cleanup_flags_confirmation_cancel(mock_cleanup_class, runner, temp_conf
 
 
 @patch('src.cleanup_flags.CleanupFlags')
-def test_cleanup_flags_confirmation_yes(mock_cleanup_class, runner, temp_config_file, test_env_vars):
+@patch('src.settings.settings')
+def test_cleanup_flags_confirmation_yes(mock_settings, mock_cleanup_class, runner, temp_config_file, test_env_vars):
     """Test cleanup-flags command with confirmed execution."""
+    from pathlib import Path
+    # Mock settings to prevent initialization errors
+    config_path = Path(temp_config_file)
+    mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
+    mock_settings.get_imap_application_flags.return_value = ['AIProcessed']
+    mock_settings.initialize = MagicMock()
+    
     mock_cleanup = MagicMock()
     mock_cleanup_class.return_value = mock_cleanup
     mock_cleanup.connect.return_value = None
