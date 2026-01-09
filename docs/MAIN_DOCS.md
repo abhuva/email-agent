@@ -4,8 +4,8 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Essential System Docs
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
-- [pdd.md](../pdd.md) — Product Design Document V3 (✅ Complete), foundational upgrade with score-based classification, CLI controls, and templating.
-- [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete), outlining Obsidian integration and note creation features.
+- [pdd.md](../pdd.md) — Product Design Document V3 (✅ Complete, Current Version), foundational upgrade with score-based classification, CLI controls, and templating.
+- [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete, Historical), outlining Obsidian integration and note creation features.
 - [prd.md](../prd.md) — Product Requirements Document
 
 ## User Guides
@@ -13,10 +13,15 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** — Detailed troubleshooting guide with solutions for common issues.
 
 ## Deep Dive Module Docs
-- [Logging System](logging-system.md) — Detailed logging implementation
+
+### V3 Module Documentation (Current)
+- See V3 Module Documentation section below for comprehensive V3 docs
+
+### Historical Module Documentation
+- [Logging System](logging-system.md) — Detailed logging implementation (V1/V2)
 - [IMAP Fetching](imap-fetching.md) — IMAP implementation details and patterns
 - [Prompt Pipeline / Markdown Management](prompts.md) — Prompt management system
-- [Conditional Summarization System](summarization.md) — Summarization system (V2)
+- [Conditional Summarization System](summarization.md) — Summarization system (V2, historical)
 - [IMAP Keywords vs Flags](imap-keywords-vs-flags.md) — Technical explanation of IMAP flags
 - [Live Test Guide](live-test-guide.md) — Guide for manual live testing
 - [Task Master Project Management](../README-task-master.md) — Task management system
@@ -69,12 +74,13 @@ The following documents provide historical context and implementation decisions:
 > **For Cursor or AI Agents:**
 > - Always load this file and README.md first!
 > - Then, review the PDD V3 and module docs as needed.
-> - **Current Focus:** V3 (Foundational Upgrade) - see [pdd.md](../pdd.md)
-> - **V3 Status:** ✅ **Complete** - All core features implemented (Tasks 1-18 complete)
+> - **Current Version:** V3 (Foundational Upgrade) - see [pdd.md](../pdd.md)
+> - **V3 Status:** ✅ **Complete and Production-Ready** - All features implemented and tested (Tasks 1-18 complete)
 >   - Core: Configuration, CLI, IMAP, LLM, Decision Logic, Note Generator, Logging, Orchestrator
 >   - Advanced: Force-Reprocess, Cleanup Flags, Backfill, Dry-Run
 >   - Testing: Comprehensive test suite with unit, integration, and E2E tests
 >   - CI/CD: Automated testing and quality checks
+> - **Historical Versions:** V1 and V2 are historical. V3 is the current production version.
 
 > **For End Users:**
 > - Start with the [Complete Guide](COMPLETE_GUIDE.md) for installation and usage

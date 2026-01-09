@@ -1,8 +1,8 @@
-# Complete Guide: Email Agent V2
+# Complete Guide: Email Agent V3
 
-**Version:** 2.0  
+**Version:** 3.0  
 **Last Updated:** January 2026  
-**Status:** Production Ready
+**Status:** Production Ready (V3 Foundational Upgrade)
 
 > **Note for Developers:** For implementation details, module-specific documentation, and project strategy, see [MAIN_DOCS.md](MAIN_DOCS.md).
 
@@ -219,54 +219,47 @@ imap:
 - **Yahoo:** `imap.mail.yahoo.com:993`
 - **Custom:** Check your email provider's documentation
 
-### 2.3 Email Processing Configuration
+### 2.3 Email Processing Configuration (V3)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `imap_query` | string | `'UNSEEN'` | IMAP search query (see examples below) |
-| `max_emails_per_run` | integer | `15` | Maximum emails to process per execution |
-| `max_body_chars` | integer | `4000` | Maximum characters sent to AI (truncates longer emails) |
-| `processed_tag` | string | `'AIProcessed'` | IMAP flag for processed emails |
+| `imap.query` | string | `'ALL'` | IMAP search query (see examples below) |
+| `imap.processed_tag` | string | `'AIProcessed'` | IMAP flag for processed emails |
+| `processing.max_emails_per_run` | integer | `15` | Maximum emails to process per execution |
+| `processing.max_body_chars` | integer | `4000` | Maximum characters sent to AI (truncates longer emails) |
+| `processing.importance_threshold` | integer | `8` | Minimum importance score (0-10) to mark as important |
+| `processing.spam_threshold` | integer | `5` | Maximum spam score (0-10) to consider as spam |
 
 **IMAP Query Examples:**
 ```yaml
-# Process unread emails (default)
-imap_query: 'UNSEEN'
-
-# Process all emails
-imap_query: 'ALL'
-
-# Process emails from specific sender
-imap_query: 'FROM "sender@example.com"'
-
-# Process emails sent since a date
-imap_query: 'SENTSINCE 01-Jan-2026'
-
-# Process emails received since a date
-imap_query: 'SINCE 01-Jan-2026'
-
-# Combine criteria (unread emails from today)
-imap_query: 'UNSEEN SENTSINCE 07-Jan-2026'
-
-# Process emails with specific subject
-imap_query: 'SUBJECT "Important"'
+imap:
+  query: 'ALL'  # Process all emails
+  query: 'UNSEEN'  # Process unread emails
+  query: 'FROM "sender@example.com"'  # Process emails from specific sender
+  query: 'SENTSINCE 01-Jan-2026'  # Process emails sent since a date
+  query: 'SINCE 01-Jan-2026'  # Process emails received since a date
+  query: 'UNSEEN SENTSINCE 07-Jan-2026'  # Combine criteria
+  query: 'SUBJECT "Important"'  # Process emails with specific subject
 ```
 
-**Note:** The query automatically excludes emails with idempotency tags (see `imap_query_exclusions` below).
+**Note:** The query automatically excludes emails with the `processed_tag` flag.
 
-### 2.4 AI Classification Configuration
+### 2.4 Classification Configuration (V3)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `prompt_file` | string | `'config/prompt.md'` | Path to classification prompt file |
-| `tag_mapping` | object | See below | Maps AI keywords to IMAP tags |
+| `classification.model` | string | Required | LLM model for classification |
+| `classification.temperature` | float | `0.2` | LLM temperature (0.0-2.0) |
+| `classification.retry_attempts` | integer | `3` | Retry attempts for failed API calls |
+| `classification.retry_delay_seconds` | integer | `5` | Initial delay between retries |
 
-**Tag Mapping Example:**
+**Supported Models:**
 ```yaml
-tag_mapping:
-  urgent: 'Urgent'    # AI keyword 'urgent' → IMAP tag 'Urgent'
-  neutral: 'Neutral'  # AI keyword 'neutral' → IMAP tag 'Neutral'
-  spam: 'Spam'        # AI keyword 'spam' → IMAP tag 'Spam'
+classification:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # Very fast, low cost
+  model: 'openai/gpt-3.5-turbo'                          # Balanced
+  model: 'openai/gpt-4o-mini'                            # Better quality
+  model: 'anthropic/claude-3-haiku'                      # High quality
 ```
 
 ### 2.5 OpenRouter API Configuration
@@ -275,20 +268,8 @@ tag_mapping:
 |-----------|------|---------|-------------|
 | `openrouter.api_key_env` | string | `OPENROUTER_API_KEY` | Environment variable name |
 | `openrouter.api_url` | string | `'https://openrouter.ai/api/v1'` | API endpoint |
-| `openrouter.model` | string | `'openai/gpt-3.5-turbo'` | AI model to use |
 
-**Supported Models:**
-```yaml
-# Cost-effective options
-model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # Very fast, low cost
-model: 'openai/gpt-3.5-turbo'                          # Balanced
-
-# Higher quality (more expensive)
-model: 'openai/gpt-4o-mini'                            # Better quality
-model: 'anthropic/claude-3-haiku'                      # High quality
-```
-
-### 2.6 V2: IMAP Query Exclusions Configuration (Task 16)
+### 2.6 Paths Configuration (V3)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -469,14 +450,21 @@ python main.py --config custom-config.yaml --env .env.production
 
 ### 3.2 Command-Line Options
 
+**Main Commands:**
+| Command | Description | Example |
+|---------|-------------|---------|
+| `process` | Process emails with AI classification | `python main.py process` |
+| `process --uid <ID>` | Process specific email by UID | `python main.py process --uid 12345` |
+| `process --force-reprocess` | Reprocess already-processed email | `python main.py process --uid 12345 --force-reprocess` |
+| `process --dry-run` | Preview processing without changes | `python main.py process --dry-run` |
+| `cleanup-flags` | Remove application-specific IMAP flags | `python main.py cleanup-flags` |
+| `backfill` | Process historical emails | `python main.py backfill --since 2024-01-01` |
+
+**Global Options:**
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--config PATH` | Path to YAML config file | `--config config/prod.yaml` |
 | `--env PATH` | Path to .env file | `--env .env.prod` |
-| `--debug` | Enable debug logging | `--debug` |
-| `--log-level LEVEL` | Set log level | `--log-level DEBUG` |
-| `--limit N` | Override max emails per run | `--limit 10` |
-| `--continuous` | Run continuously | `--continuous` |
 | `--version` | Show version | `--version` |
 | `--help` | Show help | `--help` |
 
@@ -484,33 +472,45 @@ python main.py --config custom-config.yaml --env .env.production
 
 **Morning Routine:**
 ```bash
-# Process new emails (single batch)
-python main.py --limit 20
+# Process new emails
+python main.py process
 
 # Check results
 tail -20 logs/agent.log
 cat logs/email_changelog.md | tail -20
 ```
 
-**Continuous Monitoring:**
+**Testing and Debugging:**
 ```bash
-# Run continuously (processes in batches)
-python main.py --continuous
+# Preview processing without making changes
+python main.py process --dry-run
 
-# Monitor in another terminal
-tail -f logs/agent.log
+# Process a specific email for testing
+python main.py process --uid 12345
+
+# Force reprocess to test changes
+python main.py process --uid 12345 --force-reprocess
 ```
 
 **Weekly Review:**
 ```bash
-# Process all unread emails
-python main.py
+# Process all emails matching query
+python main.py process
 
 # Review analytics
 cat logs/analytics.jsonl | tail -10
 
 # Check changelog
 cat logs/email_changelog.md
+```
+
+**Historical Processing:**
+```bash
+# Process emails from a date range
+python main.py backfill --since 2024-01-01 --until 2024-12-31
+
+# With throttling to avoid rate limits
+python main.py backfill --since 2024-01-01 --throttle 5
 ```
 
 ### 3.4 Advanced Usage

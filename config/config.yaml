@@ -6,8 +6,8 @@ imap:
   query: ALL
   processed_tag: AIProcessed
   application_flags:
-  #- AIProcessed
-  #- ObsidianNoteCreated
+  - AIProcessed
+  - ObsidianNoteCreated
   - NoteCreationFailed
 paths:
   template_file: config/note_template.md.j2

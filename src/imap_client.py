@@ -274,14 +274,35 @@ class ImapClient:
             for part, encoding in decoded_parts:
                 if isinstance(part, bytes):
                     if encoding:
-                        decoded_string += part.decode(encoding, errors='replace')
+                        # Handle known problematic encodings
+                        if encoding.lower() in ('unknown-8bit', 'unknown'):
+                            # Try common encodings for unknown-8bit
+                            for fallback_encoding in ['latin-1', 'cp1252', 'utf-8']:
+                                try:
+                                    decoded_string += part.decode(fallback_encoding, errors='replace')
+                                    break
+                                except (UnicodeDecodeError, LookupError):
+                                    continue
+                            else:
+                                # If all fallbacks fail, use replace errors
+                                decoded_string += part.decode('utf-8', errors='replace')
+                        else:
+                            decoded_string += part.decode(encoding, errors='replace')
                     else:
                         decoded_string += part.decode('utf-8', errors='replace')
                 else:
                     decoded_string += part
             return decoded_string.strip()
         except Exception as e:
-            logger.warning(f"Error decoding header '{header_value}': {e}")
+            # Log at debug level since we handle it gracefully
+            # These are often spam filter headers or other non-critical headers with encoding issues
+            logger.debug(f"Error decoding header (using fallback): {e}")
+            # Try to return the string as-is, or decode with errors='replace' if it's bytes
+            if isinstance(header_value, bytes):
+                try:
+                    return header_value.decode('utf-8', errors='replace')
+                except Exception:
+                    return str(header_value)
             return str(header_value)
     
     def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False) -> List[Dict[str, Any]]:

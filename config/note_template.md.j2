@@ -48,8 +48,8 @@
 ---
 {# Email Identification #}
 uid: {{ uid }}
-{# Email subject - wrapped in quotes to handle special characters #}
-subject: "{{ subject }}"
+{# Email subject - use yaml_string filter to properly escape quotes and special characters #}
+subject: {{ subject | yaml_string }}
 {# Sender name and email (separated to avoid YAML parsing issues) #}
 {# Use YAML string format - Jinja2 will handle quoting automatically #}
 from_name: {{ from_name | yaml_string }}

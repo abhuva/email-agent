@@ -4,29 +4,31 @@
 
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
-**Current Status:** Both **V1 (Email Tagging)** and **V2 (Obsidian Integration)** are complete. The agent can now automatically create structured Markdown notes in Obsidian vaults for processed emails.
+**Current Status:** **V3 (Foundational Upgrade)** is complete and production-ready. V3 introduces score-based classification, CLI controls, Jinja2 templating, and a modular architecture. V1 and V2 are historical versions.
 
 ---
 
 ## Features
 
-### V1 Features (Complete)
-- **IMAP Email Fetching**: Secure connection to IMAP servers with STARTTLS/SSL support
-- **AI Classification**: Uses OpenRouter API to classify emails as Urgent, Neutral, or Spam
-- **Non-Destructive Tagging**: Adds IMAP flags to emails without modifying content
-- **Comprehensive Logging**: File and console logging with analytics summaries
-- **Configurable Limits**: Control processing limits per run and email body truncation
-- **Error Handling**: Robust error handling with retry logic and graceful degradation
-- **TDD-Based**: Test-driven development with comprehensive test coverage
+### V3 Features (Current Version)
+- **Score-Based Classification**: Granular importance and spam scores (0-10) instead of rigid categories
+- **CLI Controls**: Developer-friendly commands for targeted processing, debugging, and maintenance
+  - `python main.py process` - Process emails with options for single UID, force-reprocess, and dry-run
+  - `python main.py cleanup-flags` - Safely remove application-specific IMAP flags
+  - `python main.py backfill` - Process historical emails with date range filtering
+- **Jinja2 Templating**: Flexible note generation using external template files
+- **Modular Architecture**: Clean separation of concerns with dedicated modules for IMAP, LLM, decision logic, and note generation
+- **Settings Facade**: Centralized configuration management through `settings.py` facade
+- **Dual Logging**: Operational logs (`agent.log`) and structured analytics (`analytics.jsonl`)
+- **Threshold-Based Classification**: Configurable thresholds for importance and spam detection
+- **Retry Logic**: Robust error handling with exponential backoff for LLM API calls
+- **Dry-Run Mode**: Preview processing without making changes
+- **Force-Reprocess**: Reprocess already-processed emails for testing and refinement
+- **Backfill Support**: Process historical emails with progress tracking and throttling
 
-### V2 Features (Complete)
-- **Obsidian Integration**: Automatically creates structured Markdown notes in Obsidian vaults
-- **YAML Frontmatter**: Rich metadata in note files for Obsidian linking and filtering
-- **Email Body Conversion**: Converts HTML emails to clean Markdown format
-- **Conditional Summarization**: AI-powered summaries for emails with specific tags (cost-effective)
-- **Flexible IMAP Queries**: Configurable email selection queries beyond just UNSEEN
-- **Changelog Tracking**: Audit log of all processed emails in Markdown format
-- **Configurable IMAP Query Filtering**: Customizable tag exclusions for idempotency (Task 16)
+### Historical Versions
+- **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
+- **V1 (Email Tagging)**: Basic IMAP email fetching and AI classification
 
 ---
 
@@ -78,34 +80,46 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 ### Basic Usage
 
 ```bash
-# Run with default configuration (single batch)
-python main.py
+# Process emails (default: processes up to max_emails_per_run from config)
+python main.py process
 
-# Process maximum 5 emails
-python main.py --limit 5
+# Process a specific email by UID
+python main.py process --uid 12345
 
-# Enable debug mode
-python main.py --debug
+# Force reprocess an already-processed email
+python main.py process --uid 12345 --force-reprocess
 
-# Run continuously (not single batch)
-python main.py --continuous
+# Preview processing without making changes (dry-run)
+python main.py process --dry-run
 
-# Use custom config file
-python main.py --config custom-config.yaml
+# Use custom config and env files
+python main.py --config custom-config.yaml --env .env.production process
+
+# Clean up application-specific IMAP flags (with confirmation)
+python main.py cleanup-flags
+
+# Process historical emails (backfill)
+python main.py backfill --since 2024-01-01 --until 2024-12-31
 ```
 
 ### Command-Line Options
 
-```
---config CONFIG       Path to YAML configuration file (default: config/config.yaml)
---env ENV             Path to .env secrets file (default: .env)
---debug               Enable debug mode (equivalent to --log-level DEBUG)
---log-level LEVEL     Set logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
---limit N             Override max_emails_per_run from config (PDD AC 6)
---continuous          Run continuously instead of single batch (default: single batch)
---version             Show program version
---help                Show help message
-```
+**Main Commands:**
+- `process` - Process emails with AI classification and note generation
+  - `--uid <ID>` - Process a specific email by UID
+  - `--force-reprocess` - Ignore processed_tag and reprocess email
+  - `--dry-run` - Preview processing without making changes
+- `cleanup-flags` - Remove application-specific IMAP flags (requires confirmation)
+- `backfill` - Process historical emails
+  - `--since <DATE>` - Start date (YYYY-MM-DD)
+  - `--until <DATE>` - End date (YYYY-MM-DD)
+  - `--throttle <SECONDS>` - Delay between emails (default: 2)
+
+**Global Options:**
+- `--config <PATH>` - Path to YAML configuration file (default: config/config.yaml)
+- `--env <PATH>` - Path to .env secrets file (default: .env)
+- `--version` - Show program version
+- `--help` - Show help message
 
 ---
 
@@ -113,37 +127,52 @@ python main.py --config custom-config.yaml
 
 ### Configuration File (`config/config.yaml`)
 
-The main configuration file contains all operational parameters:
+V3 uses a grouped configuration structure. The main configuration file contains all operational parameters:
 
 ```yaml
+# IMAP Server Configuration
 imap:
-  server: 'imap.example.com'          # IMAP server hostname
-  port: 993                            # Port (993 for SSL, 143 for STARTTLS)
-  username: 'your-email@example.com'   # Email address
+  server: 'imap.example.com'
+  port: 143                            # 143 for STARTTLS, 993 for SSL
+  username: 'your-email@example.com'
   password_env: 'IMAP_PASSWORD'        # Environment variable name
+  query: 'ALL'                         # IMAP search query
+  processed_tag: 'AIProcessed'         # Tag for processed emails
+  application_flags:                   # Flags managed by this application
+    - 'AIProcessed'
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
 
-prompt_file: 'config/prompt.md'        # Path to AI prompt file
+# File and Directory Paths
+paths:
+  template_file: 'config/note_template.md.j2'  # Jinja2 template
+  obsidian_vault: '/path/to/obsidian/vault'
+  log_file: 'logs/agent.log'
+  analytics_file: 'logs/analytics.jsonl'
+  changelog_path: 'logs/email_changelog.md'
+  prompt_file: 'config/prompt.md'
 
-tag_mapping:                           # AI keyword → IMAP tag mapping
-  urgent: 'Urgent'
-  neutral: 'Neutral'
-  spam: 'Spam'
-
-processed_tag: 'AIProcessed'           # Tag for processed emails
-max_body_chars: 4000                  # Max characters sent to AI
-max_emails_per_run: 15                # Max emails per run
-
-log_file: 'logs/agent.log'            # Log file path
-log_level: 'INFO'                      # Logging level
-analytics_file: 'logs/analytics.jsonl' # Analytics file path
-
+# OpenRouter API Configuration
 openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name
+  api_key_env: 'OPENROUTER_API_KEY'
   api_url: 'https://openrouter.ai/api/v1'
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # Optional, defaults to gpt-3.5-turbo
+
+# Classification Configuration
+classification:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  temperature: 0.2
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+# Processing Configuration
+processing:
+  importance_threshold: 8              # Minimum score (0-10) for important
+  spam_threshold: 5                    # Maximum score (0-10) for spam
+  max_body_chars: 4000                 # Max characters sent to LLM
+  max_emails_per_run: 15               # Max emails per execution
 ```
 
-See `config/config.yaml.example` for a complete example with comments.
+See `config/config.yaml.example` for a complete example with detailed comments.
 
 ### Environment Variables (`.env`)
 
@@ -164,55 +193,65 @@ The prompt file contains the instructions sent to the AI for email classificatio
 
 ## How It Works
 
-### V1 Workflow (Email Tagging)
-1. **Email Fetching**: Connects to IMAP server and fetches unprocessed emails (excluding those with `AIProcessed` flag)
-2. **AI Processing**: Sends email content (truncated to `max_body_chars`) to OpenRouter API for classification
-3. **Tagging**: Maps AI response keywords (`urgent`, `neutral`, `spam`) to IMAP tags and applies them
-4. **Logging**: Logs all operations to file and console, generates analytics summaries
+### V3 Workflow (Current Version)
 
-### V2 Workflow (Obsidian Integration)
-1. **Email Fetching**: Uses configurable IMAP queries to fetch emails (excluding processed emails via configurable tags)
-2. **AI Classification**: Classifies emails using OpenRouter API (same as V1)
-3. **Tagging**: Applies classification tags to emails
-4. **Conditional Summarization**: For emails with specific tags (configurable), generates AI summaries
-5. **Obsidian Note Creation**: Creates structured Markdown notes with YAML frontmatter in Obsidian vault
-6. **Changelog Tracking**: Records all processed emails in a Markdown changelog file
-7. **Idempotency**: Tags emails with `ObsidianNoteCreated` or `NoteCreationFailed` to prevent reprocessing
+1. **Configuration Loading**: Loads V3 configuration structure through `settings.py` facade
+2. **Email Fetching**: Connects to IMAP server and fetches emails based on configured query (excluding processed emails)
+3. **AI Classification**: Sends email content to LLM API, receives JSON with `importance_score` and `spam_score` (0-10)
+4. **Decision Logic**: Applies threshold-based classification:
+   - If `importance_score >= importance_threshold` → marks as important
+   - If `spam_score >= spam_threshold` → marks as spam
+5. **Note Generation**: Uses Jinja2 template to generate Markdown note with:
+   - YAML frontmatter (metadata, scores, processing info)
+   - Email body (converted from HTML/plain text to Markdown)
+6. **File Creation**: Saves note to Obsidian vault directory
+7. **Tagging**: Tags email with `AIProcessed` flag to prevent reprocessing
+8. **Logging**: Records to operational log and structured analytics
+9. **Changelog**: Appends entry to changelog file
 
-### Complete Processing Flow (V2)
+### Complete Processing Flow (V3)
 
 ```
-Start → Load Config → Connect IMAP → Fetch Emails (with configurable query)
+Start → Load Config (settings.py) → Connect IMAP → Fetch Emails
   ↓
 For each email:
   ↓
-Truncate body → Send to AI → Extract keyword → Map to tag → Apply IMAP flags
+Truncate body → Send to LLM API → Receive JSON scores
   ↓
-If email has summarization tag:
+Apply thresholds → Determine classification
   ↓
-Generate AI summary → Create Obsidian note (YAML + summary + body)
+Render Jinja2 template → Generate Markdown note
   ↓
-Else:
+Save to Obsidian vault → Tag email (AIProcessed)
   ↓
-Create Obsidian note (YAML + body only)
+Log to analytics.jsonl → Append to changelog
   ↓
-Tag email (ObsidianNoteCreated/NoteCreationFailed) → Append to changelog
-  ↓
-Generate analytics summary → Exit
+Generate summary → Exit
 ```
+
+### Historical Workflows
+
+- **V2**: Used keyword-based classification (urgent/neutral/spam) and conditional summarization
+- **V1**: Basic email tagging with simple AI classification
 
 ---
 
 ## Documentation
 
-- **[Product Design Doc V1 (PDD)](pdd.md)** — V1 project strategy, requirements, roadmap (✅ Complete)
-- **[Product Design Doc V2 (PDD)](pdd_v2.md)** — V2 project strategy, requirements, roadmap (✅ Complete)
-- **[Logging System](docs/logging-system.md)** — Logger, analytics, config, test patterns
-- **[IMAP Email Fetching](docs/imap-fetching.md)** — IMAP workflow, error handling, FLAGS vs KEYWORDS
-- **[Prompt Loader](docs/prompts.md)** — How AI prompts are loaded and managed
-- **[Conditional Summarization](docs/summarization.md)** — V2 summarization system for tagged emails
+- **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy, requirements, roadmap (✅ Complete, Current)
+- **[V3 Configuration Guide](docs/v3-configuration.md)** — V3 configuration system and settings facade
+- **[V3 CLI Guide](docs/v3-cli.md)** — Command-line interface documentation
+- **[V3 Migration Guide](docs/v3-migration-guide.md)** — Migrating from V2 to V3
+- **[V3 Orchestrator](docs/v3-orchestrator.md)** — Pipeline orchestration
+- **[V3 Note Generator](docs/v3-note-generator.md)** — Jinja2 templating system
+- **[V3 Decision Logic](docs/v3-decision-logic.md)** — Threshold-based classification
+- **[Scoring Criteria](docs/scoring-criteria.md)** — Email scoring system
 - **[Main Documentation Map](docs/MAIN_DOCS.md)** — Centralized documentation index
 - **[Task Master Workflow](README-task-master.md)** — AI-driven task/project management
+
+**Historical Documentation:**
+- **[Product Design Doc V2 (PDD)](pdd_v2.md)** — V2 project strategy (historical)
+- **[Product Design Doc V1 (PDD)](old pdd+prd/pdd.md)** — V1 project strategy (historical)
 
 ---
 
@@ -272,19 +311,17 @@ cp config/config.yaml.example config/config.yaml
 
 ### Debug Mode
 
-Enable debug mode for detailed logging:
+Use dry-run mode to preview processing without making changes:
 
 ```bash
-python main.py --debug
-# or
-python main.py --log-level DEBUG
+python main.py process --dry-run
 ```
 
 This will show:
-- Full email content sent to AI
-- Raw AI responses
-- Detailed IMAP operations
-- All error stack traces
+- Emails that would be processed
+- Classification scores that would be assigned
+- Notes that would be generated
+- All operations without modifying IMAP flags or creating files
 
 ### Getting Help
 
@@ -336,7 +373,7 @@ python scripts/test_imap_flags.py
 > **Start here:** [README-AI.md](README-AI.md) - Optimized entry point with complete project structure, architecture, and development context.
 > 
 > Then:
-> 1. Review [pdd_v2.md](pdd_v2.md) for V2 implementation details
+> 1. Review [pdd.md](pdd.md) for V3 implementation details (current version)
 > 2. Run `task-master list` and `task-master next` to see project state/tasks
 > 3. Review module docs in `docs/` as needed
 
@@ -345,32 +382,39 @@ python scripts/test_imap_flags.py
 > 1. Read this README.md for overview
 > 2. See [docs/COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md) for detailed user guide
 > 3. See [docs/MAIN_DOCS.md](docs/MAIN_DOCS.md) for documentation index
+> 4. See [docs/v3-migration-guide.md](docs/v3-migration-guide.md) if migrating from V2
 
 *Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
 
-**Note:** Both V1 (Email Tagging) and V2 (Obsidian Integration) are complete. See [pdd_v2.md](pdd_v2.md) for V2 implementation details.
+**Note:** V3 (Foundational Upgrade) is the current version. V1 and V2 are historical versions. See [pdd.md](pdd.md) for V3 implementation details.
 
 ---
 
 ## FAQ
 
 **Q: How do I switch AI models?**  
-A: Edit `openrouter.model` in `config/config.yaml`. Supported models: `openai/gpt-3.5-turbo`, `google/gemini-2.5-flash-lite-preview-09-2025`, `openai/gpt-4o-mini`, etc.
+A: Edit `classification.model` in `config/config.yaml`. Supported models: `openai/gpt-3.5-turbo`, `google/gemini-2.5-flash-lite-preview-09-2025`, `openai/gpt-4o-mini`, `anthropic/claude-3-haiku`, etc.
 
-**Q: Can I process more than `max_emails_per_run`?**  
-A: Use the `--limit N` flag to override the config value, or use `--continuous` mode to process in batches.
+**Q: How do I process a specific email?**  
+A: Use `python main.py process --uid <UID>` to process a single email by its UID.
+
+**Q: How do I reprocess an already-processed email?**  
+A: Use `python main.py process --uid <UID> --force-reprocess` to ignore the processed tag and reprocess.
+
+**Q: How do I preview processing without making changes?**  
+A: Use `python main.py process --dry-run` to see what would happen without modifying IMAP flags or creating files.
+
+**Q: How do I process historical emails?**  
+A: Use `python main.py backfill --since 2024-01-01 --until 2024-12-31` to process emails from a date range.
+
+**Q: How do I clean up application flags?**  
+A: Use `python main.py cleanup-flags` (requires confirmation) to remove all application-specific IMAP flags.
 
 **Q: Why aren't tags visible in Thunderbird?**  
 A: Thunderbird's "Schlagworte" view only shows KEYWORDS extension tags. The flags are still applied and searchable via IMAP. See [docs/imap-keywords-vs-flags.md](docs/imap-keywords-vs-flags.md).
 
-**Q: How do I restart the agent after a break?**  
-A: Simply run `python main.py` again. The agent automatically excludes emails with processed tags (`AIProcessed`, `ObsidianNoteCreated`, or `NoteCreationFailed` by default, configurable via `imap_query_exclusions`).
-
-**Q: What if an email fails to process?**  
-A: Failed emails are marked with `AIProcessingFailed` flag and logged. The agent continues processing other emails.
-
-**Q: How do I reset processed emails?**  
-A: Remove the `AIProcessed` flag from emails via your email client or IMAP command. The agent will then reprocess them.
+**Q: How do I customize the note format?**  
+A: Edit the Jinja2 template at `config/note_template.md.j2` to customize the Markdown note structure.
 
 ---
 
@@ -381,18 +425,24 @@ A: Remove the `AIProcessed` flag from emails via your email client or IMAP comma
 ```
 email-agent/
 ├── src/                    # Source code
-│   ├── cli.py             # CLI interface
-│   ├── config.py          # Configuration management
-│   ├── imap_connection.py # IMAP operations
-│   ├── openrouter_client.py # OpenRouter API client
-│   ├── main_loop.py       # Main processing loop
-│   └── ...
+│   ├── cli_v3.py          # V3 CLI interface (click-based)
+│   ├── settings.py        # V3 configuration facade
+│   ├── config_v3_loader.py # V3 configuration loading
+│   ├── orchestrator.py   # V3 pipeline orchestration
+│   ├── imap_client.py    # V3 IMAP operations
+│   ├── llm_client.py      # V3 LLM API client
+│   ├── decision_logic.py  # V3 threshold-based classification
+│   ├── note_generator.py  # V3 Jinja2 note generation
+│   ├── v3_logger.py       # V3 logging system
+│   └── ...                # Additional modules
 ├── tests/                  # Test suite
 ├── config/                 # Configuration files
+│   ├── config.yaml.example # V3 configuration template
+│   └── note_template.md.j2 # Jinja2 note template
 ├── docs/                   # Documentation
 ├── scripts/                # Utility scripts
 ├── logs/                   # Log files (gitignored)
-├── main.py                 # Entry point
+├── main.py                 # Entry point (V3)
 └── requirements.txt        # Dependencies
 ```
 
