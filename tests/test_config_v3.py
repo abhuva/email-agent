@@ -184,7 +184,7 @@ def test_v3_config_env_overrides(temp_config_file, test_env_vars, monkeypatch):
     """Test that environment variable overrides work."""
     # Set override environment variables
     monkeypatch.setenv('EMAIL_AGENT_IMAP_SERVER', 'override.imap.com')
-    monkeypatch.setenv('EMAIL_AGENT_OPENROUTER_MODEL', 'override-model')
+    monkeypatch.setenv('EMAIL_AGENT_CLASSIFICATION_MODEL', 'override-model')
     monkeypatch.setenv('EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD', '7')
     
     loader = ConfigLoader(temp_config_file)

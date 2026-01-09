@@ -174,10 +174,21 @@ def mock_settings(monkeypatch, v3_config_dict):
     # OpenRouter settings
     settings_mock.get_openrouter_api_key.return_value = 'test_api_key'
     settings_mock.get_openrouter_api_url.return_value = v3_config_dict['openrouter']['api_url']
-    settings_mock.get_openrouter_model.return_value = v3_config_dict['openrouter']['model']
-    settings_mock.get_openrouter_temperature.return_value = v3_config_dict['openrouter']['temperature']
-    settings_mock.get_openrouter_retry_attempts.return_value = v3_config_dict['openrouter']['retry_attempts']
-    settings_mock.get_openrouter_retry_delay_seconds.return_value = v3_config_dict['openrouter']['retry_delay_seconds']
+    # Classification settings (get_openrouter_model is deprecated alias)
+    settings_mock.get_classification_model.return_value = v3_config_dict['classification']['model']
+    settings_mock.get_classification_temperature.return_value = v3_config_dict['classification']['temperature']
+    settings_mock.get_classification_retry_attempts.return_value = v3_config_dict['classification']['retry_attempts']
+    settings_mock.get_classification_retry_delay_seconds.return_value = v3_config_dict['classification']['retry_delay_seconds']
+    # Deprecated aliases (for backward compatibility)
+    settings_mock.get_openrouter_model.return_value = v3_config_dict['classification']['model']
+    settings_mock.get_openrouter_temperature.return_value = v3_config_dict['classification']['temperature']
+    settings_mock.get_openrouter_retry_attempts.return_value = v3_config_dict['classification']['retry_attempts']
+    settings_mock.get_openrouter_retry_delay_seconds.return_value = v3_config_dict['classification']['retry_delay_seconds']
+    # Summarization settings
+    settings_mock.get_summarization_model.return_value = v3_config_dict['summarization']['model']
+    settings_mock.get_summarization_temperature.return_value = v3_config_dict['summarization']['temperature']
+    settings_mock.get_summarization_retry_attempts.return_value = v3_config_dict['summarization']['retry_attempts']
+    settings_mock.get_summarization_retry_delay_seconds.return_value = v3_config_dict['summarization']['retry_delay_seconds']
     
     # Processing settings
     settings_mock.get_importance_threshold.return_value = v3_config_dict['processing']['importance_threshold']
