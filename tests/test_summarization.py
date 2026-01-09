@@ -198,7 +198,7 @@ class TestCheckSummarizationRequired:
         """Test that summarize=True when tags match and prompt loads."""
         email = {'tags': ['Urgent']}
         
-        with patch('src.summarization.settings') as mock_settings, \
+        with patch('src.settings.settings') as mock_settings, \
              patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'), \
              patch('src.summarization.get_summarization_tags', return_value=['Urgent']):
             mock_config = Mock()
@@ -234,7 +234,7 @@ class TestCheckSummarizationRequired:
         """Test that summarize=False when prompt fails to load."""
         email = {'tags': ['Urgent']}
         
-        with patch('src.summarization.settings') as mock_settings, \
+        with patch('src.settings.settings') as mock_settings, \
              patch('src.summarization.get_summarization_tags', return_value=['Urgent']), \
              patch('src.summarization.load_summarization_prompt', return_value=None):
             mock_config = Mock()
@@ -278,7 +278,7 @@ class TestCheckSummarizationRequired:
         """Test with multiple matching tags."""
         email = {'tags': ['Urgent', 'Neutral']}
         
-        with patch('src.summarization.settings') as mock_settings, \
+        with patch('src.settings.settings') as mock_settings, \
              patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'), \
              patch('src.summarization.get_summarization_tags', return_value=['Urgent', 'Important']):
             mock_config = Mock()
