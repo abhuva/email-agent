@@ -151,7 +151,7 @@ jobs:
     
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
+      if: always() && runner.os == 'Linux'
       with:
         files: junit-*.xml
         check_name: Test Results (${{ matrix.os }}, Python ${{ matrix.python-version }})
