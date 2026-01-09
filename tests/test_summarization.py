@@ -20,52 +20,74 @@ class TestGetSummarizationTags:
     
     def test_returns_valid_tags(self):
         """Test that valid tags are returned."""
-        config = Mock()
-        config.summarization_tags = ['Urgent', 'Important']
-        tags = get_summarization_tags(config)
-        assert tags == ['Urgent', 'Important']
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = ['Urgent', 'Important']
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == ['Urgent', 'Important']
     
     def test_returns_empty_list_when_not_configured(self):
         """Test that empty list is returned when not configured."""
-        config = Mock()
-        del config.summarization_tags  # Attribute doesn't exist
-        tags = get_summarization_tags(config)
-        assert tags == []
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing = Mock()
+            del mock_config.processing.summarization_tags  # Attribute doesn't exist
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == []
     
     def test_handles_none_value(self):
         """Test handling of None value."""
-        config = Mock()
-        config.summarization_tags = None
-        tags = get_summarization_tags(config)
-        assert tags == []
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = None
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == []
     
     def test_handles_non_list_value(self):
         """Test handling of non-list value."""
-        config = Mock()
-        config.summarization_tags = 'Urgent'  # String instead of list
-        tags = get_summarization_tags(config)
-        assert tags == []
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = 'Urgent'  # String instead of list
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == []
     
     def test_filters_invalid_tags(self):
         """Test that invalid tags are filtered out."""
-        config = Mock()
-        config.summarization_tags = ['Urgent', '', 'Important', None, 123]
-        tags = get_summarization_tags(config)
-        assert tags == ['Urgent', 'Important']
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = ['Urgent', '', 'Important', None, 123]
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == ['Urgent', 'Important']
     
     def test_handles_empty_list(self):
         """Test handling of empty list."""
-        config = Mock()
-        config.summarization_tags = []
-        tags = get_summarization_tags(config)
-        assert tags == []
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = []
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == []
     
     def test_strips_whitespace(self):
         """Test that whitespace is stripped from tags."""
-        config = Mock()
-        config.summarization_tags = [' Urgent ', '  Important  ']
-        tags = get_summarization_tags(config)
-        assert tags == ['Urgent', 'Important']
+        with patch('src.summarization.settings') as mock_settings:
+            mock_config = Mock()
+            mock_config.processing.summarization_tags = [' Urgent ', '  Important  ']
+            mock_settings._config = mock_config
+            
+            tags = get_summarization_tags()
+            assert tags == ['Urgent', 'Important']
 
 
 class TestShouldSummarizeEmail:
@@ -174,104 +196,95 @@ class TestCheckSummarizationRequired:
     
     def test_returns_summarize_true_when_tags_match_and_prompt_loads(self):
         """Test that summarize=True when tags match and prompt loads."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = None
-        
         email = {'tags': ['Urgent']}
         
-        with patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'):
-            result = check_summarization_required(email, config)
+        with patch('src.summarization.settings') as mock_settings, \
+             patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'), \
+             patch('src.summarization.get_summarization_tags', return_value=['Urgent']):
+            mock_config = Mock()
+            mock_config.paths.summarization_prompt_path = None
+            mock_settings._config = mock_config
+            
+            result = check_summarization_required(email)
             assert result['summarize'] is True
             assert result['prompt'] == 'Summarize this email.'
             assert result['reason'] is None
     
     def test_returns_summarize_false_when_no_tags_configured(self):
         """Test that summarize=False when no tags configured."""
-        config = Mock()
-        config.summarization_tags = []
-        config.summarization_prompt_path = None
-        
         email = {'tags': ['Urgent']}
         
-        result = check_summarization_required(email, config)
-        assert result['summarize'] is False
-        assert result['prompt'] is None
-        assert result['reason'] == 'no_summarization_tags_configured'
+        with patch('src.summarization.get_summarization_tags', return_value=[]):
+            result = check_summarization_required(email)
+            assert result['summarize'] is False
+            assert result['prompt'] is None
+            assert result['reason'] == 'no_summarization_tags_configured'
     
     def test_returns_summarize_false_when_tags_dont_match(self):
         """Test that summarize=False when tags don't match."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = None
-        
         email = {'tags': ['Neutral']}
         
-        result = check_summarization_required(email, config)
-        assert result['summarize'] is False
-        assert result['prompt'] is None
-        assert result['reason'] == 'tags_do_not_match'
+        with patch('src.summarization.get_summarization_tags', return_value=['Urgent']):
+            result = check_summarization_required(email)
+            assert result['summarize'] is False
+            assert result['prompt'] is None
+            assert result['reason'] == 'tags_do_not_match'
     
     def test_returns_summarize_false_when_prompt_fails_to_load(self):
         """Test that summarize=False when prompt fails to load."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = '/nonexistent/path.md'
-        
         email = {'tags': ['Urgent']}
         
-        result = check_summarization_required(email, config)
-        assert result['summarize'] is False
-        assert result['prompt'] is None
-        assert result['reason'] == 'prompt_load_failed'
+        with patch('src.summarization.settings') as mock_settings, \
+             patch('src.summarization.get_summarization_tags', return_value=['Urgent']), \
+             patch('src.summarization.load_summarization_prompt', return_value=None):
+            mock_config = Mock()
+            mock_config.paths.summarization_prompt_path = '/nonexistent/path.md'
+            mock_settings._config = mock_config
+            
+            result = check_summarization_required(email)
+            assert result['summarize'] is False
+            assert result['prompt'] is None
+            assert result['reason'] == 'prompt_load_failed'
     
     def test_handles_email_without_tags_key(self):
         """Test handling of email without tags key."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = None
-        
         email = {}  # No tags key
         
-        result = check_summarization_required(email, config)
-        assert result['summarize'] is False
-        assert result['reason'] == 'tags_do_not_match'
+        with patch('src.summarization.get_summarization_tags', return_value=['Urgent']):
+            result = check_summarization_required(email)
+            assert result['summarize'] is False
+            assert result['reason'] == 'tags_do_not_match'
     
     def test_handles_email_with_non_list_tags(self):
         """Test handling of email with non-list tags."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = None
-        
         email = {'tags': 'Urgent'}  # String instead of list
         
-        result = check_summarization_required(email, config)
-        assert result['summarize'] is False
-        assert result['reason'] == 'tags_do_not_match'
+        with patch('src.summarization.get_summarization_tags', return_value=['Urgent']):
+            result = check_summarization_required(email)
+            assert result['summarize'] is False
+            assert result['reason'] == 'tags_do_not_match'
     
     def test_handles_exceptions_gracefully(self):
         """Test that exceptions are handled gracefully."""
-        config = Mock()
-        config.summarization_tags = ['Urgent']
-        config.summarization_prompt_path = None
-        
         # Make get_summarization_tags raise an exception
         with patch('src.summarization.get_summarization_tags', side_effect=Exception("Test error")):
             email = {'tags': ['Urgent']}
-            result = check_summarization_required(email, config)
+            result = check_summarization_required(email)
             assert result['summarize'] is False
             assert result['prompt'] is None
             assert 'unexpected_error' in result['reason']
     
     def test_multiple_matching_tags(self):
         """Test with multiple matching tags."""
-        config = Mock()
-        config.summarization_tags = ['Urgent', 'Important']
-        config.summarization_prompt_path = None
-        
         email = {'tags': ['Urgent', 'Neutral']}
         
-        with patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'):
-            result = check_summarization_required(email, config)
+        with patch('src.summarization.settings') as mock_settings, \
+             patch('src.summarization.load_summarization_prompt', return_value='Summarize this email.'), \
+             patch('src.summarization.get_summarization_tags', return_value=['Urgent', 'Important']):
+            mock_config = Mock()
+            mock_config.paths.summarization_prompt_path = None
+            mock_settings._config = mock_config
+            
+            result = check_summarization_required(email)
             assert result['summarize'] is True
             assert result['prompt'] == 'Summarize this email.'

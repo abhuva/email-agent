@@ -186,7 +186,8 @@ def test_imap_client_get_unprocessed_emails(mock_settings, mock_imap_connection)
     assert 'NOT KEYWORD "AIProcessed"' in search_call[0][2]
 
 
-def test_imap_client_set_flag(mock_settings, mock_imap_connection):
+@patch('src.imap_client.is_dry_run', return_value=False)
+def test_imap_client_set_flag(mock_dry_run, mock_settings, mock_imap_connection):
     """Test setting IMAP flag."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     
@@ -200,7 +201,8 @@ def test_imap_client_set_flag(mock_settings, mock_imap_connection):
     mock_imap_connection.uid.assert_called_with('STORE', '12345', '+FLAGS', '(AIProcessed)')
 
 
-def test_imap_client_clear_flag(mock_settings, mock_imap_connection):
+@patch('src.imap_client.is_dry_run', return_value=False)
+def test_imap_client_clear_flag(mock_dry_run, mock_settings, mock_imap_connection):
     """Test clearing IMAP flag."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     
@@ -237,7 +239,8 @@ def test_imap_client_is_processed(mock_settings, mock_imap_connection):
     assert client.is_processed('12345') is True
 
 
-def test_imap_client_mark_as_processed(mock_settings, mock_imap_connection):
+@patch('src.imap_client.is_dry_run', return_value=False)
+def test_imap_client_mark_as_processed(mock_dry_run, mock_settings, mock_imap_connection):
     """Test marking email as processed."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     

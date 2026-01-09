@@ -198,14 +198,17 @@ def test_v3_config_env_overrides(temp_config_file, test_env_vars, monkeypatch):
 
 def test_v3_config_schema_validation_errors():
     """Test that schema validation catches invalid values."""
+    from pydantic import ValidationError
+    
     # Test invalid port
-    with pytest.raises(Exception):  # Pydantic ValidationError
+    with pytest.raises((ValidationError, ValueError)):  # Pydantic ValidationError or ValueError
         ImapConfig(server='test.com', port=70000, username='test', password_env='TEST')
     
-    # Test invalid temperature
-    with pytest.raises(Exception):  # Pydantic ValidationError
-        OpenRouterConfig(api_key_env='TEST', api_url='http://test.com', model='test', temperature=3.0)
+    # Test invalid temperature - OpenRouterConfig doesn't have temperature, need to use LLMTaskConfig
+    from src.config_v3_schema import ClassificationConfig
+    with pytest.raises((ValidationError, ValueError)):
+        ClassificationConfig(model='test', temperature=3.0, retry_attempts=3, retry_delay_seconds=5)
     
     # Test invalid threshold
-    with pytest.raises(Exception):  # Pydantic ValidationError
+    with pytest.raises((ValidationError, ValueError)):
         ProcessingConfig(importance_threshold=15, spam_threshold=5, max_body_chars=4000, max_emails_per_run=15)

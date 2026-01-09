@@ -48,8 +48,8 @@ def test_config_manager_valid(valid_config_path, valid_env_file):
     load_env_vars(valid_env_file)
     cm = ConfigManager(valid_config_path, valid_env_file)
     assert cm.imap['server'] == 'mail.example.com'
-    assert cm.imap_password == 'validpassword'
-    assert cm.openrouter_api_key == 'validapikey'
+    assert cm.imap_password == 'test_password'  # Matches valid_env_file fixture
+    assert cm.openrouter_api_key == 'test_api_key'  # Matches valid_env_file fixture
     assert isinstance(cm.tag_mapping, dict)
     assert cm.max_body_chars == 4000
     assert isinstance(cm.imap_connection_params(), dict)

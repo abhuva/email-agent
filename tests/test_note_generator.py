@@ -269,9 +269,10 @@ class TestNoteGenerator:
         generator = NoteGenerator()
         note = generator.generate_note(sample_email_data, sample_classification_result)
         
-        # Should use fallback template
-        assert '12345' in note
-        assert 'Test Email' in note
+        # Should use fallback template which includes UID in frontmatter
+        # The fallback template includes frontmatter with uid, subject, etc.
+        assert '12345' in note or 'uid: 12345' in note or 'uid: "12345"' in note
+        assert 'Test Email' in note or sample_email_data['subject'] in note
     
     def test_generate_note_error_handling(self, mock_settings, temp_template_dir, sample_email_data):
         """Test error handling in note generation."""
