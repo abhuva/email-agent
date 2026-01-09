@@ -72,7 +72,7 @@ jobs:
         fail_ci_if_error: false
     
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
@@ -122,6 +122,10 @@ jobs:
           password_env: 'IMAP_PASSWORD'
           query: 'UNSEEN'
           processed_tag: 'AIProcessed'
+          application_flags:
+            - 'AIProcessed'
+            - 'ObsidianNoteCreated'
+            - 'NoteCreationFailed'
         paths:
           template_file: 'config/note_template.md.j2'
           obsidian_vault: '/tmp/test_vault'
@@ -132,6 +136,7 @@ jobs:
         openrouter:
           api_key_env: 'OPENROUTER_API_KEY'
           api_url: 'https://openrouter.ai/api/v1'
+        classification:
           model: 'google/gemini-2.5-flash-lite-preview-09-2025'
           temperature: 0.2
           retry_attempts: 3
@@ -168,7 +173,7 @@ jobs:
       continue-on-error: true
     
     - name: Upload E2E test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: e2e-test-results

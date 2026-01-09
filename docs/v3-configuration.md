@@ -4,10 +4,12 @@ This document explains the V3 configuration system as specified in `pdd.md`.
 
 ## Overview
 
-The V3 configuration system uses a structured YAML format with four main sections:
+The V3 configuration system uses a structured YAML format with six main sections:
 - `imap`: IMAP server connection settings
 - `paths`: File and directory paths
-- `openrouter`: OpenRouter API configuration
+- `openrouter`: OpenRouter API configuration (shared)
+- `classification`: Classification task configuration
+- `summarization`: Summarization task configuration (optional)
 - `processing`: Processing thresholds and limits
 
 All configuration must conform to the PDD Section 3.1 specification exactly.
@@ -25,12 +27,16 @@ All configuration must conform to the PDD Section 3.1 specification exactly.
 
 ```yaml
 imap:
-  server: 'imap.example.com'      # IMAP server hostname
-  port: 143                        # IMAP port (143 for STARTTLS, 993 for SSL)
-  username: 'your-email@example.com'
-  password_env: 'IMAP_PASSWORD'    # Environment variable name (MUST be set)
-  query: 'ALL'                     # IMAP search query
-  processed_tag: 'AIProcessed'     # IMAP flag for processed emails
+  server: 'imap.example.com'          # IMAP server hostname
+  port: 143                            # IMAP port (143 for STARTTLS, 993 for SSL)
+  username: 'your-email@example.com'   # Email account username
+  password_env: 'IMAP_PASSWORD'        # Environment variable name (MUST be set)
+  query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
+  processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
+  application_flags:                   # Application-specific flags for cleanup command
+    - 'AIProcessed'                    # Flags managed by this application (safe to remove)
+    - 'ObsidianNoteCreated'            # These flags can be cleaned up using cleanup-flags command
+    - 'NoteCreationFailed'              # Default includes all V1/V2 processing flags
 ```
 
 **Required Environment Variable:**
@@ -40,12 +46,13 @@ imap:
 
 ```yaml
 paths:
-  template_file: 'config/note_template.md.j2'  # Jinja2 template
-  obsidian_vault: '/path/to/vault'              # Obsidian vault (must exist)
-  log_file: 'logs/agent.log'                   # Operational logs
-  analytics_file: 'logs/analytics.jsonl'        # Structured analytics
-  changelog_path: 'logs/email_changelog.md'    # Changelog file
-  prompt_file: 'config/prompt.md'              # LLM prompt file
+  template_file: 'config/note_template.md.j2'  # Jinja2 template for generating Markdown notes
+  obsidian_vault: '/path/to/obsidian/vault'    # Obsidian vault directory (must exist)
+  log_file: 'logs/agent.log'                   # Unstructured operational log file
+  analytics_file: 'logs/analytics.jsonl'        # Structured analytics log (JSONL format)
+  changelog_path: 'logs/email_changelog.md'    # Changelog/audit log file
+  prompt_file: 'config/prompt.md'              # LLM prompt file for email classification
+  summarization_prompt_path: 'config/summarization_prompt.md'  # Optional: Prompt file for summarization
 ```
 
 **Validation:**
@@ -56,29 +63,49 @@ paths:
 
 ```yaml
 openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'           # Environment variable name (MUST be set)
-  api_url: 'https://openrouter.ai/api/v1'     # API endpoint
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model
-  temperature: 0.2                            # Temperature (0.0-2.0)
-  retry_attempts: 3                            # Retry attempts
-  retry_delay_seconds: 5                       # Initial retry delay
+  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name (MUST be set)
+  api_url: 'https://openrouter.ai/api/v1'  # OpenRouter API endpoint
 ```
 
 **Required Environment Variable:**
 - `OPENROUTER_API_KEY`: Your OpenRouter API key (security requirement)
 
+### Classification Section
+
+```yaml
+classification:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for classification
+  temperature: 0.2                     # LLM temperature (0.0-2.0, lower = more deterministic)
+  retry_attempts: 3                     # Number of retry attempts for failed API calls
+  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
+```
+
 **Validation:**
 - `temperature` must be between 0.0 and 2.0
 - `retry_attempts` and `retry_delay_seconds` must be at least 1
+
+### Summarization Section (Optional)
+
+```yaml
+summarization:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for summarization
+  temperature: 0.3                     # LLM temperature (0.0-2.0, typically higher for summarization)
+  retry_attempts: 3                     # Number of retry attempts for failed API calls
+  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
+```
+
+**Note:** Summarization is optional. If you don't need summarization, you can omit this section.
 
 ### Processing Section
 
 ```yaml
 processing:
-  importance_threshold: 8        # Minimum importance score (0-10)
-  spam_threshold: 5              # Maximum spam score (0-10)
-  max_body_chars: 4000           # Max characters for LLM
-  max_emails_per_run: 15         # Max emails per execution
+  importance_threshold: 8               # Minimum importance score (0-10) to mark email as important
+  spam_threshold: 5                     # Maximum spam score (0-10) to consider email as spam
+  max_body_chars: 4000                  # Maximum characters to send to LLM (truncates longer emails)
+  max_emails_per_run: 15                # Maximum number of emails to process per execution
+  summarization_tags:                  # Optional - only if you want summarization
+    - 'important'                       # Tag generated when importance_score >= threshold
 ```
 
 **Validation:**
@@ -96,8 +123,10 @@ Format: `EMAIL_AGENT_<SECTION>_<KEY>` (uppercase, underscores)
 Examples:
 - `EMAIL_AGENT_IMAP_SERVER=imap.custom.com`
 - `EMAIL_AGENT_IMAP_PORT=993`
-- `EMAIL_AGENT_OPENROUTER_MODEL=openai/gpt-4`
-- `EMAIL_AGENT_OPENROUTER_TEMPERATURE=0.3`
+- `EMAIL_AGENT_CLASSIFICATION_MODEL=openai/gpt-4`
+- `EMAIL_AGENT_CLASSIFICATION_TEMPERATURE=0.3`
+- `EMAIL_AGENT_SUMMARIZATION_MODEL=anthropic/claude-3-haiku`
+- `EMAIL_AGENT_SUMMARIZATION_TEMPERATURE=0.4`
 - `EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD=7`
 - `EMAIL_AGENT_PATHS_OBSIDIAN_VAULT=/custom/path`
 
@@ -171,10 +200,13 @@ See `src/settings.py` for the complete facade API.
 If you're migrating from V2 configuration:
 
 1. **Structure Change**: V2 used a flat structure, V3 uses grouped sections
-2. **New Sections**: Configuration is now organized into `imap`, `paths`, `openrouter`, `processing`
+2. **New Sections**: Configuration is now organized into `imap`, `paths`, `openrouter`, `classification`, `summarization`, `processing`
 3. **Path Changes**: Some paths moved to the `paths` section
-4. **New Parameters**: V3 adds `temperature`, `retry_attempts`, `retry_delay_seconds` to `openrouter`
-5. **New Parameters**: V3 adds `importance_threshold` and `spam_threshold` to `processing`
+4. **Model Configuration**: V3 separates model settings into `classification` and `summarization` sections (each with `model`, `temperature`, `retry_attempts`, `retry_delay_seconds`)
+5. **OpenRouter Simplification**: `openrouter` section now only contains `api_key_env` and `api_url` (shared settings)
+6. **New Parameters**: V3 adds `importance_threshold` and `spam_threshold` to `processing`
+7. **New Parameters**: V3 adds `application_flags` to `imap` for cleanup command
+8. **New Parameters**: V3 adds `summarization_prompt_path` to `paths` and `summarization_tags` to `processing` (optional)
 
 See `config/config.yaml.example` for the complete V3 structure.
 

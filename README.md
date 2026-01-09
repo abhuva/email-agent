@@ -132,44 +132,54 @@ V3 uses a grouped configuration structure. The main configuration file contains 
 ```yaml
 # IMAP Server Configuration
 imap:
-  server: 'imap.example.com'
-  port: 143                            # 143 for STARTTLS, 993 for SSL
-  username: 'your-email@example.com'
-  password_env: 'IMAP_PASSWORD'        # Environment variable name
-  query: 'ALL'                         # IMAP search query
-  processed_tag: 'AIProcessed'         # Tag for processed emails
-  application_flags:                   # Flags managed by this application
-    - 'AIProcessed'
-    - 'ObsidianNoteCreated'
-    - 'NoteCreationFailed'
+  server: 'imap.example.com'          # IMAP server hostname
+  port: 143                            # IMAP port (143 for STARTTLS, 993 for SSL)
+  username: 'your-email@example.com'   # Email account username
+  password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
+  query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
+  processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
+  application_flags:                   # Application-specific flags for cleanup command
+    - 'AIProcessed'                    # Flags managed by this application (safe to remove)
+    - 'ObsidianNoteCreated'            # These flags can be cleaned up using cleanup-flags command
+    - 'NoteCreationFailed'              # Default includes all V1/V2 processing flags
 
 # File and Directory Paths
 paths:
-  template_file: 'config/note_template.md.j2'  # Jinja2 template
-  obsidian_vault: '/path/to/obsidian/vault'
-  log_file: 'logs/agent.log'
-  analytics_file: 'logs/analytics.jsonl'
-  changelog_path: 'logs/email_changelog.md'
-  prompt_file: 'config/prompt.md'
+  template_file: 'config/note_template.md.j2'  # Jinja2 template for generating Markdown notes
+  obsidian_vault: '/path/to/obsidian/vault'    # Obsidian vault directory (must exist)
+  log_file: 'logs/agent.log'                   # Unstructured operational log file
+  analytics_file: 'logs/analytics.jsonl'        # Structured analytics log (JSONL format)
+  changelog_path: 'logs/email_changelog.md'    # Changelog/audit log file
+  prompt_file: 'config/prompt.md'              # LLM prompt file for email classification
+  summarization_prompt_path: 'config/summarization_prompt.md'  # Optional: Prompt file for summarization
 
 # OpenRouter API Configuration
 openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'
-  api_url: 'https://openrouter.ai/api/v1'
+  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name containing API key
+  api_url: 'https://openrouter.ai/api/v1'  # OpenRouter API endpoint
 
 # Classification Configuration
 classification:
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
-  temperature: 0.2
-  retry_attempts: 3
-  retry_delay_seconds: 5
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for classification
+  temperature: 0.2                     # LLM temperature (0.0-2.0, lower = more deterministic)
+  retry_attempts: 3                     # Number of retry attempts for failed API calls
+  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
+
+# Summarization Configuration
+summarization:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for summarization
+  temperature: 0.3                     # LLM temperature (0.0-2.0, typically higher for summarization)
+  retry_attempts: 3                     # Number of retry attempts for failed API calls
+  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
 
 # Processing Configuration
 processing:
-  importance_threshold: 8              # Minimum score (0-10) for important
-  spam_threshold: 5                    # Maximum score (0-10) for spam
-  max_body_chars: 4000                 # Max characters sent to LLM
-  max_emails_per_run: 15               # Max emails per execution
+  importance_threshold: 8               # Minimum importance score (0-10) to mark email as important
+  spam_threshold: 5                     # Maximum spam score (0-10) to consider email as spam
+  max_body_chars: 4000                  # Maximum characters to send to LLM (truncates longer emails)
+  max_emails_per_run: 15                # Maximum number of emails to process per execution
+  summarization_tags:                  # Optional - only if you want summarization
+    - 'important'                       # Tag generated when importance_score >= threshold
 ```
 
 See `config/config.yaml.example` for a complete example with detailed comments.
