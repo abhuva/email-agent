@@ -39,8 +39,9 @@ def _parse_email_address(from_value: str) -> Tuple[Optional[str], Optional[str]]
     # First try parseaddr (standard library function)
     name, email_addr = parseaddr(from_value)
     
-    # If parseaddr didn't work, try regex fallback
-    if not email_addr:
+    # If parseaddr didn't work, or if it extracted email but not name (Unicode issue),
+    # try regex fallback
+    if not email_addr or (email_addr and not name and '<' in from_value and '>' in from_value):
         # Try pattern: "Name <email@domain.com>" or "Lastname, Firstname <email@domain.com>"
         match = re.match(r'^(.+?)\s*<(.+?)>$', from_value)
         if match:
