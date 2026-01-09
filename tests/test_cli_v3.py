@@ -121,9 +121,8 @@ def test_process_command_defaults(mock_settings, mock_pipeline_class, runner, te
     mock_settings.get_log_file.return_value = str(config_path.parent / "logs" / "test.log")
     mock_settings.initialize = MagicMock()
     
-    # Mock the pipeline and its return value - use new_callable to prevent constructor from running
+    # Create mock pipeline instance
     mock_pipeline = MagicMock()
-    mock_pipeline_class.return_value = mock_pipeline
     mock_summary = MagicMock()
     mock_summary.total_emails = 0
     mock_summary.successful = 0
@@ -132,11 +131,14 @@ def test_process_command_defaults(mock_settings, mock_pipeline_class, runner, te
     mock_summary.average_time = 0.0
     mock_pipeline.process_emails.return_value = mock_summary
     
+    # Set return_value so Pipeline() returns mock_pipeline without calling __init__
+    mock_pipeline_class.return_value = mock_pipeline
+    
     result = runner.invoke(cli, [
         '--config', temp_config_file,
         'process'
     ])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"CLI failed with output: {result.output}\nException: {result.exception}"
     assert 'Processing complete' in result.output or 'successful' in result.output.lower()
 
 
