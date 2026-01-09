@@ -62,6 +62,18 @@ def temp_config_file(tmp_path):
             'spam_threshold': 5,
             'max_body_chars': 4000,
             'max_emails_per_run': 15
+        },
+        'classification': {
+            'model': 'test-model',
+            'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 5
+        },
+        'summarization': {
+            'model': 'test-model',
+            'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 5
         }
     }
     

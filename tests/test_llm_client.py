@@ -66,8 +66,10 @@ def test_llm_client_classify_email_success(mock_post, mock_settings):
     }
     # Create a mock response that properly returns the dict
     mock_response = MagicMock()
-    # Use return_value directly on the method to ensure it returns the actual dict
-    mock_response.json = MagicMock(return_value=api_response_dict)
+    # Use a real function to ensure it returns the actual dict, not a Mock
+    def json_func():
+        return api_response_dict
+    mock_response.json = json_func
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
@@ -309,7 +311,9 @@ def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
             }
         }]
     }
-    mock_response_success.json = MagicMock(return_value=api_response_dict_success)
+    def json_func_success():
+        return api_response_dict_success
+    mock_response_success.json = json_func_success
     mock_response_success.raise_for_status = MagicMock(return_value=None)
     
     mock_post.side_effect = [mock_response_fail, mock_response_fail, mock_response_success]
