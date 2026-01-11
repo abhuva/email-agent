@@ -467,7 +467,7 @@
       "id": 7,
       "title": "Implement Rules Engine - Whitelist Rules",
       "description": "Create the whitelist component of the rules engine",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         6
       ],
@@ -479,7 +479,7 @@
           "id": 1,
           "title": "Analyze existing rules engine and blacklist implementation",
           "description": "Review the current rules engine structure in src/rules.py (and any related modules/tests) to understand how blacklist rules are represented, validated, and applied. Document the rule schema, supported trigger types, and the expected return format (score, tags list) to ensure whitelist behavior is consistent.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "• Open src/rules.py and locate the existing blacklist handling function(s) and any shared helpers (e.g., apply_blacklist, trigger evaluators, validation utilities).\n• Identify how rules are structured (Python dicts, classes, or configs), what fields a rule contains (e.g., trigger_type, pattern, score_impact, tags), and how trigger types are dispatched.\n• Confirm the contract for rule application functions: input parameters (email_obj, rules, current_score) and output format (new_score, tags_list) as used elsewhere in the codebase.\n• Search for tests or usages of blacklist rules to see real examples of rules and expected behavior; note how errors and invalid rules are currently handled.\n• Summarize findings (schema, trigger types, helper functions, validation patterns) in comments or a short internal doc to use as reference when implementing whitelist logic."
         },
@@ -487,7 +487,7 @@
           "id": 2,
           "title": "Define whitelist rule schema, validation, and score_boost/tag constraints",
           "description": "Specify and implement the data schema and validation rules for whitelist entries, ensuring that score_boost and tags fields are well-defined, type-checked, and consistent with or complementary to existing blacklist rules.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -497,7 +497,7 @@
           "id": 3,
           "title": "Implement trigger evaluation and matching for whitelist rules",
           "description": "Implement or reuse trigger evaluation logic for whitelist rules so they support the same trigger types as blacklist rules, ensuring that each rule can correctly determine whether it matches a given email_obj.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -508,7 +508,7 @@
           "id": 4,
           "title": "Implement apply_whitelist(email_obj, rules, current_score)",
           "description": "Add the apply_whitelist function in src/rules.py that iterates over whitelist rules, applies score boosts, and accumulates tags when rules match, then returns the updated score and tag list while enforcing validation.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -519,7 +519,7 @@
           "id": 5,
           "title": "Integrate whitelist rules into engine workflow and add tests",
           "description": "Wire apply_whitelist into the existing rules engine flow (wherever whitelist behavior is expected) and create unit tests to verify correct handling of score_boost, tags, trigger types, and validation edge cases.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -529,7 +529,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
