@@ -56,6 +56,7 @@ This is the top-level guide for all docs, implementation details, and project st
   - ✅ Task 1: Configuration directory structure
   - ✅ Task 2: Configuration loader with deep merge logic
   - ✅ Task 3: Configuration schema validation
+- **[V4 Models](v4-models.md)** — EmailContext data class for pipeline state tracking (Task 4) ✅
 
 ## Analysis & Reports
 - **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄
