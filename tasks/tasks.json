@@ -313,7 +313,7 @@
       "id": 5,
       "title": "Implement Content Parser with HTML to Markdown Conversion",
       "description": "Create the content parser module to convert HTML emails to Markdown",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         4
       ],
@@ -325,7 +325,7 @@
           "id": 1,
           "title": "Set up content_parser module and html2text dependency",
           "description": "Create the content parser module file and ensure the html2text library is available and imported correctly.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Add html2text to the project dependencies (e.g., pyproject.toml/requirements.txt) so it is installed with the application.[1][4] 2) Create src/content_parser.py if it does not exist. 3) In src/content_parser.py, import html2text (either using the functional API html2text.html2text or the HTML2Text class, depending on configuration needs).[1][6][7] 4) Define the public function signature parse_html_content(html_body: str, plain_text_body: str) -> tuple[str, bool] (or -> (str, bool) for older Python) as a stub that currently just returns the plain_text_body and a fallback flag placeholder."
         },
@@ -333,7 +333,7 @@
           "id": 2,
           "title": "Implement HTML to Markdown conversion using html2text",
           "description": "Use html2text to convert HTML email bodies to Markdown, encapsulated in a helper inside the content_parser module.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -343,7 +343,7 @@
           "id": 3,
           "title": "Add error handling and fallback to plain text",
           "description": "Ensure parse_html_content uses the HTML conversion with robust error handling and falls back to the plain text body when needed.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -353,7 +353,7 @@
           "id": 4,
           "title": "Enforce 20,000-character limit on parsed content",
           "description": "Apply a hard length limit of 20,000 characters to the returned content, after conversion and fallback handling.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -363,7 +363,7 @@
           "id": 5,
           "title": "Integrate logging and add basic tests for content_parser",
           "description": "Add structured logging for errors and key decision branches, and create tests to validate conversion, fallback, and limit behavior.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -373,7 +373,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -1362,7 +1362,7 @@
           "id": 2,
           "title": "Implement unified configuration and environment handling for multi-account",
           "description": "Create or refactor a configuration layer used by main.py to resolve CLI arguments and environment variables into a structured, multi-account-aware configuration object.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
