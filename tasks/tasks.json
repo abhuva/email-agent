@@ -558,7 +558,7 @@
           "id": 1,
           "title": "Define AccountProcessor class skeleton and state isolation",
           "description": "Create src/account_processor.py with the AccountProcessor class, its constructor, and core attributes ensuring per-account state isolation.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1. Create the file src/account_processor.py.\n2. Define a class `AccountProcessor` following your project’s naming and style conventions.\n3. Design `__init__(self, account_config, imap_client_factory, llm_client, blacklist_service, whitelist_service, note_generator, parser, logger)` (adapt names to existing abstractions) so that all dependencies for processing a single account are passed in or derived from immutable configuration rather than using globals or shared mutable state.\n4. Store only account-specific state on `self` (e.g., `self.account_id`, `self.config`, `self.logger`, `self._imap_conn`, `self._processing_context`), avoiding class variables and shared singletons.\n5. Document the class docstring explaining its responsibility: isolated processing pipeline for a single account, including IMAP connection management and pipeline orchestration.\n6. Ensure that any reusable utilities are injected or imported as stateless helpers, not as shared mutable objects, to preserve isolation between AccountProcessor instances."
         },
@@ -566,7 +566,7 @@
           "id": 2,
           "title": "Implement setup() with IMAP connection management and initialization",
           "description": "Implement the setup phase to prepare all resources required for processing a single account, with a focus on IMAP connection lifecycle.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -586,7 +586,7 @@
           "id": 4,
           "title": "Implement teardown() and resource cleanup guaranteeing isolation",
           "description": "Implement teardown() to reliably release IMAP connections and any other per-account resources, preserving clean state boundaries.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -597,7 +597,7 @@
           "id": 5,
           "title": "Integrate AccountProcessor usage pattern and validate state isolation",
           "description": "Define the standard usage pattern for AccountProcessor, ensure it integrates with the surrounding system, and verify that processing for different accounts remains fully isolated.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
