@@ -1354,7 +1354,7 @@
           "id": 1,
           "title": "Analyze new architecture integration points for main.py",
           "description": "Review the new architecture to determine how main.py should initialize and interact with MasterOrchestrator and the new CLI, and identify all required inputs (CLI args, env vars, config).",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Inspect the MasterOrchestrator API: constructor signature, required dependencies, lifecycle methods (e.g., start(), run(), shutdown()). Document what must be provided at startup vs. what is discovered at runtime. 2) Inspect the new CLI module: how it parses arguments, how commands/subcommands are represented, and what object(s) it expects the entry point to supply (e.g., a callback, an application context, or a MasterOrchestrator instance). 3) List all configuration sources used in the new multi-account architecture (environment variables, config files, secrets, CLI flags). For each, specify key names, expected types, and which parts of the system consume them. 4) Based on existing main.py behavior, map old responsibilities (argument parsing, single-account setup, logging setup, etc.) to new equivalents in the architecture, noting anything that can now be delegated to the CLI or MasterOrchestrator. 5) Produce a short design note (can be a comment or markdown in the repo) describing the intended main() flow at a high level: parse CLI → build config from env + args → construct orchestrator → dispatch command → handle shutdown."
         },
