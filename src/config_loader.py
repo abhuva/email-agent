@@ -279,7 +279,10 @@ class ConfigLoader:
         This method:
         1. Loads the global config.yaml
         2. Loads the account-specific {account_name}.yaml (if it exists)
-        3. Deep merges them according to V4 merge rules
+        3. Deep merges them according to V4 merge rules:
+           - Dictionaries: Deep merged (keys in override overwrite keys in base)
+           - Lists: Completely replaced (lists in override replace lists in base)
+           - Primitives: Overwritten (values in override replace values in base)
         4. Returns the merged configuration dictionary
         
         Args:
@@ -289,14 +292,25 @@ class ConfigLoader:
             Merged configuration dictionary
             
         Raises:
-            FileNotFoundError: If global config or account config is missing
+            FileNotFoundError: If global config is missing
             ConfigurationError: If configuration loading or merging fails
             
         Note:
-            Implementation will be completed in subsequent subtasks.
-            This method signature is defined here for interface clarity.
+            Missing account config files are allowed and will result in global-only
+            configuration being returned.
         """
-        # Placeholder - implementation will be added in subtask 2.4
-        raise NotImplementedError(
-            "load_merged_config will be implemented after YAML loading and deep merge utilities are complete"
+        # Load global configuration (required)
+        global_config = self.load_global_config()
+        
+        # Load account-specific configuration (optional - returns {} if missing)
+        account_config = self.load_account_config(account_name)
+        
+        # Deep merge: global as base, account as override
+        merged_config = self.deep_merge(global_config, account_config)
+        
+        logger.info(
+            f"Loaded merged configuration for account '{account_name}' "
+            f"({len(account_config)} account-specific overrides)"
         )
+        
+        return merged_config
