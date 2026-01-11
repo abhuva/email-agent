@@ -389,7 +389,7 @@
       "id": 6,
       "title": "Implement Rules Engine - Blacklist Rules",
       "description": "Create the blacklist component of the rules engine",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         4
       ],
@@ -401,7 +401,7 @@
           "id": 1,
           "title": "Define blacklist rule data structures and ActionEnum integration",
           "description": "Introduce core types for blacklist rules and ensure compatibility with the existing ActionEnum used by the rules engine.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Inspect the existing codebase to locate the ActionEnum definition (or create it if this task includes that), confirming the available actions include DROP, RECORD, and PASS. 2) In src/rules.py, define a clear internal representation for blacklist rules, e.g., a dataclass or typed dict such as `BlacklistRule` with fields like `trigger_type` (\"sender\" | \"subject\" | \"domain\"), `pattern` (string or compiled regex), and `action` (ActionEnum). 3) Decide whether wildcard/regex support is required based on the PRD; if yes, add fields to store the raw pattern and a compiled matcher. 4) Add type hints for all new structures and functions (using `typing` and possibly `dataclasses`) to guide later implementation and testing. 5) Document the expected rule schema in comments or docstrings so later subtasks can reference it (e.g., example rule objects and which fields are mandatory)."
         },
@@ -409,7 +409,7 @@
           "id": 2,
           "title": "Implement rule loading and validation with error handling",
           "description": "Create functions in src/rules.py to load blacklist rules from the configured source and validate them, raising or logging appropriate errors for malformed rules.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -419,7 +419,7 @@
           "id": 3,
           "title": "Implement rule matching helpers for sender, subject, and domain triggers",
           "description": "Create reusable helper functions that check whether a given email_obj matches a single blacklist rule for each supported trigger type.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -430,7 +430,7 @@
           "id": 4,
           "title": "Implement check_blacklist(email_obj, rules) -> ActionEnum",
           "description": "Create the main blacklist evaluation function that iterates over rules, applies matching logic, and returns the appropriate ActionEnum value.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -441,7 +441,7 @@
           "id": 5,
           "title": "Integrate, test, and document the blacklist rules component",
           "description": "Wire the blacklist component into the existing rules engine flow, add comprehensive tests, and document usage and error cases.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -451,7 +451,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
