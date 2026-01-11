@@ -1273,7 +1273,7 @@
           "id": 1,
           "title": "Set up integration test infrastructure and mocks",
           "description": "Establish the integration testing project structure and create mock implementations for external services (IMAP, LLM) to isolate component interactions.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Create or confirm a dedicated integration test module/folder (e.g., `tests/integration/`) separate from unit tests, wired into the existing test runner (JUnit, pytest, Jest, etc.). 2) Define interfaces or abstraction layers for external dependencies if not already present (e.g., `ImapClient`, `LlmClient`), so that real and mock implementations can be swapped via dependency injection or configuration. 3) Implement mock IMAP service: a fake `ImapClient` that returns deterministic mailboxes, messages, and error conditions from in-memory fixtures instead of a real server; allow configuration of edge cases (empty inbox, malformed message, connection error). 4) Implement mock LLM service: a fake `LlmClient` that returns predefined responses based on input prompts or test scenario identifiers, including normal responses, long responses, and error timeouts. 5) Provide common test utilities: factory methods/builders for creating sample configuration files, accounts, rule sets, and raw content payloads; helper to reset mocks between tests. 6) Add base integration test class/setup hooks that configure the system under test to use the mock IMAP and mock LLM by default (e.g., via environment variables, DI container, or test configuration profile)."
         },
@@ -1281,7 +1281,7 @@
           "id": 2,
           "title": "Implement ConfigLoader ↔ AccountProcessor integration tests",
           "description": "Create integration tests that verify ConfigLoader correctly provides configuration and account data to AccountProcessor and that the processor behaves as expected for different configuration scenarios.",
-          "status": "pending",
+          "status": "in-progress",
           "dependencies": [
             1
           ],
