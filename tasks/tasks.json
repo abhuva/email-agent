@@ -81,7 +81,7 @@
       "id": 2,
       "title": "Implement Configuration Loader with Deep Merge Logic",
       "description": "Create the ConfigLoader class that handles loading and merging global and account-specific configurations",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -144,7 +144,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
