@@ -1340,7 +1340,7 @@
       "id": 18,
       "title": "Update Main Entry Point",
       "description": "Refactor the main.py file to use the new architecture",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         10,
         11,
@@ -1372,7 +1372,7 @@
           "id": 3,
           "title": "Refactor main.py to construct and run MasterOrchestrator",
           "description": "Update main.py to define a clear main() entry function that builds configuration, initializes all core components, constructs MasterOrchestrator, and delegates control flow to it.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -1383,7 +1383,7 @@
           "id": 4,
           "title": "Integrate new CLI parsing and command dispatch in main.py",
           "description": "Wire the new CLI module into main.py so that command-line arguments are parsed according to the new interface and correctly mapped to orchestrator actions and multi-account behavior.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -1395,7 +1395,7 @@
           "id": 5,
           "title": "Implement clean shutdown and lifecycle management in main entry point",
           "description": "Ensure main.py manages application lifecycle and shutdown correctly, including resource cleanup, signal handling (if required), and consistent exit codes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4
@@ -1406,7 +1406,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
