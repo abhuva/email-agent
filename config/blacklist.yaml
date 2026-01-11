@@ -1,25 +1,113 @@
 # Blacklist Rules Configuration
-# 
+#
 # Blacklist rules are applied BEFORE AI processing (pre-processing).
 # Rules can either DROP emails (skip processing entirely) or RECORD them
 # (generate a raw markdown file without AI classification).
 #
 # Rule Structure:
-# - trigger: The field to match against ("sender", "subject", or "domain")
-# - value: The value to match (exact match for sender/subject, domain match for domain)
-# - action: What to do when matched ("drop" or "record")
+#   - trigger: The field to match against ("sender", "subject", or "domain")
+#   - value: The value to match (exact match for sender/subject, domain match for domain)
+#   - action: What to do when matched ("drop" or "record")
 #
-# Examples:
+# Rule Evaluation:
+#   - Rules are evaluated in order (first match wins)
+#   - Whitelist rules are checked before blacklist rules (whitelist takes precedence)
+#   - If no match, email proceeds to normal processing
+#
+# Matching Semantics:
+#   - "sender": Exact match against email sender address
+#   - "subject": Exact match against email subject line
+#   - "domain": Domain match (matches any email from that domain)
+#
+# Performance Considerations:
+#   - Rules are evaluated for every email, so keep the list concise
+#   - Use domain matching for blocking entire domains (more efficient)
+#   - Avoid overly broad patterns that might match legitimate emails
+#
+# For complete documentation, see: docs/v4-configuration.md#rules-schema
+# For schema reference, see: docs/v4-config-schema-reference.md
+
+# ============================================================================
+# Example Rules
+# ============================================================================
+# Uncomment and customize the rules below, or add your own.
+
+# Example 1: Drop all emails from a specific spam sender
 # - trigger: "sender"
 #   value: "no-reply@spam.com"
-#   action: "drop"  # Skip this email entirely
-#
+#   action: "drop"  # Skip this email entirely (no processing, no file generation)
+
+# Example 2: Drop all emails from a spam domain
 # - trigger: "domain"
 #   value: "spam-domain.com"
 #   action: "drop"  # Drop all emails from this domain
-#
+
+# Example 3: Record emails with specific subject (skip AI but create file)
 # - trigger: "subject"
 #   value: "Unsubscribe"
 #   action: "record"  # Generate raw markdown but skip AI processing
+
+# Example 4: Drop newsletter emails from a specific sender
+# - trigger: "sender"
+#   value: "newsletter@example.com"
+#   action: "drop"
+
+# Example 5: Record automated notifications (skip AI, but keep record)
+# - trigger: "subject"
+#   value: "Automated Notification"
+#   action: "record"
+
+# Example 6: Drop all emails from a domain (useful for blocking entire domains)
+# - trigger: "domain"
+#   value: "unwanted-domain.com"
+#   action: "drop"
+
+# ============================================================================
+# Common Use Cases
+# ============================================================================
+
+# Block spam senders:
+# - trigger: "sender"
+#   value: "spam@example.com"
+#   action: "drop"
+
+# Block entire spam domains:
+# - trigger: "domain"
+#   value: "spam-domain.com"
+#   action: "drop"
+
+# Skip AI processing for automated emails (but keep record):
+# - trigger: "subject"
+#   value: "Automated"
+#   action: "record"
+
+# Block specific notification types:
+# - trigger: "subject"
+#   value: "Unsubscribe"
+#   action: "drop"
+
+# ============================================================================
+# Rule Management
+# ============================================================================
+# To disable a rule temporarily, comment it out with #:
+#   # - trigger: "sender"
+#   #   value: "spam@example.com"
+#   #   action: "drop"
 #
-# blocked_items: []
+# To add a new rule, add it to the list below:
+#   - trigger: "sender"
+#     value: "new-spam@example.com"
+#     action: "drop"
+#
+# Rule IDs are not required - rules are identified by their position in the list.
+# The order matters: first matching rule wins.
+
+# ============================================================================
+# Active Rules
+# ============================================================================
+# Add your active rules below. If no rules are needed, leave this list empty.
+# The list must be valid YAML (use [] for empty list).
+
+# Empty list - no active rules
+# Uncomment and customize the examples above, or add your own rules here:
+[]

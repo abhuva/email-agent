@@ -4,29 +4,183 @@
 # Rules can boost importance scores and add tags to emails that match.
 #
 # Rule Structure:
-# - trigger: The field to match against ("sender", "subject", or "domain")
-# - value: The value to match (exact match for sender/subject, domain match for domain)
-# - action: Must be "boost" for whitelist rules
-# - score_boost: Integer value to add to importance_score (e.g., 20 adds 20 points)
-# - add_tags: List of tags to add to the email (e.g., ["#vip", "#work"])
+#   - trigger: The field to match against ("sender", "subject", or "domain")
+#   - value: The value to match (exact match for sender/subject, domain match for domain)
+#   - action: Must be "boost" for whitelist rules
+#   - score_boost: Integer value to add to importance_score (e.g., 20 adds 20 points)
+#   - add_tags: List of tags to add to the email (e.g., ["#vip", "#work"])
 #
-# Examples:
+# Rule Evaluation:
+#   - Rules are evaluated in order (all matching rules are applied)
+#   - Whitelist rules are applied after LLM classification but before note generation
+#   - Multiple whitelist rules can match and all boosts/tags are accumulated
+#   - Score boosts are additive (multiple matches = sum of all boosts)
+#   - Tags are merged (all matching tags are added)
+#
+# Matching Semantics:
+#   - "sender": Exact match against email sender address
+#   - "subject": Exact match against email subject line
+#   - "domain": Domain match (matches any email from that domain)
+#
+# Score Boosting:
+#   - score_boost is added to the LLM's importance_score
+#   - Typical values: 5-30 points (importance_score range is 0-10, but boosts can exceed)
+#   - Use higher boosts for critical senders/domains
+#   - Multiple matching rules: boosts are summed
+#
+# Tags:
+#   - Tags are added to the email's tag list
+#   - Format: ["#tag1", "#tag2"] (include # prefix)
+#   - Multiple matching rules: all tags are merged
+#   - Tags appear in generated Obsidian notes
+#
+# Performance Considerations:
+#   - Rules are evaluated for every email, so keep the list concise
+#   - Use domain matching for boosting entire domains (more efficient)
+#   - Avoid overly broad patterns that might match unintended emails
+#
+# For complete documentation, see: docs/v4-configuration.md#rules-schema
+# For schema reference, see: docs/v4-config-schema-reference.md
+
+# ============================================================================
+# Example Rules
+# ============================================================================
+# Uncomment and customize the rules below, or add your own.
+
+# Example 1: Boost importance for important client domain
+# - trigger: "domain"
+#   value: "important-client.com"
+#   action: "boost"
+#   score_boost: 20  # Add 20 points to importance_score
+#   add_tags: ["#vip", "#work"]  # Add these tags to the email
+
+# Example 2: Boost importance for boss emails
+# - trigger: "sender"
+#   value: "boss@company.com"
+#   action: "boost"
+#   score_boost: 15  # Add 15 points to importance_score
+#   add_tags: ["#priority"]  # Add priority tag
+
+# Example 3: Boost importance for urgent subject lines
+# - trigger: "subject"
+#   value: "URGENT"
+#   action: "boost"
+#   score_boost: 10  # Add 10 points to importance_score
+#   add_tags: ["#urgent"]  # Add urgent tag
+
+# Example 4: Boost importance for important project domain
+# - trigger: "domain"
+#   value: "project-partner.com"
+#   action: "boost"
+#   score_boost: 25  # Add 25 points to importance_score
+#   add_tags: ["#project", "#important"]  # Add multiple tags
+
+# Example 5: Boost importance for specific sender (client)
+# - trigger: "sender"
+#   value: "client@example.com"
+#   action: "boost"
+#   score_boost: 18  # Add 18 points to importance_score
+#   add_tags: ["#client"]  # Add client tag
+
+# Example 6: Boost importance for domain and add work tag
+# - trigger: "domain"
+#   value: "work-partner.com"
+#   action: "boost"
+#   score_boost: 12  # Add 12 points to importance_score
+#   add_tags: ["#work", "#partner"]  # Add work and partner tags
+
+# ============================================================================
+# Common Use Cases
+# ============================================================================
+
+# Boost important clients:
 # - trigger: "domain"
 #   value: "important-client.com"
 #   action: "boost"
 #   score_boost: 20
-#   add_tags: ["#vip", "#work"]
-#
+#   add_tags: ["#vip", "#client"]
+
+# Boost boss/manager emails:
 # - trigger: "sender"
-#   value: "boss@company.com"
+#   value: "manager@company.com"
 #   action: "boost"
 #   score_boost: 15
-#   add_tags: ["#priority"]
-#
+#   add_tags: ["#priority", "#boss"]
+
+# Boost urgent subject lines:
 # - trigger: "subject"
 #   value: "URGENT"
 #   action: "boost"
 #   score_boost: 10
 #   add_tags: ["#urgent"]
+
+# Boost project-related domains:
+# - trigger: "domain"
+#   value: "project-domain.com"
+#   action: "boost"
+#   score_boost: 18
+#   add_tags: ["#project"]
+
+# ============================================================================
+# Score Boost Guidelines
+# ============================================================================
+# Typical importance_score range from LLM: 0-10
+# Score boosts are added to this base score, so final scores can exceed 10.
 #
-# allowed_items: []
+# Recommended boost values:
+#   - Low priority: 5-10 points (slight boost)
+#   - Medium priority: 10-15 points (moderate boost)
+#   - High priority: 15-25 points (significant boost)
+#   - Critical: 25+ points (maximum boost)
+#
+# Example:
+#   - LLM importance_score: 7
+#   - Whitelist boost: +20
+#   - Final importance_score: 27
+#   - Result: Email is marked as important (even if threshold is 8)
+
+# ============================================================================
+# Tag Guidelines
+# ============================================================================
+# Tags are added to generated Obsidian notes and help with organization.
+#
+# Tag format:
+#   - Include # prefix: ["#work", "#vip"]
+#   - Use lowercase, hyphenated: ["#work-project", "#client-xyz"]
+#   - Keep tags concise and meaningful
+#
+# Common tag categories:
+#   - Priority: ["#priority", "#urgent", "#important"]
+#   - Context: ["#work", "#personal", "#client"]
+#   - Projects: ["#project-name", "#project-abc"]
+#   - People: ["#boss", "#team", "#client-name"]
+
+# ============================================================================
+# Rule Management
+# ============================================================================
+# To disable a rule temporarily, comment it out with #:
+#   # - trigger: "domain"
+#   #   value: "important-client.com"
+#   #   action: "boost"
+#   #   score_boost: 20
+#   #   add_tags: ["#vip"]
+#
+# To add a new rule, add it to the list below:
+#   - trigger: "sender"
+#     value: "new-important@example.com"
+#     action: "boost"
+#     score_boost: 15
+#     add_tags: ["#important"]
+#
+# Rule IDs are not required - rules are identified by their position in the list.
+# The order matters: all matching rules are applied (unlike blacklist where first match wins).
+
+# ============================================================================
+# Active Rules
+# ============================================================================
+# Add your active rules below. If no rules are needed, leave this list empty.
+# The list must be valid YAML (use [] for empty list).
+
+# Empty list - no active rules
+# Uncomment and customize the examples above, or add your own rules here:
+[]

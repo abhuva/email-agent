@@ -1022,7 +1022,7 @@
       "id": 14,
       "title": "Create Default Configuration Templates",
       "description": "Develop default configuration files for global and account settings",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3
       ],
@@ -1034,7 +1034,7 @@
           "id": 1,
           "title": "Define configuration schema and directory layout",
           "description": "Identify all global and account-level configuration settings, their data types, defaults, and relationships, and decide on the directory structure and file naming conventions for config.yaml, blacklist.yaml, and whitelist.yaml.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) List all configuration domains (e.g., logging, authentication, rate limiting, feature flags, integrations). 2) For each domain, enumerate individual settings, valid values, and default behaviors. 3) Distinguish which settings belong in the **global config** vs. which are **account overrides**; document precedence rules (e.g., account > global). 4) Define the YAML structure for each file: key nesting, section names, and how rules are expressed in blacklist/whitelist files. 5) Decide on directory layout (e.g., `/config/global/config.yaml`, `/config/accounts/example_account.yaml`, `/config/rules/blacklist.yaml`, `/config/rules/whitelist.yaml`) and file naming patterns. 6) Capture this as a short schema/ADR document to be used as the reference for subsequent template creation."
         },
@@ -1042,7 +1042,7 @@
           "id": 2,
           "title": "Create default global config.yaml template with full settings",
           "description": "Implement the default global config.yaml template that includes all known settings, structured according to the schema, with safe defaults and detailed comments explaining each setting and its purpose.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1052,7 +1052,7 @@
           "id": 3,
           "title": "Create example account configuration template with common overrides",
           "description": "Develop an example account-level configuration YAML that demonstrates typical overrides of global settings and documents how per-account configuration should be used.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -1063,7 +1063,7 @@
           "id": 4,
           "title": "Create blacklist.yaml and whitelist.yaml rule templates with examples",
           "description": "Implement template blacklist.yaml and whitelist.yaml files containing example rule definitions that cover common use cases and clearly document rule structure, matching semantics, and evaluation order.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1073,7 +1073,7 @@
           "id": 5,
           "title": "Add cross-file documentation, usage notes, and integration checks",
           "description": "Ensure all template files are coherently documented, reference each other where relevant, and are validated against the intended loader/validation logic so they can be used as reliable starting points.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
@@ -1085,7 +1085,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

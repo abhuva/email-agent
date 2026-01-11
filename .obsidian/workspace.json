@@ -240,6 +240,8 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "scripts/validate_config_templates.py",
+    "docs/v4-config-schema-reference.md",
     "docs/v4-progress-bars.md",
     "src/__pycache__/progress.cpython-313.pyc",
     "src/progress.py",
@@ -273,8 +275,6 @@
     "docs/note_template_jina.md",
     "docs/COMPLETE_GUIDE.md",
     "docs/MAIN_DOCS.md",
-    "docs/v3-note-generator.md",
-    "config/prompt.md",
-    "config/summarization_prompt.md"
+    "docs/v3-note-generator.md"
   ]
 }

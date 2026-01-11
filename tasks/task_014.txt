@@ -1,6 +1,6 @@
 # Task ID: 14
 # Title: Create Default Configuration Templates
-# Status: pending
+# Status: done
 # Dependencies: 3
 # Priority: medium
 # Description: Develop default configuration files for global and account settings
@@ -11,37 +11,37 @@ Create template configuration files: 1) Default global config.yaml with all sett
 Validate all template files against the configuration schema. Verify they can be loaded without errors and produce expected merged configurations.
 
 # Subtasks:
-## 1. Define configuration schema and directory layout [pending]
+## 1. Define configuration schema and directory layout [done]
 ### Dependencies: None
 ### Description: Identify all global and account-level configuration settings, their data types, defaults, and relationships, and decide on the directory structure and file naming conventions for config.yaml, blacklist.yaml, and whitelist.yaml.
 ### Details:
 1) List all configuration domains (e.g., logging, authentication, rate limiting, feature flags, integrations). 2) For each domain, enumerate individual settings, valid values, and default behaviors. 3) Distinguish which settings belong in the **global config** vs. which are **account overrides**; document precedence rules (e.g., account > global). 4) Define the YAML structure for each file: key nesting, section names, and how rules are expressed in blacklist/whitelist files. 5) Decide on directory layout (e.g., `/config/global/config.yaml`, `/config/accounts/example_account.yaml`, `/config/rules/blacklist.yaml`, `/config/rules/whitelist.yaml`) and file naming patterns. 6) Capture this as a short schema/ADR document to be used as the reference for subsequent template creation.
 
-## 2. Create default global config.yaml template with full settings [pending]
+## 2. Create default global config.yaml template with full settings [done]
 ### Dependencies: 14.1
 ### Description: Implement the default global config.yaml template that includes all known settings, structured according to the schema, with safe defaults and detailed comments explaining each setting and its purpose.
 ### Details:
 1) Create `config/global/config.yaml` (or agreed path) using the structure defined in the schema. 2) Add all global settings as keys with sensible, secure defaults (e.g., non-destructive, minimal-permission defaults where applicable). 3) Group settings into logical sections with clear top-level comments describing each section. 4) For each setting, add an inline or preceding comment describing: what it does, accepted values and units, default behavior, example uses, and any security/performance implications. 5) Ensure comments explain how this global value interacts with account overrides and rule files. 6) Validate the YAML syntax (via linter or existing config loader) and adjust formatting for readability and consistency (indentation, quoting, list formatting).
 
-## 3. Create example account configuration template with common overrides [pending]
+## 3. Create example account configuration template with common overrides [done]
 ### Dependencies: 14.1, 14.2
 ### Description: Develop an example account-level configuration YAML that demonstrates typical overrides of global settings and documents how per-account configuration should be used.
 ### Details:
 1) Create `config/accounts/example-account.yaml` (or agreed name) mirroring the relevant parts of the global schema. 2) Populate it with realistic example values that differ from the global defaults to clearly illustrate override behavior (e.g., higher rate limits, different feature flags, custom logging level). 3) Add comments at the top explaining the precedence model (how and when account config overrides global config) and how to create additional account configs (naming and placement). 4) For each overridden setting, add comments explaining why you might override it and any constraints (e.g., maximum allowed values, environment-specific notes). 5) Include at least one example of an account-specific setting that does not appear in the global config if the design allows such extensions, and document how the system handles unknown/extra keys. 6) Validate YAML syntax and ensure comment style, formatting, and terminology are consistent with the global config template.
 
-## 4. Create blacklist.yaml and whitelist.yaml rule templates with examples [pending]
+## 4. Create blacklist.yaml and whitelist.yaml rule templates with examples [done]
 ### Dependencies: 14.1
 ### Description: Implement template blacklist.yaml and whitelist.yaml files containing example rule definitions that cover common use cases and clearly document rule structure, matching semantics, and evaluation order.
 ### Details:
 1) Create `config/rules/blacklist.yaml` and `config/rules/whitelist.yaml` (or agreed paths). 2) Based on the schema, define the top-level structure for rules (e.g., lists of rule objects with fields such as `id`, `type`, `pattern`, `condition`, `enabled`, `priority`, `description`). 3) Add multiple example rules in each file to demonstrate different rule types and conditions (e.g., blocking by IP, account ID, domain, feature, or action; whitelisting specific exceptions). 4) In comments, document how rules are evaluated: precedence of whitelist vs. blacklist, rule priority fields, first-match vs. all-match behavior, and what happens on no match. 5) Explain the syntax for patterns (literal vs. regex/glob), case sensitivity, and any performance/security considerations (e.g., avoid overly broad regex). 6) Include guidance comments on how to disable rules safely, how to add new ones, and any naming or ID conventions required by the system. 7) Validate YAML syntax and keep formatting consistent with the other config templates.
 
-## 5. Add cross-file documentation, usage notes, and integration checks [pending]
+## 5. Add cross-file documentation, usage notes, and integration checks [done]
 ### Dependencies: 14.2, 14.3, 14.4
 ### Description: Ensure all template files are coherently documented, reference each other where relevant, and are validated against the intended loader/validation logic so they can be used as reliable starting points.
 ### Details:
 1) Add a short header comment to each template file describing its role, how it interacts with the other configuration files, and where it should be placed in a typical deployment. 2) Cross-reference related files in comments (e.g., in global config mention that blacklist/whitelist rules further refine behavior; in account config mention which global sections are most commonly overridden). 3) If a schema or validation tool exists, run each template through it and fix any inconsistencies; if not, at least load them with the application’s config loader in a test environment to ensure compatibility. 4) Where there are implicit conventions (e.g., required keys, naming of accounts, or rule IDs), document these explicitly in comments or a brief `README` comment block at the top of the main template. 5) Finalize formatting and comment style for consistency across all templates, and ensure that the templates are checked into version control in an appropriate location, ready for other developers or operators to copy and customize.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 14.1, 14.2, 14.3, 14.4, 14.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:

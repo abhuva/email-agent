@@ -1,124 +1,354 @@
-# V3 Email Processor Configuration
-# Copy this file to config.yaml and customize for your setup
+# V4 Email Agent Configuration Template
 # 
-# This configuration follows the V3 architecture as specified in pdd.md
-# All configuration values can be overridden via environment variables
-# Credentials MUST be loaded from environment variables for security
+# This is the GLOBAL/BASE configuration template for V4.
+# Copy this file to config.yaml and customize for your setup.
+#
+# V4 Configuration System:
+# - This file defines GLOBAL settings that apply to all accounts by default
+# - Account-specific overrides can be added in config/accounts/<account-name>.yaml
+# - Account configs are deep-merged over this global config (see merge strategy below)
+# - Rules files (blacklist.yaml, whitelist.yaml) are loaded separately
+#
+# For complete schema documentation, see: docs/v4-config-schema-reference.md
+# For configuration guide, see: docs/v4-configuration.md
+#
+# SECURITY: Credentials MUST be loaded from environment variables.
+# The config file only specifies which environment variable names to use.
 
+# ============================================================================
 # IMAP Server Configuration
-# Connection settings for the email server
+# ============================================================================
+# Connection settings for the email server.
+# These settings can be overridden per-account in config/accounts/*.yaml
+# Commonly overridden: server, port, username, password_env
 imap:
-  server: 'imap.example.com'          # IMAP server hostname
-  port: 143                            # IMAP port (143 for STARTTLS, 993 for SSL)
-  username: 'your-email@example.com'   # Email account username
-  password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
-                                       # CRITICAL: Password MUST come from environment variable
-  query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
-                                       # The processed_tag exclusion is automatically added
-  processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
-  application_flags:                   # Application-specific flags for cleanup command (Task 13)
-    - 'AIProcessed'                    # Flags managed by this application (safe to remove)
-    - 'ObsidianNoteCreated'            # These flags can be cleaned up using cleanup-flags command
-    - 'NoteCreationFailed'              # Default includes all V1/V2 processing flags
-
-# File and Directory Paths
-# All paths relative to project root unless absolute path specified
-paths:
-  template_file: 'config/note_template.md.j2'  # Jinja2 template for generating Markdown notes
-  obsidian_vault: '/path/to/obsidian/vault'    # Obsidian vault directory (must exist)
-  log_file: 'logs/agent.log'                   # Unstructured operational log file
-  analytics_file: 'logs/analytics.jsonl'        # Structured analytics log (JSONL format)
-  changelog_path: 'logs/email_changelog.md'    # Changelog/audit log file
-  prompt_file: 'config/prompt.md'              # LLM prompt file for email classification
-  summarization_prompt_path: 'config/summarization_prompt.md'  # Optional: Prompt file for summarization
-
-# OpenRouter API Configuration
-# Shared settings for OpenRouter API (used by both classification and summarization)
-openrouter:
-  api_key_env: 'OPENROUTER_API_KEY'   # Environment variable name containing API key
-                                      # CRITICAL: API key MUST come from environment variable
-  api_url: 'https://openrouter.ai/api/v1'  # OpenRouter API endpoint
-
-# Classification Configuration
-# Settings for email classification task (spam/importance scoring)
-classification:
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for classification
-                                                         # Examples: 'openai/gpt-3.5-turbo', 'anthropic/claude-3-haiku'
-  temperature: 0.2                     # LLM temperature (0.0-2.0, lower = more deterministic)
-  retry_attempts: 3                     # Number of retry attempts for failed API calls
-  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
-  # Cost estimation (optional, but recommended for safety interlock)
-  cost_per_1k_tokens: 0.0001            # Cost per 1000 tokens (example: $0.0001 per 1K tokens)
-  # OR use direct pricing:
-  # cost_per_email: 0.001                # Direct cost per email (overrides token-based pricing)
-
-# Summarization Configuration
-# Settings for email summarization task (for important emails)
-summarization:
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'  # LLM model to use for summarization
-                                                         # Can be different from classification model
-  temperature: 0.3                     # LLM temperature (0.0-2.0, typically higher for summarization)
-  retry_attempts: 3                     # Number of retry attempts for failed API calls
-  retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
-
-# Processing Configuration
-# Thresholds and limits for email processing
-processing:
-  importance_threshold: 8               # Minimum importance score (0-10) to mark email as important
-  spam_threshold: 5                     # Maximum spam score (0-10) to consider email as spam
-  max_body_chars: 4000                  # Maximum characters to send to LLM (truncates longer emails)
-  max_emails_per_run: 15                # Maximum number of emails to process per execution
-  # Optional - only if you want summarization
-  summarization_tags:
-    - 'important'  # Tag generated when importance_score >= threshold
-
-# Safety Interlock Configuration
-# Safety mechanism to prevent accidental high-cost operations
-safety_interlock:
-  enabled: true                         # Enable/disable safety interlock (default: true)
-  cost_threshold: 0.10                  # Cost threshold in currency units (default: 0.10)
-                                        # Operations below this threshold may skip confirmation
-  skip_confirmation_below_threshold: false  # Skip confirmation if cost is below threshold (default: false)
-  average_tokens_per_email: 2000       # Average tokens per email for cost estimation (default: 2000)
-  currency: '$'                         # Currency symbol for cost display (default: '$')
+  # IMAP server hostname (REQUIRED)
+  # Examples: 'imap.gmail.com', 'imap.outlook.com', 'mail.example.com'
+  server: 'imap.example.com'
   
-# Classification Model Pricing
-# Add pricing information to classification config for cost estimation
-# You can specify either cost_per_1k_tokens (token-based) or cost_per_email (direct pricing)
-classification:
-  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
-  temperature: 0.2
-  retry_attempts: 3
-  retry_delay_seconds: 5
-  # Cost estimation (optional, but recommended for safety interlock)
-  cost_per_1k_tokens: 0.0001            # Cost per 1000 tokens (example: $0.0001 per 1K tokens)
-  # OR use direct pricing:
-  # cost_per_email: 0.001                # Direct cost per email (overrides token-based pricing)
+  # IMAP port (OPTIONAL, default: 143)
+  # - 143: Standard IMAP with STARTTLS
+  # - 993: IMAP over SSL/TLS
+  port: 143
+  
+  # Email account username (REQUIRED)
+  # This is typically your full email address
+  username: 'your-email@example.com'
+  
+  # Environment variable name containing IMAP password (OPTIONAL, default: 'IMAP_PASSWORD')
+  # CRITICAL: Password MUST come from environment variable for security
+  # Set this environment variable before running the application:
+  #   export IMAP_PASSWORD='your-password'
+  # For account-specific passwords, use different env var names and override password_env
+  password_env: 'IMAP_PASSWORD'
+  
+  # IMAP search query (OPTIONAL, default: 'ALL')
+  # Examples:
+  #   'ALL' - All emails
+  #   'UNSEEN' - Unread emails only
+  #   'SENTSINCE 01-Jan-2024' - Emails since a specific date
+  #   'FROM "sender@example.com"' - Emails from specific sender
+  # Note: The processed_tag exclusion is automatically added to prevent reprocessing
+  query: 'ALL'
+  
+  # IMAP flag name for processed emails (OPTIONAL, default: 'AIProcessed')
+  # Emails with this flag are automatically excluded from processing
+  processed_tag: 'AIProcessed'
+  
+  # Application-specific flags for cleanup command (OPTIONAL)
+  # These flags are managed by this application and can be safely removed
+  # Default includes all V1/V2/V3 processing flags
+  application_flags:
+    - 'AIProcessed'
+    - 'ObsidianNoteCreated'
+    - 'NoteCreationFailed'
 
+# ============================================================================
+# File and Directory Paths
+# ============================================================================
+# All paths are relative to project root unless absolute path specified.
+# Commonly overridden per-account: obsidian_vault (different vault per account)
+paths:
+  # Jinja2 template for generating Markdown notes (OPTIONAL, default: 'config/note_template.md.j2')
+  template_file: 'config/note_template.md.j2'
+  
+  # Obsidian vault directory (REQUIRED)
+  # This is where generated notes will be saved
+  # Must exist and be writable by the application
+  # Example: '/Users/username/Documents/Obsidian Vaults/Email Notes'
+  obsidian_vault: '/path/to/obsidian/vault'
+  
+  # Unstructured operational log file (OPTIONAL, default: 'logs/agent.log')
+  # Contains application logs, errors, and debug information
+  log_file: 'logs/agent.log'
+  
+  # Structured analytics log file (OPTIONAL, default: 'logs/analytics.jsonl')
+  # JSONL format (one JSON object per line) containing processing metrics
+  analytics_file: 'logs/analytics.jsonl'
+  
+  # Changelog/audit log file (OPTIONAL, default: 'logs/email_changelog.md')
+  # Markdown file tracking email processing history
+  changelog_path: 'logs/email_changelog.md'
+  
+  # LLM prompt file for email classification (OPTIONAL, default: 'config/prompt.md')
+  # Contains the prompt template sent to the LLM for email classification
+  prompt_file: 'config/prompt.md'
+  
+  # Optional: Prompt file for summarization (OPTIONAL, default: None)
+  # If None, summarization is disabled
+  # If set, summarization will be performed for important emails
+  summarization_prompt_path: null  # or 'config/summarization_prompt.md'
+
+# ============================================================================
+# OpenRouter API Configuration
+# ============================================================================
+# Shared settings for OpenRouter API (used by both classification and summarization).
+# These settings are rarely overridden per-account (usually shared).
+openrouter:
+  # Environment variable name containing OpenRouter API key (OPTIONAL, default: 'OPENROUTER_API_KEY')
+  # CRITICAL: API key MUST come from environment variable for security
+  # Set this environment variable before running the application:
+  #   export OPENROUTER_API_KEY='your-api-key'
+  # Get your API key from: https://openrouter.ai/keys
+  api_key_env: 'OPENROUTER_API_KEY'
+  
+  # OpenRouter API endpoint (OPTIONAL, default: 'https://openrouter.ai/api/v1')
+  # Usually not changed unless using a custom endpoint
+  api_url: 'https://openrouter.ai/api/v1'
+
+# ============================================================================
+# Classification Configuration
+# ============================================================================
+# Settings for email classification task (spam/importance scoring).
+# These settings can be overridden per-account for different models/behavior.
+# Commonly overridden: model, temperature
+classification:
+  # LLM model to use for classification (REQUIRED)
+  # Examples:
+  #   'google/gemini-2.5-flash-lite-preview-09-2025' - Fast, cost-effective
+  #   'openai/gpt-3.5-turbo' - OpenAI GPT-3.5
+  #   'anthropic/claude-3-haiku' - Anthropic Claude 3 Haiku
+  #   'anthropic/claude-3-opus' - Anthropic Claude 3 Opus (more accurate, more expensive)
+  # See https://openrouter.ai/models for available models and pricing
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  
+  # LLM temperature (OPTIONAL, default: 0.2)
+  # Range: 0.0-2.0
+  # Lower values = more deterministic, consistent results
+  # Higher values = more creative, varied results
+  # Recommended: 0.1-0.3 for classification (consistency is important)
+  temperature: 0.2
+  
+  # Number of retry attempts for failed API calls (OPTIONAL, default: 3)
+  # If an API call fails, the system will retry up to this many times
+  retry_attempts: 3
+  
+  # Initial delay between retries in seconds (OPTIONAL, default: 5)
+  # Uses exponential backoff: delay = retry_delay_seconds * (2 ^ attempt_number)
+  retry_delay_seconds: 5
+  
+  # Cost estimation for safety interlock (OPTIONAL, but recommended)
+  # You can specify either cost_per_1k_tokens (token-based) or cost_per_email (direct pricing)
+  # Token-based pricing (recommended):
+  cost_per_1k_tokens: 0.0001  # Cost per 1000 tokens (example: $0.0001 per 1K tokens)
+  # OR use direct pricing (overrides token-based):
+  # cost_per_email: 0.001  # Direct cost per email (overrides token-based pricing)
+  #
+  # To find pricing for your model, check: https://openrouter.ai/models
+  # Example: If model costs $0.10 per 1M tokens, set cost_per_1k_tokens: 0.0001
+
+# ============================================================================
+# Summarization Configuration
+# ============================================================================
+# Settings for email summarization task (for important emails).
+# Summarization is optional - set paths.summarization_prompt_path to enable.
+# These settings are rarely overridden per-account (usually shared).
+summarization:
+  # LLM model to use for summarization (REQUIRED)
+  # Can be different from classification model
+  # Examples: Same as classification model options above
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  
+  # LLM temperature (OPTIONAL, default: 0.3)
+  # Range: 0.0-2.0
+  # Typically higher than classification (0.3-0.5) for more natural summaries
+  temperature: 0.3
+  
+  # Number of retry attempts for failed API calls (OPTIONAL, default: 3)
+  retry_attempts: 3
+  
+  # Initial delay between retries in seconds (OPTIONAL, default: 5)
+  retry_delay_seconds: 5
+
+# ============================================================================
+# Processing Configuration
+# ============================================================================
+# Thresholds and limits for email processing.
+# Commonly overridden per-account: importance_threshold, spam_threshold, max_emails_per_run
+processing:
+  # Minimum importance score (0-10) to mark email as important (OPTIONAL, default: 8)
+  # Emails with importance_score >= this threshold are marked as important
+  # Range: 0-10 (higher = more selective)
+  importance_threshold: 8
+  
+  # Maximum spam score (0-10) to consider email as spam (OPTIONAL, default: 5)
+  # Emails with spam_score <= this threshold are considered spam
+  # Range: 0-10 (lower = more aggressive spam filtering)
+  spam_threshold: 5
+  
+  # Maximum characters to send to LLM (OPTIONAL, default: 4000)
+  # Longer emails are truncated to this length to save tokens
+  # Range: 1+ (recommended: 2000-8000)
+  max_body_chars: 4000
+  
+  # Maximum number of emails to process per execution (OPTIONAL, default: 15)
+  # Safety limit to prevent processing too many emails at once
+  # Range: 1+ (recommended: 10-50)
+  max_emails_per_run: 15
+  
+  # Optional: Tags generated when importance_score >= threshold (OPTIONAL, default: null)
+  # If set, these tags are added to important emails
+  # If null, no tags are automatically added
+  summarization_tags:
+    - 'important'  # Tag generated when importance_score >= importance_threshold
+
+# ============================================================================
+# Safety Interlock Configuration
+# ============================================================================
+# Safety mechanism to prevent accidental high-cost operations.
+# This section is OPTIONAL - if not present, defaults are used.
+# These settings are rarely overridden per-account (usually set globally).
+safety_interlock:
+  # Enable/disable safety interlock (OPTIONAL, default: true)
+  # When enabled, the system will estimate costs and prompt for confirmation
+  # before processing large batches of emails
+  enabled: true
+  
+  # Cost threshold in currency units (OPTIONAL, default: 0.10)
+  # Operations below this threshold may skip confirmation (if skip_confirmation_below_threshold is true)
+  # Example: 0.10 = $0.10
+  cost_threshold: 0.10
+  
+  # Skip confirmation if cost is below threshold (OPTIONAL, default: false)
+  # If true, operations below cost_threshold will proceed without confirmation
+  # If false, all operations require confirmation (regardless of cost)
+  skip_confirmation_below_threshold: false
+  
+  # Average tokens per email for cost estimation (OPTIONAL, default: 2000)
+  # Used to estimate costs when cost_per_1k_tokens is set
+  # Adjust based on your typical email length
+  average_tokens_per_email: 2000
+  
+  # Currency symbol for cost display (OPTIONAL, default: '$')
+  # Used when displaying estimated costs to the user
+  currency: '$'
+
+# ============================================================================
+# Account-Specific Configuration Overrides
+# ============================================================================
+# To override settings for specific accounts, create files in config/accounts/:
+#
+# Example: config/accounts/work.yaml
+#   imap:
+#     server: 'imap.work.com'
+#     username: 'work@company.com'
+#     password_env: 'IMAP_PASSWORD_WORK'
+#   paths:
+#     obsidian_vault: '/path/to/work/vault'
+#   processing:
+#     importance_threshold: 7
+#
+# Merge Strategy:
+# - Dictionaries: Deep merged (keys in account config overwrite keys in global config)
+# - Lists: Completely replaced (lists in account config replace lists in global config)
+# - Primitives: Overwritten (values in account config replace values in global config)
+#
+# For details, see: docs/v4-configuration.md#merge-strategy
+
+# ============================================================================
+# Rules Files
+# ============================================================================
+# V4 supports blacklist and whitelist rules for email filtering:
+#
+# - config/blacklist.yaml: Pre-processing rules (drop or record emails before AI)
+# - config/whitelist.yaml: Post-processing rules (boost scores and add tags after AI)
+#
+# Rules are loaded separately and are NOT merged with account configs.
+# They apply globally to all accounts (unless account-specific rules are implemented).
+#
+# For rule syntax and examples, see:
+# - config/blacklist.yaml (template with examples)
+# - config/whitelist.yaml (template with examples)
+# - docs/v4-configuration.md#rules-schema
+
+# ============================================================================
 # Environment Variable Overrides
+# ============================================================================
 # You can override any config value using environment variables.
 # This is useful for deployment-specific settings or secrets.
 #
 # Naming Convention: EMAIL_AGENT_<SECTION>_<KEY> (uppercase, underscores)
 #
 # Examples:
-#   EMAIL_AGENT_IMAP_SERVER=imap.custom.com
-#   EMAIL_AGENT_IMAP_PORT=993
-#   EMAIL_AGENT_CLASSIFICATION_MODEL=openai/gpt-4
-#   EMAIL_AGENT_CLASSIFICATION_TEMPERATURE=0.3
-#   EMAIL_AGENT_SUMMARIZATION_MODEL=anthropic/claude-3-haiku
-#   EMAIL_AGENT_SUMMARIZATION_TEMPERATURE=0.4
-#   EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD=7
-#   EMAIL_AGENT_PATHS_OBSIDIAN_VAULT=/custom/path/to/vault
+#   export EMAIL_AGENT_IMAP_SERVER=imap.custom.com
+#   export EMAIL_AGENT_IMAP_PORT=993
+#   export EMAIL_AGENT_CLASSIFICATION_MODEL=openai/gpt-4
+#   export EMAIL_AGENT_CLASSIFICATION_TEMPERATURE=0.3
+#   export EMAIL_AGENT_SUMMARIZATION_MODEL=anthropic/claude-3-haiku
+#   export EMAIL_AGENT_SUMMARIZATION_TEMPERATURE=0.4
+#   export EMAIL_AGENT_PROCESSING_IMPORTANCE_THRESHOLD=7
+#   export EMAIL_AGENT_PATHS_OBSIDIAN_VAULT=/custom/path/to/vault
 #
 # Type Conversion:
 #   - Integer values are automatically converted (port, thresholds, retry settings)
 #   - Float values are automatically converted (temperature)
 #   - String values remain as strings
 #
-# Required Environment Variables (MUST be set for security):
-#   - IMAP_PASSWORD: Your IMAP account password (specified in imap.password_env)
-#   - OPENROUTER_API_KEY: Your OpenRouter API key (specified in openrouter.api_key_env)
+# Precedence: Environment variables > Account config > Global config
+
+# ============================================================================
+# Required Environment Variables
+# ============================================================================
+# The following environment variables MUST be set for the application to work:
+#
+# 1. IMAP_PASSWORD (or value specified in imap.password_env)
+#    - Your IMAP account password
+#    - Example: export IMAP_PASSWORD='your-password'
+#
+# 2. OPENROUTER_API_KEY (or value specified in openrouter.api_key_env)
+#    - Your OpenRouter API key
+#    - Get your key from: https://openrouter.ai/keys
+#    - Example: export OPENROUTER_API_KEY='your-api-key'
 #
 # Note: Credentials MUST come from environment variables. The config file only
 # specifies which environment variable names to use, not the actual values.
+#
+# For account-specific credentials, use different environment variable names
+# and override password_env or api_key_env in account configs.
+
+# ============================================================================
+# Next Steps
+# ============================================================================
+# 1. Copy this file to config.yaml:
+#    cp config/config.yaml.example config/config.yaml
+#
+# 2. Set required environment variables:
+#    export IMAP_PASSWORD='your-password'
+#    export OPENROUTER_API_KEY='your-api-key'
+#
+# 3. Customize config.yaml with your settings:
+#    - Update imap.server, imap.username
+#    - Update paths.obsidian_vault
+#    - Adjust thresholds and limits as needed
+#
+# 4. (Optional) Create account-specific configs:
+#    cp config/accounts/example-account.yaml config/accounts/work.yaml
+#    Edit config/accounts/work.yaml with account-specific settings
+#
+# 5. (Optional) Configure rules:
+#    Edit config/blacklist.yaml and config/whitelist.yaml with your rules
+#
+# For more information, see:
+# - docs/v4-configuration.md - Complete configuration guide
+# - docs/v4-config-schema-reference.md - Schema reference
+# - pdd_V4.md - Product Design Document

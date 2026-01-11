@@ -56,6 +56,7 @@ This is the top-level guide for all docs, implementation details, and project st
   - ✅ Task 1: Configuration directory structure
   - ✅ Task 2: Configuration loader with deep merge logic
   - ✅ Task 3: Configuration schema validation
+- **[V4 Configuration Schema Reference](v4-config-schema-reference.md)** — Complete schema reference with all settings, types, defaults, and relationships (Task 14.1) ✅
 - **[V4 Models](v4-models.md)** — EmailContext data class for pipeline state tracking (Task 4) ✅
 - **[V4 Content Parser](v4-content-parser.md)** — HTML to Markdown conversion with fallback (Task 5) ✅
 - **[V4 Rules Engine](v4-rules-engine.md)** — Blacklist and whitelist rules for email filtering (Tasks 6-7) ✅

@@ -522,6 +522,12 @@ ERROR[MISSING_REQUIRED_SECTION] openrouter: Required section 'openrouter' is mis
 - ✅ **Task 1.5:** Filesystem permissions documented
 - ✅ **Task 2:** Configuration loader with deep merge logic (complete)
 - ✅ **Task 3:** Configuration schema validation (complete)
+- ✅ **Task 14:** Default configuration templates created
+  - ✅ **Task 14.1:** Configuration schema and directory layout documented
+  - ✅ **Task 14.2:** Default global config.yaml template with full settings
+  - ✅ **Task 14.3:** Example account configuration template with common overrides
+  - ✅ **Task 14.4:** Blacklist and whitelist rule templates with examples
+  - ✅ **Task 14.5:** Cross-file documentation, usage notes, and integration checks
 
 ## Related Documentation
 
