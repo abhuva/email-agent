@@ -74,7 +74,7 @@ class TestE2EIntegrationScenarios:
         # Configure mock LLM
         mock_llm_client.set_default_response(spam_score=2, importance_score=8)
         
-        # Create orchestrator
+        # Create orchestrator with temp config directory
         orchestrator = MasterOrchestrator(config_base_dir=str(temp_config_dir))
         orchestrator.llm_client = mock_llm_client
         orchestrator.note_generator = Mock()
@@ -86,8 +86,8 @@ class TestE2EIntegrationScenarios:
         with patch('src.account_processor.create_imap_client_from_config') as mock_factory:
             mock_factory.return_value = mock_imap_client
             
-            # Run processing
-            result = orchestrator.run(['--account', 'test_account'])
+            # Run processing with --config-dir to ensure orchestrator uses temp directory
+            result = orchestrator.run(['--account', 'test_account', '--config-dir', str(temp_config_dir)])
             
             # Verify processing completed
             assert result.successful_accounts >= 0
@@ -142,7 +142,7 @@ class TestE2EIntegrationScenarios:
         # Configure mock LLM
         mock_llm_client.set_default_response(spam_score=2, importance_score=7)
         
-        # Create orchestrator
+        # Create orchestrator with temp config directory
         orchestrator = MasterOrchestrator(config_base_dir=str(temp_config_dir))
         orchestrator.llm_client = mock_llm_client
         orchestrator.note_generator = Mock()
@@ -154,8 +154,8 @@ class TestE2EIntegrationScenarios:
         with patch('src.account_processor.create_imap_client_from_config') as mock_factory:
             mock_factory.return_value = mock_imap_client
             
-            # Process both accounts
-            result = orchestrator.run(['--account', 'account1', '--account', 'account2'])
+            # Process both accounts with --config-dir to ensure orchestrator uses temp directory
+            result = orchestrator.run(['--account', 'account1', '--account', 'account2', '--config-dir', str(temp_config_dir)])
             
             # Verify both accounts were processed
             assert result.total_accounts == 2

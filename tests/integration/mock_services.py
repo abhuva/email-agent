@@ -432,7 +432,8 @@ class MockLLMClient(LLMClient):
     def classify_email(
         self,
         email_content: str,
-        user_prompt: Optional[str] = None
+        user_prompt: Optional[str] = None,
+        max_chars: Optional[int] = None
     ) -> LLMResponse:
         """
         Classify email with mock response.
@@ -440,6 +441,7 @@ class MockLLMClient(LLMClient):
         Args:
             email_content: Email content to classify
             user_prompt: Optional user prompt
+            max_chars: Optional maximum characters (ignored in mock)
             
         Returns:
             LLMResponse with scores
