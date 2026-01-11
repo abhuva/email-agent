@@ -1539,7 +1539,7 @@
           "id": 4,
           "title": "Develop V3→V4 migration guide and multi-account best practices",
           "description": "Create a dedicated migration guide for existing V3 users and document best practices for multi-account setups under V4.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
