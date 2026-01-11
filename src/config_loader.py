@@ -74,6 +74,43 @@ class ConfigLoader:
         
         logger.debug(f"ConfigLoader initialized with base_dir={self.base_dir}")
     
+    @staticmethod
+    def _validate_account_name(account_name: str) -> str:
+        """
+        Validate and sanitize an account name.
+        
+        This method:
+        - Strips whitespace
+        - Disallows path traversal patterns (../, ..\\)
+        - Raises ValueError for invalid names
+        
+        Args:
+            account_name: Account name to validate
+            
+        Returns:
+            Sanitized account name
+            
+        Raises:
+            ValueError: If the account name is invalid or contains path traversal patterns
+        """
+        if not isinstance(account_name, str):
+            raise ValueError(f"Account name must be a string, got {type(account_name).__name__}")
+        
+        # Strip whitespace
+        sanitized = account_name.strip()
+        
+        # Check for empty after stripping
+        if not sanitized:
+            raise ValueError("Account name cannot be empty or whitespace-only")
+        
+        # Disallow path traversal patterns
+        if '..' in sanitized or '/' in sanitized or '\\' in sanitized:
+            raise ValueError(
+                f"Account name contains invalid characters (path traversal detected): {account_name}"
+            )
+        
+        return sanitized
+    
     def _get_global_config_path(self) -> Path:
         """
         Get the path to the global configuration file.
@@ -105,8 +142,12 @@ class ConfigLoader:
             Path to the account-specific YAML file (e.g., config/accounts/{account_name}.yaml)
             
         Raises:
+            ValueError: If the account name is invalid
             FileNotFoundError: If the account config file does not exist
         """
+        # Validate account name
+        account_name = self._validate_account_name(account_name)
+        
         if self._accounts_dir is None:
             self._accounts_dir = self.base_dir / self.accounts_dirname
         
@@ -191,12 +232,15 @@ class ConfigLoader:
             if the account config file does not exist
             
         Raises:
+            ValueError: If the account name is invalid
             ConfigurationError: If the YAML file is malformed or invalid
             
         Note:
             Missing account config files are allowed and return an empty dict.
             This enables global-only configurations.
         """
+        # Validate account name (will raise ValueError if invalid)
+        account_name = self._validate_account_name(account_name)
         try:
             account_path = self._get_account_config_path(account_name)
             logger.debug(f"Loading account configuration from {account_path}")
@@ -292,13 +336,17 @@ class ConfigLoader:
             Merged configuration dictionary
             
         Raises:
+            ValueError: If the account name is invalid
             FileNotFoundError: If global config is missing
             ConfigurationError: If configuration loading or merging fails
             
         Note:
             Missing account config files are allowed and will result in global-only
-            configuration being returned.
+            configuration being returned. Global config is required and will raise
+            FileNotFoundError if missing.
         """
+        # Validate account name (will raise ValueError if invalid)
+        account_name = self._validate_account_name(account_name)
         # Load global configuration (required)
         global_config = self.load_global_config()
         
@@ -314,3 +362,38 @@ class ConfigLoader:
         )
         
         return merged_config
+
+
+# Module-level convenience function
+DEFAULT_BASE_DIR = Path("config")
+
+
+def load_merged_config(
+    account_name: str,
+    base_dir: Path | str = DEFAULT_BASE_DIR
+) -> Dict:
+    """
+    Convenience function to load merged configuration for an account.
+    
+    This is a module-level convenience function that creates a ConfigLoader
+    instance and calls load_merged_config on it.
+    
+    Args:
+        account_name: Name of the account to load configuration for
+        base_dir: Base directory containing config files (default: 'config')
+        
+    Returns:
+        Merged configuration dictionary
+        
+    Raises:
+        ValueError: If the account name is invalid
+        FileNotFoundError: If global config is missing
+        ConfigurationError: If configuration loading or merging fails
+        
+    Example:
+        >>> from src.config_loader import load_merged_config
+        >>> config = load_merged_config('work')
+        >>> print(config['imap']['server'])
+    """
+    loader = ConfigLoader(base_dir=base_dir)
+    return loader.load_merged_config(account_name)
