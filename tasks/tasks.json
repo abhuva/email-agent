@@ -93,7 +93,7 @@
           "id": 1,
           "title": "Define ConfigLoader interface and file path handling",
           "description": "Create src/config_loader.py with the ConfigLoader class skeleton, constructor, and path resolution for global and account-specific config files.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Create src/config_loader.py.\n2) Define a ConfigLoader class with an __init__(self, base_dir: Path | str, global_filename: str = \"config.yaml\", accounts_dirname: str = \"accounts\") that stores resolved pathlib.Path instances for the config root, global config path, and accounts directory.\n3) Add a method _get_global_config_path(self) -> Path that returns the global config file path and does basic existence checks (raise FileNotFoundError with a clear message if missing).\n4) Add a method _get_account_config_path(self, account_name: str) -> Path that resolves the account-specific YAML path (e.g., <base_dir>/<accounts_dirname>/<account_name>.yaml) and can raise FileNotFoundError if the file does not exist (or optionally return None if you want global-only configs to be allowed; choose one behavior and document it).\n5) Add the public method signature load_merged_config(self, account_name: str) -> dict with a docstring describing behavior; leave its implementation to later subtasks."
         },
@@ -101,7 +101,7 @@
           "id": 2,
           "title": "Implement YAML loading with error handling",
           "description": "Implement helper methods to load YAML files (global and account-specific) into Python dicts with robust error handling for malformed YAML.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -111,7 +111,7 @@
           "id": 3,
           "title": "Implement deep merge utility for configuration dictionaries",
           "description": "Create a pure function or static method that performs deep merge of two configuration dictionaries according to the specified rules.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -121,7 +121,7 @@
           "id": 4,
           "title": "Wire loading and deep merge in load_merged_config",
           "description": "Use the YAML loading helpers and deep merge utility to implement the main load_merged_config(account_name) -> dict method.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -132,7 +132,7 @@
           "id": 5,
           "title": "Add validation, edge-case handling, and tests",
           "description": "Refine robustness of the ConfigLoader and implement tests for loading, deep merge semantics, and malformed YAML handling.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,

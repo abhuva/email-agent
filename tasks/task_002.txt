@@ -11,7 +11,7 @@ Create src/config_loader.py with a ConfigLoader class that implements: 1) Loadin
 Write unit tests with various configuration scenarios: overriding primitives, merging nested dictionaries, replacing lists. Test error handling with malformed YAML files.
 
 # Subtasks:
-## 1. Define ConfigLoader interface and file path handling [pending]
+## 1. Define ConfigLoader interface and file path handling [done]
 ### Dependencies: None
 ### Description: Create src/config_loader.py with the ConfigLoader class skeleton, constructor, and path resolution for global and account-specific config files.
 ### Details:
@@ -21,7 +21,7 @@ Write unit tests with various configuration scenarios: overriding primitives, me
 4) Add a method _get_account_config_path(self, account_name: str) -> Path that resolves the account-specific YAML path (e.g., <base_dir>/<accounts_dirname>/<account_name>.yaml) and can raise FileNotFoundError if the file does not exist (or optionally return None if you want global-only configs to be allowed; choose one behavior and document it).
 5) Add the public method signature load_merged_config(self, account_name: str) -> dict with a docstring describing behavior; leave its implementation to later subtasks.
 
-## 2. Implement YAML loading with error handling [pending]
+## 2. Implement YAML loading with error handling [done]
 ### Dependencies: 2.1
 ### Description: Implement helper methods to load YAML files (global and account-specific) into Python dicts with robust error handling for malformed YAML.
 ### Details:
@@ -36,7 +36,7 @@ Write unit tests with various configuration scenarios: overriding primitives, me
 4) Implement load_account_config(self, account_name: str) -> dict that uses _get_account_config_path and _load_yaml_file; if you chose to allow missing account config in subtask 1, handle FileNotFoundError here by returning {} instead of raising, and document this behavior.
 5) Add unit-test-friendly behavior: avoid printing; rely on raised exceptions for error signaling.
 
-## 3. Implement deep merge utility for configuration dictionaries [pending]
+## 3. Implement deep merge utility for configuration dictionaries [done]
 ### Dependencies: 2.1
 ### Description: Create a pure function or static method that performs deep merge of two configuration dictionaries according to the specified rules.
 ### Details:
@@ -49,7 +49,7 @@ Write unit tests with various configuration scenarios: overriding primitives, me
 4) Ensure that keys present only in base are preserved, keys present only in override are added, and overlapping keys follow the rules above.
 5) Add minimal inline tests or docstring examples to clarify expected behavior, especially for nested structures and list replacement.
 
-## 4. Wire loading and deep merge in load_merged_config [pending]
+## 4. Wire loading and deep merge in load_merged_config [done]
 ### Dependencies: 2.2, 2.3
 ### Description: Use the YAML loading helpers and deep merge utility to implement the main load_merged_config(account_name) -> dict method.
 ### Details:
@@ -60,7 +60,7 @@ Write unit tests with various configuration scenarios: overriding primitives, me
 5) Ensure that any exceptions from loading or malformed YAML propagate clearly to callers; do not silently ignore YAML errors at this layer.
 6) Document in the method docstring that the function applies deep merge with dictionary-merge, list-replace, and primitive-overwrite semantics.
 
-## 5. Add validation, edge-case handling, and tests [pending]
+## 5. Add validation, edge-case handling, and tests [done]
 ### Dependencies: 2.2, 2.3, 2.4
 ### Description: Refine robustness of the ConfigLoader and implement tests for loading, deep merge semantics, and malformed YAML handling.
 ### Details:
