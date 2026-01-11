@@ -940,7 +940,7 @@
       "id": 13,
       "title": "Add Progress Bars for Processing Steps",
       "description": "Implement progress indicators for long-running operations",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         11,
         12
@@ -953,7 +953,7 @@
           "id": 1,
           "title": "Introduce tqdm dependency and progress configuration utilities",
           "description": "Add tqdm as a dependency and create a small utility layer to standardize progress bar creation and configuration across the project.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1. Add `tqdm` to the project dependencies (e.g., requirements.txt/pyproject.toml) and ensure it is installed in the dev environment.\n2. Create a module such as `progress.py` (or similar) that wraps tqdm usage, e.g.:\n   - `from tqdm.auto import tqdm`\n   - Helper functions like `create_progress_bar(total: int, desc: str, unit: str = \"items\") -> tqdm`.\n3. In this utility, centralize common settings (e.g., `mininterval`, `ncols`, `disable` flag from a config env var, consistent units).\n4. Expose helper functions for both iterable-based and manual-update scenarios, e.g.:\n   - `with tqdm(total=total, desc=desc) as pbar: ... pbar.update(n)` for non-iterable processes.\n5. Ensure the utilities are non-UI-blocking (no input) and work both in CLI and notebook environments by using `tqdm.auto`."
         },
@@ -961,7 +961,7 @@
           "id": 2,
           "title": "Add progress bars for email fetching per account",
           "description": "Instrument the email fetching logic with tqdm-based progress bars, showing progress per account and overall where possible.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -971,7 +971,7 @@
           "id": 3,
           "title": "Add progress bars for email content parsing",
           "description": "Track progress while parsing email content for each account, displaying the number of emails parsed and time estimates.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -982,7 +982,7 @@
           "id": 4,
           "title": "Add progress bars for LLM processing of emails",
           "description": "Instrument the LLM processing step with progress bars to show how many emails (or chunks) have been processed by the language model.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             3
@@ -993,7 +993,7 @@
           "id": 5,
           "title": "Add progress bars for note generation and ensure correct behavior with multi-account processing",
           "description": "Track progress for note generation based on LLM outputs and verify that all progress bars (fetching, parsing, LLM, notes) behave correctly when processing multiple accounts.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -1006,7 +1006,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
