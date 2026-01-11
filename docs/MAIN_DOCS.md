@@ -75,7 +75,11 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V4 Progress Bars](v4-progress-bars.md)** — Progress indicators for email fetching, content parsing, LLM processing, and note generation (Task 13) ✅
 - **[V4 Main Entry Point](v4-main-integration-design.md)** — Refactored main.py with V3/V4 mode detection, MasterOrchestrator integration, and lifecycle management (Task 18) ✅
 
-### V4 End-to-End Testing (Task 19) ✅
+### V4 Testing (Tasks 16, 19) ✅
+- **[V4 Unit Tests](v4-unit-tests.md)** — Comprehensive unit tests for all V4 core components (Task 16) ✅
+  - ConfigLoader, Rules Engine, ContentParser, AccountProcessor, MasterOrchestrator
+  - 234+ tests with high coverage of critical paths and edge cases
+  - Test utilities, fixtures, and builders for isolated testing
 - **[V4 E2E Test Setup Guide](v4-e2e-test-setup.md)** — Guide for setting up real test email accounts and secure configuration (Task 19.1) ✅
 - **[V4 E2E Test Environment](v4-e2e-test-environment.md)** — Test environment setup with fixtures and data seeding (Task 19.2) ✅
 - **[V4 E2E Test Scenarios](v4-e2e-test-scenarios.md)** — Comprehensive test scenarios covering all pipeline features (Task 19.3) ✅

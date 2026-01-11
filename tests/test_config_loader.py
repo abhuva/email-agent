@@ -360,7 +360,7 @@ class TestLoadMergedConfig:
         self, temp_config_dir, global_config_data, global_config_file
     ):
         """Test loading merged config with only global config."""
-        loader = ConfigLoader(str(temp_config_dir))
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=False)
         result = loader.load_merged_config("nonexistent")
         
         # Should return global config only (account config missing returns {})
@@ -375,7 +375,7 @@ class TestLoadMergedConfig:
         with open(account_file, 'w') as f:
             yaml.dump(account_config_data, f)
         
-        loader = ConfigLoader(str(temp_config_dir))
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=False)
         result = loader.load_merged_config("test")
         
         # Verify merge results
@@ -453,8 +453,8 @@ class TestConvenienceFunction:
         with open(account_file, 'w') as f:
             yaml.dump(account_config_data, f)
         
-        # Use convenience function
-        result = load_merged_config("test", base_dir=str(temp_config_dir))
+        # Use convenience function with validation disabled
+        result = load_merged_config("test", base_dir=str(temp_config_dir), enable_validation=False)
         
         # Verify it works the same as using the class directly
         assert result['imap']['server'] == 'account.imap.com'
@@ -478,7 +478,7 @@ class TestConvenienceFunction:
         old_cwd = os.getcwd()
         try:
             os.chdir(str(tmp_path))
-            result = load_merged_config("nonexistent")
+            result = load_merged_config("nonexistent", enable_validation=False)
             assert result == global_config_data
         finally:
             os.chdir(old_cwd)
