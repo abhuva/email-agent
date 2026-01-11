@@ -1518,7 +1518,7 @@
           "id": 2,
           "title": "Document installation, setup, and core configuration for V4",
           "description": "Produce complete installation and initial setup documentation for V4, including basic configuration options, minimal working examples, and environment prerequisites.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1528,7 +1528,7 @@
           "id": 3,
           "title": "Create detailed configuration, rule syntax, and CLI usage reference",
           "description": "Develop comprehensive reference and example-driven documentation for configuration options, rule syntax, and command-line usage for V4.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
