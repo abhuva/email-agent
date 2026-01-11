@@ -14,8 +14,10 @@
 5. Generates structured Obsidian notes using Jinja2 templates
 
 **Current Status:** 
-- **V3** (Foundational Upgrade) - ✅ Complete and production-ready
-- **V4** (Orchestrator) - 🚧 In Development - Multi-tenant platform with rules engine
+- **V3** (Foundational Upgrade) - ✅ Complete and production-ready on `main` branch
+- **V4** (Orchestrator) - 🚧 In Development on `v4-orchestrator` branch - Multi-tenant platform with rules engine
+  - **Progress:** Tasks 1-9 complete (45% of tasks, 47% of subtasks)
+  - **Completed:** Configuration system, EmailContext, Content parser, Rules engine, Account Processor, Safety interlock
 - **V1 and V2** - Historical versions
 
 **Working Branch:** `v4-orchestrator` (separate from V3 main branch)
@@ -54,7 +56,16 @@ email-agent/
 │   ├── dry_run_output.py      # V3 dry-run output
 │   ├── backfill.py            # V3 backfill functionality
 │   ├── cleanup_flags.py       # V3 cleanup flags command
-│   └── ...                    # Additional V3 modules
+│   │
+│   # V4 Modules (v4-orchestrator branch)
+│   ├── config_loader.py        # V4 configuration loader with deep merge (Task 2) ✅
+│   ├── config_schema.py        # V4 configuration schema validation (Task 3) ✅
+│   ├── config_validator.py    # V4 configuration validator (Task 3) ✅
+│   ├── models.py              # V4 EmailContext data class (Task 4) ✅
+│   ├── content_parser.py      # V4 HTML to Markdown parser (Task 5) ✅
+│   ├── rules.py               # V4 Rules engine (blacklist/whitelist) (Tasks 6-7) ✅
+│   ├── account_processor.py   # V4 Account Processor with safety interlock (Tasks 8-9) ✅
+│   └── ...                    # Additional V3/V4 modules
 │
 ├── tests/                     # Test suite
 │   ├── conftest.py            # Pytest fixtures
@@ -73,10 +84,16 @@ email-agent/
 │
 ├── config/                    # Configuration files
 │   ├── config.yaml            # Main config (user-created, gitignored)
-│   ├── config.yaml.example    # Example config template
+│   ├── config.yaml.example    # Example config template (V3 + V4 safety_interlock)
 │   ├── prompt.md.example      # Example AI prompt template
 │   ├── note_template.md.j2     # Jinja2 note template (V3)
-│   └── prompt.md                # LLM classification prompt (V3)
+│   ├── prompt.md                # LLM classification prompt (V3)
+│   │
+│   # V4 Configuration (v4-orchestrator branch)
+│   ├── accounts/              # Account-specific configurations (Task 1) ✅
+│   │   └── *.yaml             # Account-specific config files
+│   ├── blacklist.yaml         # Global blacklist rules (Task 1) ✅
+│   └── whitelist.yaml         # Global whitelist rules (Task 1) ✅
 │
 ├── docs/                      # Documentation
 │   ├── MAIN_DOCS.md           # Documentation index (developer-focused)
@@ -87,6 +104,14 @@ email-agent/
 │   ├── logging-system.md      # Logging architecture
 │   ├── prompts.md             # Prompt management
 │   ├── v3-*.md                 # V3 module documentation
+│   │
+│   # V4 Documentation (v4-orchestrator branch)
+│   ├── v4-configuration.md    # V4 configuration system (Tasks 1-3) ✅
+│   ├── v4-models.md           # V4 EmailContext data model (Task 4) ✅
+│   ├── v4-content-parser.md   # V4 HTML to Markdown parser (Task 5) ✅
+│   ├── v4-rules-engine.md     # V4 Rules engine (Tasks 6-7) ✅
+│   ├── v4-account-processor.md # V4 Account Processor (Tasks 8-9) ✅
+│   │
 │   ├── live-test-guide.md    # Live testing guide
 │   ├── CODE_REVIEW_2026-01.md
 │   ├── CLEANUP_REPORT_2026-01.md
@@ -322,11 +347,24 @@ email-agent/
 
 ## Current Task Status
 
-**V3 Implementation:** ✅ **COMPLETE**
+**V3 Implementation:** ✅ **COMPLETE** (on `main` branch)
 - All V3 tasks (1-18) completed
 - Comprehensive test suite (unit, integration, E2E)
 - All features implemented and tested
 - Documentation complete
+
+**V4 Implementation:** 🚧 **IN PROGRESS** (on `v4-orchestrator` branch)
+- **Tasks 1-9 Complete (45% of tasks, 47% of subtasks):**
+  - ✅ Task 1: Configuration directory structure
+  - ✅ Task 2: Configuration loader with deep merge logic
+  - ✅ Task 3: Configuration schema validation
+  - ✅ Task 4: EmailContext data class
+  - ✅ Task 5: Content parser (HTML to Markdown)
+  - ✅ Task 6: Rules engine - Blacklist rules
+  - ✅ Task 7: Rules engine - Whitelist rules
+  - ✅ Task 8: Account Processor class
+  - ✅ Task 9: Safety interlock with cost estimation
+- **Remaining Tasks:** 10-20 (Master Orchestrator, CLI integration, etc.)
 
 **Next:** Check `tasks/tasks.json` or run `task-master next` for next task
 
@@ -335,11 +373,16 @@ email-agent/
 ## Quick Reference for AI Agents
 
 ### When Starting Work:
-1. **Read:** `README-AI.md` (this file) and `pdd_V4.md` (V4 PDD) or `pdd.md` (V3 PDD)
-2. **Check:** `tasks/tasks.json` or run `task-master next`
-3. **Review:** Relevant module docs in `docs/` directory
-4. **Understand:** Current task context from `tasks/task_*.txt`
-5. **Note:** All tasks include a mandatory final stage - see [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc)
+1. **Read:** `README-AI.md` (this file) - **This is the main entry point**
+2. **Check Branch:** 
+   - V3 work: `main` branch (see `pdd.md`)
+   - V4 work: `v4-orchestrator` branch (see `pdd_V4.md`)
+3. **Check:** `tasks/tasks.json` or run `task-master next` for current task
+4. **Review:** Relevant module docs in `docs/` directory
+   - V3: `docs/v3-*.md`
+   - V4: `docs/v4-*.md` (Tasks 1-9 documented)
+5. **Understand:** Current task context from `tasks/task_*.txt`
+6. **Note:** All tasks include a mandatory final stage - see [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc)
 
 ### When Making Changes:
 1. **Follow:** `.cursor/rules/dev_workflow.mdc` - commit tasks.json after status changes
@@ -394,7 +437,14 @@ email-agent/
 
 ## Version Information
 
-- **V3:** Foundational Upgrade (complete, current version)
+- **V4:** Orchestrator (in development, `v4-orchestrator` branch)
+  - Multi-account support with state isolation
+  - Configuration system (default + override model)
+  - Rules engine (blacklist/whitelist)
+  - HTML content parsing
+  - Account Processor with safety interlock
+  - **Progress:** Tasks 1-9 complete (45% of tasks)
+- **V3:** Foundational Upgrade (complete, `main` branch)
   - Score-based classification
   - CLI controls
   - Jinja2 templating
@@ -407,11 +457,13 @@ email-agent/
 ## Documentation Hierarchy
 
 1. **README.md** - Human-facing overview
-2. **README-AI.md** - This file (AI agent entry point)
-3. **pdd.md** - V3 product requirements (current)
-4. **docs/MAIN_DOCS.md** - Documentation index
-5. **docs/COMPLETE_GUIDE.md** - Complete user guide
-6. **docs/v3-*.md** - V3 module documentation
+2. **README-AI.md** - This file (AI agent entry point) ⭐ **START HERE**
+3. **pdd.md** - V3 product requirements (main branch)
+4. **pdd_V4.md** - V4 product requirements (v4-orchestrator branch)
+5. **docs/MAIN_DOCS.md** - Documentation index
+6. **docs/COMPLETE_GUIDE.md** - Complete user guide
+7. **docs/v3-*.md** - V3 module documentation (main branch)
+8. **docs/v4-*.md** - V4 module documentation (v4-orchestrator branch, Tasks 1-9)
 
 ---
 

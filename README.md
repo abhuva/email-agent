@@ -4,7 +4,10 @@
 
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
-**Current Status:** **V3 (Foundational Upgrade)** is complete and production-ready. V3 introduces score-based classification, CLI controls, Jinja2 templating, and a modular architecture. V1 and V2 are historical versions.
+**Current Status:** 
+- **V3 (Foundational Upgrade)** - ✅ Complete and production-ready on `main` branch
+- **V4 (Orchestrator)** - 🚧 In Development on `v4-orchestrator` branch - Multi-tenant platform with rules engine (Tasks 1-9 complete)
+- **V1 and V2** - Historical versions
 
 ---
 
@@ -25,6 +28,28 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **Dry-Run Mode**: Preview processing without making changes
 - **Force-Reprocess**: Reprocess already-processed emails for testing and refinement
 - **Backfill Support**: Process historical emails with progress tracking and throttling
+
+### V4 Features (In Development - v4-orchestrator branch)
+- **Multi-Account Support**: Process multiple email accounts with isolated state and configuration
+- **Configuration System**: Default + Override model with deep merge (global config + account-specific overrides)
+- **Rules Engine**: 
+  - **Blacklist Rules**: Pre-processing rules to drop or record emails without AI processing
+  - **Whitelist Rules**: Post-LLM modifiers that boost scores and add tags
+- **HTML Content Parsing**: Convert HTML emails to Markdown using `html2text` with automatic fallback to plain text
+- **Account Processor**: Isolated per-account processing pipeline with complete state isolation
+- **Safety Interlock**: Cost estimation and user confirmation before high-cost operations
+- **EmailContext Data Model**: Structured data class for tracking email state through the pipeline
+
+**V4 Progress (Tasks 1-9 Complete):**
+- ✅ Task 1: Configuration directory structure
+- ✅ Task 2: Configuration loader with deep merge logic
+- ✅ Task 3: Configuration schema validation
+- ✅ Task 4: EmailContext data class
+- ✅ Task 5: Content parser (HTML to Markdown)
+- ✅ Task 6: Rules engine - Blacklist rules
+- ✅ Task 7: Rules engine - Whitelist rules
+- ✅ Task 8: Account Processor class
+- ✅ Task 9: Safety interlock with cost estimation
 
 ### Historical Versions
 - **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
@@ -248,7 +273,8 @@ Generate summary → Exit
 
 ## Documentation
 
-- **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy, requirements, roadmap (✅ Complete, Current)
+### V3 Documentation (Current Production Version)
+- **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy, requirements, roadmap (✅ Complete)
 - **[V3 Configuration Guide](docs/v3-configuration.md)** — V3 configuration system and settings facade
 - **[V3 CLI Guide](docs/v3-cli.md)** — Command-line interface documentation
 - **[V3 Migration Guide](docs/v3-migration-guide.md)** — Migrating from V2 to V3
@@ -256,6 +282,16 @@ Generate summary → Exit
 - **[V3 Note Generator](docs/v3-note-generator.md)** — Jinja2 templating system
 - **[V3 Decision Logic](docs/v3-decision-logic.md)** — Threshold-based classification
 - **[Scoring Criteria](docs/scoring-criteria.md)** — Email scoring system
+
+### V4 Documentation (In Development - v4-orchestrator branch)
+- **[Product Design Doc V4 (PDD)](pdd_V4.md)** — V4 project strategy and requirements
+- **[V4 Configuration System](docs/v4-configuration.md)** — Multi-tenant configuration with account-specific overrides (Tasks 1-3) ✅
+- **[V4 Models](docs/v4-models.md)** — EmailContext data class for pipeline state tracking (Task 4) ✅
+- **[V4 Content Parser](docs/v4-content-parser.md)** — HTML to Markdown conversion with fallback (Task 5) ✅
+- **[V4 Rules Engine](docs/v4-rules-engine.md)** — Blacklist and whitelist rules for email filtering (Tasks 6-7) ✅
+- **[V4 Account Processor](docs/v4-account-processor.md)** — Isolated per-account email processing pipeline (Tasks 8-9) ✅
+
+### General Documentation
 - **[Main Documentation Map](docs/MAIN_DOCS.md)** — Centralized documentation index
 - **[Task Master Workflow](README-task-master.md)** — AI-driven task/project management
 
@@ -396,7 +432,10 @@ python scripts/test_imap_flags.py
 
 *Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
 
-**Note:** V3 (Foundational Upgrade) is the current version. V1 and V2 are historical versions. See [pdd.md](pdd.md) for V3 implementation details.
+**Note:** 
+- **V3** (Foundational Upgrade) is the current production version on `main` branch. See [pdd.md](pdd.md) for V3 implementation details.
+- **V4** (Orchestrator) is in development on `v4-orchestrator` branch. See [pdd_V4.md](pdd_V4.md) for V4 implementation details.
+- **V1 and V2** are historical versions.
 
 ---
 
