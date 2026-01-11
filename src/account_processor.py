@@ -1,0 +1,872 @@
+"""
+V4 Account Processor for isolated per-account email processing.
+
+This module provides the AccountProcessor class that handles the complete processing
+pipeline for a single account, ensuring complete state isolation between accounts.
+
+The AccountProcessor orchestrates:
+- IMAP connection management
+- Email fetching
+- Blacklist rule checking
+- Content parsing (HTML to Markdown)
+- LLM classification
+- Whitelist rule application
+- Note generation
+
+State Isolation:
+    Each AccountProcessor instance maintains its own:
+    - IMAP connection (not shared)
+    - Configuration (account-specific merged config)
+    - Processing context (per-run state)
+    - Logger (with account identifier)
+
+Usage:
+    >>> from src.account_processor import AccountProcessor
+    >>> from src.config_loader import ConfigLoader
+    >>> 
+    >>> loader = ConfigLoader('config')
+    >>> account_config = loader.load_merged_config('work')
+    >>> 
+    >>> processor = AccountProcessor(
+    ...     account_id='work',
+    ...     account_config=account_config,
+    ...     imap_client_factory=create_imap_client_from_config,
+    ...     llm_client=LLMClient(),
+    ...     blacklist_service=load_blacklist_rules,
+    ...     whitelist_service=load_whitelist_rules,
+    ...     note_generator=NoteGenerator(),
+    ...     parser=parse_html_content,
+    ...     logger=logger
+    ... )
+    >>> 
+    >>> processor.setup()
+    >>> processor.run()
+    >>> processor.teardown()
+"""
+import logging
+import imaplib
+from typing import Dict, Any, Optional, List, Callable
+from pathlib import Path
+
+from src.models import EmailContext, from_imap_dict
+from src.content_parser import parse_html_content
+from src.rules import (
+    load_blacklist_rules,
+    load_whitelist_rules,
+    check_blacklist,
+    apply_whitelist,
+    ActionEnum
+)
+from src.imap_client import ImapClient, IMAPConnectionError, IMAPFetchError
+from src.llm_client import LLMClient, LLMResponse
+from src.note_generator import NoteGenerator
+from src.decision_logic import DecisionLogic, ClassificationResult
+
+logger = logging.getLogger(__name__)
+
+
+class AccountProcessorError(Exception):
+    """Base exception for AccountProcessor errors."""
+    pass
+
+
+class AccountProcessorSetupError(AccountProcessorError):
+    """Raised when AccountProcessor setup fails."""
+    pass
+
+
+class AccountProcessorRunError(AccountProcessorError):
+    """Raised when AccountProcessor run fails."""
+    pass
+
+
+class ConfigurableImapClient(ImapClient):
+    """
+    Configurable IMAP client that accepts config directly instead of using settings facade.
+    
+    This class extends ImapClient to support account-specific configurations for V4.
+    It overrides the connect() method to use config passed at construction time.
+    """
+    
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize configurable IMAP client with account-specific config.
+        
+        Args:
+            config: Configuration dictionary containing IMAP settings under 'imap' key
+        """
+        super().__init__()
+        self._account_config = config
+        self._imap_config = config.get('imap', {})
+        
+        # Validate required fields
+        required_fields = ['server', 'port', 'username']
+        missing_fields = [field for field in required_fields if field not in self._imap_config]
+        if missing_fields:
+            raise AccountProcessorSetupError(
+                f"Missing required IMAP configuration fields: {missing_fields}"
+            )
+    
+    def connect(self) -> None:
+        """
+        Establish connection to IMAP server using credentials from config.
+        
+        Overrides parent connect() to use account-specific config instead of settings facade.
+        
+        Raises:
+            IMAPConnectionError: If connection or authentication fails
+            AccountProcessorSetupError: If required configuration is missing
+        """
+        if self._connected:
+            self.logger.warning("Already connected to IMAP server")
+            return
+        
+        try:
+            # Get configuration from account config (not settings facade)
+            server = self._imap_config['server']
+            port = self._imap_config['port']
+            username = self._imap_config['username']
+            
+            # Get password (from config or environment variable)
+            password = self._imap_config.get('password')
+            if not password:
+                # Try password_env
+                password_env = self._imap_config.get('password_env')
+                if password_env:
+                    import os
+                    password = os.getenv(password_env)
+                    if not password:
+                        raise AccountProcessorSetupError(
+                            f"Password environment variable '{password_env}' not set"
+                        )
+                else:
+                    raise AccountProcessorSetupError(
+                        "IMAP password not provided (neither 'password' nor 'password_env' in config)"
+                    )
+            
+            logger.info(f"Connecting to IMAP server {server}:{port} as {username}")
+            
+            # Connect based on port (SSL for 993, STARTTLS for 143)
+            if port == 993:
+                # Use SSL from the start (IMAPS)
+                self._imap = imaplib.IMAP4_SSL(server, port)
+            elif port == 143:
+                # Use STARTTLS (upgrade plain connection to TLS)
+                self._imap = imaplib.IMAP4(server, port)
+                self._imap.starttls()
+            else:
+                # Default to SSL for other ports
+                logger.warning(f"Port {port} not standard (143/993), defaulting to SSL")
+                self._imap = imaplib.IMAP4_SSL(server, port)
+            
+            # Authenticate
+            self._imap.login(username, password)
+            
+            # Select INBOX (default mailbox)
+            typ, data = self._imap.select('INBOX')
+            if typ != 'OK':
+                raise IMAPConnectionError(f"Failed to select INBOX: {data}")
+            
+            self._connected = True
+            logger.info("IMAP connection established successfully")
+            
+        except imaplib.IMAP4.error as e:
+            error_msg = f"IMAP authentication failed: {e}"
+            logger.error(error_msg)
+            raise IMAPConnectionError(error_msg) from e
+        except Exception as e:
+            error_msg = f"IMAP connection failed: {e}"
+            logger.error(error_msg)
+            raise IMAPConnectionError(error_msg) from e
+    
+    def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False) -> List[Dict[str, Any]]:
+        """
+        Retrieve unprocessed emails using account-specific query and processed_tag.
+        
+        Overrides parent method to use account-specific config instead of settings facade.
+        """
+        self._ensure_connected()
+        
+        try:
+            # Get query and processed_tag from account config
+            user_query = self._imap_config.get('query', 'ALL')
+            processed_tag = self._imap_config.get('processed_tag', 'AIProcessed')
+            max_emails_per_run = max_emails or self._account_config.get('processing', {}).get('max_emails_per_run')
+            
+            if force_reprocess:
+                logger.info(f"Searching for emails (force-reprocess mode, query: {user_query})")
+                search_query = user_query
+            else:
+                logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
+                search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
+            
+            # Search for UIDs
+            typ, data = self._imap.uid('SEARCH', None, search_query)
+            
+            if typ != 'OK':
+                raise IMAPFetchError(f"IMAP search failed: {data}")
+            
+            if not data or not data[0]:
+                logger.info("No unprocessed emails found")
+                return []
+            
+            # Parse UIDs
+            uid_bytes = data[0]
+            if isinstance(uid_bytes, bytes):
+                uid_str = uid_bytes.decode('utf-8')
+            else:
+                uid_str = str(uid_bytes)
+            
+            uids = [uid.strip() for uid in uid_str.split() if uid.strip()]
+            
+            if not uids:
+                logger.info("No emails found" if force_reprocess else "No unprocessed emails found")
+                return []
+            
+            logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
+            
+            # Limit number of emails if specified
+            if max_emails_per_run and len(uids) > max_emails_per_run:
+                logger.info(f"Limiting to {max_emails_per_run} emails (found {len(uids)})")
+                uids = uids[:max_emails_per_run]
+            
+            # Fetch emails
+            emails = []
+            for uid in uids:
+                try:
+                    email_data = self.get_email_by_uid(uid)
+                    emails.append(email_data)
+                except IMAPFetchError as e:
+                    logger.warning(f"Skipping email UID {uid} due to fetch error: {e}")
+                    continue
+            
+            logger.info(f"Successfully retrieved {len(emails)} email(s)")
+            return emails
+            
+        except IMAPFetchError:
+            raise
+        except Exception as e:
+            error_msg = f"Error retrieving unprocessed emails: {e}"
+            logger.error(error_msg)
+            raise IMAPFetchError(error_msg) from e
+
+
+def create_imap_client_from_config(config: Dict[str, Any]) -> ImapClient:
+    """
+    Factory function to create an IMAP client from a configuration dictionary.
+    
+    This function extracts IMAP settings from the config dict and creates
+    a ConfigurableImapClient instance that can work with account-specific configs.
+    
+    Args:
+        config: Configuration dictionary containing IMAP settings under 'imap' key.
+               Expected structure:
+               {
+                   'imap': {
+                       'server': str,
+                       'port': int,
+                       'username': str,
+                       'password': str,  # or 'password_env': str for env var
+                       'query': str,
+                       'processed_tag': str
+                   }
+               }
+    
+    Returns:
+        ConfigurableImapClient instance (not connected yet)
+    
+    Raises:
+        AccountProcessorSetupError: If required IMAP config is missing
+    
+    Note:
+        The returned client is not connected. Call connect() on it separately.
+    """
+    return ConfigurableImapClient(config)
+
+
+class AccountProcessor:
+    """
+    Isolated per-account email processing pipeline.
+    
+    This class handles the complete email processing pipeline for a single account,
+    ensuring complete state isolation. Each instance maintains its own:
+    - IMAP connection (not shared with other accounts)
+    - Configuration (account-specific merged config)
+    - Processing context (per-run state)
+    - Logger (with account identifier)
+    
+    The processing pipeline follows this flow:
+    1. Blacklist Check → DROP, RECORD, or PASS
+    2. Content Parsing → HTML to Markdown (with fallback)
+    3. LLM Processing → Classification and scoring
+    4. Whitelist Modifiers → Score boost and tag addition
+    5. Note Generation → Create Obsidian notes
+    
+    State Isolation:
+        - All state is stored on self (instance variables)
+        - No class variables or shared singletons
+        - Configuration is immutable (passed in, not modified)
+        - IMAP connection is per-instance
+        - Processing context is per-run
+    
+    Example:
+        >>> processor = AccountProcessor(
+        ...     account_id='work',
+        ...     account_config=config,
+        ...     imap_client_factory=create_imap_client_from_config,
+        ...     llm_client=LLMClient(),
+        ...     blacklist_service=load_blacklist_rules,
+        ...     whitelist_service=load_whitelist_rules,
+        ...     note_generator=NoteGenerator(),
+        ...     parser=parse_html_content,
+        ...     logger=logger
+        ... )
+        >>> processor.setup()
+        >>> processor.run()
+        >>> processor.teardown()
+    """
+    
+    def __init__(
+        self,
+        account_id: str,
+        account_config: Dict[str, Any],
+        imap_client_factory: Callable[[Dict[str, Any]], ImapClient],
+        llm_client: LLMClient,
+        blacklist_service: Callable[[str], List],
+        whitelist_service: Callable[[str], List],
+        note_generator: NoteGenerator,
+        parser: Callable[[str, str], tuple],
+        decision_logic: Optional[DecisionLogic] = None,
+        logger: Optional[logging.Logger] = None
+    ):
+        """
+        Initialize AccountProcessor with account-specific configuration and dependencies.
+        
+        All dependencies are injected to ensure:
+        - Testability (can mock dependencies)
+        - State isolation (no shared mutable state)
+        - Flexibility (can swap implementations)
+        
+        Args:
+            account_id: Unique identifier for this account (e.g., 'work', 'personal')
+            account_config: Merged configuration dictionary for this account
+                           (from ConfigLoader.load_merged_config)
+            imap_client_factory: Factory function to create IMAP clients from config
+            llm_client: LLM client instance for email classification
+            blacklist_service: Function to load blacklist rules (e.g., load_blacklist_rules)
+            whitelist_service: Function to load whitelist rules (e.g., load_whitelist_rules)
+            note_generator: Note generator instance for creating Obsidian notes
+            parser: Content parser function (e.g., parse_html_content)
+            logger: Optional logger instance (creates one if not provided)
+        
+        Note:
+            The account_config should be immutable (not modified after construction).
+            All account-specific state is stored on self to ensure isolation.
+        """
+        # Account identification
+        self.account_id = account_id
+        
+        # Configuration (immutable - passed in, not modified)
+        self.config = account_config
+        
+        # Dependencies (injected for testability and isolation)
+        self._imap_client_factory = imap_client_factory
+        self.llm_client = llm_client
+        self._blacklist_service = blacklist_service
+        self._whitelist_service = whitelist_service
+        self.note_generator = note_generator
+        self.parser = parser
+        self.decision_logic = decision_logic or DecisionLogic()
+        
+        # Logger (with account identifier)
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.{account_id}")
+        self.logger = logger
+        
+        # Runtime state (per-instance, not shared)
+        self._imap_conn: Optional[ImapClient] = None
+        self._processing_context: Dict[str, Any] = {}
+        
+        # Processing results (per-run)
+        self._processed_emails: List[EmailContext] = []
+        self._dropped_emails: List[EmailContext] = []
+        self._recorded_emails: List[EmailContext] = []
+        
+        self.logger.info(f"AccountProcessor initialized for account: {account_id}")
+    
+    def setup(self) -> None:
+        """
+        Set up resources required for processing this account.
+        
+        This method:
+        - Establishes IMAP connection using account-specific credentials
+        - Loads account-specific blacklist/whitelist rules
+        - Initializes processing context
+        
+        Raises:
+            AccountProcessorSetupError: If setup fails (e.g., IMAP connection fails)
+        """
+        self.logger.info(f"Setting up AccountProcessor for account: {self.account_id}")
+        
+        try:
+            # Create IMAP client using factory (with account-specific config)
+            self._imap_conn = self._imap_client_factory(self.config)
+            
+            # Connect to IMAP server using account-specific credentials
+            self._imap_conn.connect()
+            
+            self.logger.info(f"IMAP connection established for account: {self.account_id}")
+            
+            # Initialize processing context
+            self._processing_context = {
+                'account_id': self.account_id,
+                'start_time': None,  # Set in run()
+                'emails_fetched': 0,
+                'emails_processed': 0,
+                'emails_dropped': 0,
+                'emails_recorded': 0
+            }
+            
+            # Reset per-run results
+            self._processed_emails = []
+            self._dropped_emails = []
+            self._recorded_emails = []
+            
+            self.logger.info(f"AccountProcessor setup complete for account: {self.account_id}")
+            
+        except IMAPConnectionError as e:
+            error_msg = f"IMAP connection failed for account {self.account_id}: {e}"
+            self.logger.error(error_msg)
+            raise AccountProcessorSetupError(error_msg) from e
+        except Exception as e:
+            error_msg = f"Setup failed for account {self.account_id}: {e}"
+            self.logger.error(error_msg)
+            raise AccountProcessorSetupError(error_msg) from e
+    
+    def run(self) -> None:
+        """
+        Execute the processing pipeline for this account.
+        
+        This method assumes setup() has been called successfully. It:
+        1. Fetches emails from IMAP
+        2. For each email:
+           - Checks blacklist rules
+           - Parses content (HTML to Markdown)
+           - Calls LLM for classification
+           - Applies whitelist rules
+           - Generates notes
+        
+        Raises:
+            AccountProcessorRunError: If run fails critically
+        """
+        if self._imap_conn is None:
+            raise AccountProcessorRunError(
+                f"AccountProcessor not set up for account {self.account_id}. Call setup() first."
+            )
+        
+        self.logger.info(f"Starting processing run for account: {self.account_id}")
+        
+        # Update processing context
+        import time
+        self._processing_context['start_time'] = time.time()
+        
+        try:
+            # Fetch emails from IMAP
+            emails = self._fetch_emails()
+            self._processing_context['emails_fetched'] = len(emails)
+            
+            self.logger.info(
+                f"Fetched {len(emails)} email(s) for account {self.account_id}"
+            )
+            
+            # Process each email
+            for email_dict in emails:
+                try:
+                    self._process_message(email_dict)
+                except Exception as e:
+                    # Log error but continue processing other emails
+                    self.logger.error(
+                        f"Error processing email UID {email_dict.get('uid', 'unknown')} "
+                        f"for account {self.account_id}: {e}",
+                        exc_info=True
+                    )
+                    continue
+            
+            # Log summary
+            self._log_processing_summary()
+            
+        except Exception as e:
+            error_msg = f"Processing run failed for account {self.account_id}: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise AccountProcessorRunError(error_msg) from e
+    
+    def teardown(self) -> None:
+        """
+        Clean up resources allocated during setup() and run().
+        
+        This method:
+        - Closes IMAP connection
+        - Clears processing context
+        - Resets per-run state
+        
+        Note:
+            Exceptions during teardown are logged but not raised to ensure
+            cleanup always completes.
+        """
+        self.logger.info(f"Tearing down AccountProcessor for account: {self.account_id}")
+        
+        # Close IMAP connection
+        if self._imap_conn is not None:
+            try:
+                self._imap_conn.disconnect()
+                self.logger.info(f"IMAP connection closed for account: {self.account_id}")
+            except Exception as e:
+                self.logger.warning(
+                    f"Error closing IMAP connection for account {self.account_id}: {e}"
+                )
+            finally:
+                self._imap_conn = None
+        
+        # Clear processing context
+        self._processing_context = {}
+        
+        # Note: We keep processed/dropped/recorded lists for potential inspection
+        # but they're reset on next setup()
+        
+        self.logger.info(f"AccountProcessor teardown complete for account: {self.account_id}")
+    
+    def _fetch_emails(self) -> List[Dict[str, Any]]:
+        """
+        Fetch emails from IMAP server for this account.
+        
+        Returns:
+            List of email dictionaries from IMAP client
+        
+        Raises:
+            AccountProcessorRunError: If email fetching fails
+        """
+        try:
+            # Get max_emails from config
+            max_emails = self.config.get('processing', {}).get('max_emails_per_run')
+            
+            # Fetch unprocessed emails
+            emails = self._imap_conn.get_unprocessed_emails(max_emails=max_emails)
+            return emails
+            
+        except IMAPFetchError as e:
+            error_msg = f"Failed to fetch emails for account {self.account_id}: {e}"
+            self.logger.error(error_msg)
+            raise AccountProcessorRunError(error_msg) from e
+    
+    def _process_message(self, email_dict: Dict[str, Any]) -> None:
+        """
+        Process a single email through the complete pipeline.
+        
+        Pipeline stages:
+        1. Create EmailContext from IMAP data
+        2. Check blacklist rules
+        3. Parse content (HTML to Markdown)
+        4. Call LLM for classification
+        5. Apply whitelist rules
+        6. Generate note
+        
+        Args:
+            email_dict: Email dictionary from IMAP client
+        """
+        # Create EmailContext from IMAP data
+        email_context = from_imap_dict(email_dict)
+        uid = email_context.uid
+        
+        self.logger.debug(f"Processing email UID {uid} for account {self.account_id}")
+        
+        # Stage 1: Blacklist Check
+        blacklist_action = self._check_blacklist(email_context)
+        
+        if blacklist_action == ActionEnum.DROP:
+            self.logger.info(f"Email UID {uid} dropped by blacklist for account {self.account_id}")
+            email_context.result_action = "DROPPED"
+            self._dropped_emails.append(email_context)
+            return
+        
+        if blacklist_action == ActionEnum.RECORD:
+            self.logger.info(f"Email UID {uid} recorded by blacklist for account {self.account_id}")
+            email_context.result_action = "RECORDED"
+            # Generate raw markdown without AI
+            self._generate_raw_note(email_context)
+            self._recorded_emails.append(email_context)
+            return
+        
+        # Stage 2: Content Parsing
+        self._parse_content(email_context)
+        
+        # Stage 3: LLM Classification
+        llm_response = self._classify_with_llm(email_context)
+        if not llm_response:
+            self.logger.warning(
+                f"LLM classification failed for UID {uid}, skipping note generation"
+            )
+            return
+        
+        # Store LLM scores
+        email_context.llm_score = llm_response.importance_score
+        
+        # Apply decision logic to get ClassificationResult
+        classification_result = self.decision_logic.classify(llm_response)
+        
+        # Stage 4: Whitelist Rules (applied after LLM, before note generation)
+        self._apply_whitelist(email_context)
+        
+        # Update classification result with whitelist-adjusted score
+        if email_context.llm_score != llm_response.importance_score:
+            # Re-run decision logic with adjusted score
+            adjusted_llm_response = LLMResponse(
+                spam_score=llm_response.spam_score,
+                importance_score=int(email_context.llm_score),
+                raw_response=llm_response.raw_response
+            )
+            classification_result = self.decision_logic.classify(adjusted_llm_response)
+        
+        # Stage 5: Note Generation
+        self._generate_note(email_context, classification_result)
+        
+        # Mark as processed
+        email_context.result_action = "PROCESSED"
+        self._processed_emails.append(email_context)
+        self._processing_context['emails_processed'] += 1
+        
+        # Set IMAP flag
+        self._mark_email_processed(uid)
+        
+        self.logger.info(
+            f"Successfully processed email UID {uid} for account {self.account_id}"
+        )
+    
+    def _check_blacklist(self, email_context: EmailContext) -> ActionEnum:
+        """
+        Check email against blacklist rules.
+        
+        Args:
+            email_context: EmailContext to check
+        
+        Returns:
+            ActionEnum indicating action to take (DROP, RECORD, or PASS)
+        """
+        # Load blacklist rules
+        # TODO: Get blacklist path from config
+        blacklist_path = Path("config/blacklist.yaml")
+        rules = self._blacklist_service(str(blacklist_path))
+        
+        # Check against rules
+        return check_blacklist(email_context, rules)
+    
+    def _parse_content(self, email_context: EmailContext) -> None:
+        """
+        Parse email content (HTML to Markdown).
+        
+        Updates email_context.parsed_body and email_context.is_html_fallback.
+        
+        Args:
+            email_context: EmailContext to parse
+        """
+        html_body = email_context.raw_html or ""
+        plain_text = email_context.raw_text or ""
+        
+        parsed_content, is_fallback = self.parser(html_body, plain_text)
+        
+        email_context.parsed_body = parsed_content
+        email_context.is_html_fallback = is_fallback
+        
+        if is_fallback:
+            self.logger.debug(
+                f"HTML parsing failed for UID {email_context.uid}, "
+                f"using plain text fallback for account {self.account_id}"
+            )
+    
+    def _classify_with_llm(self, email_context: EmailContext) -> Optional[LLMResponse]:
+        """
+        Classify email using LLM.
+        
+        Args:
+            email_context: EmailContext to classify
+        
+        Returns:
+            LLMResponse if classification succeeds, None otherwise
+        """
+        try:
+            # Build email content for LLM
+            email_content = email_context.parsed_body or email_context.raw_text or ""
+            
+            # Call LLM
+            llm_response = self.llm_client.classify_email(
+                email_content=email_content,
+                user_prompt=None,  # TODO: Load prompt from config if needed
+                max_chars=None  # TODO: Get from config
+            )
+            
+            self.logger.debug(
+                f"LLM classification for UID {email_context.uid} "
+                f"(account {self.account_id}): "
+                f"spam={llm_response.spam_score}, "
+                f"importance={llm_response.importance_score}"
+            )
+            
+            return llm_response
+            
+        except Exception as e:
+            self.logger.error(
+                f"LLM classification failed for UID {email_context.uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+            return None
+    
+    def _apply_whitelist(self, email_context: EmailContext) -> None:
+        """
+        Apply whitelist rules to email.
+        
+        Updates email_context.whitelist_boost and email_context.whitelist_tags.
+        
+        Args:
+            email_context: EmailContext to apply whitelist to
+        """
+        if not email_context.is_scored():
+            # Can't apply whitelist without a score
+            return
+        
+        # Load whitelist rules
+        # TODO: Get whitelist path from config
+        whitelist_path = Path("config/whitelist.yaml")
+        rules = self._whitelist_service(str(whitelist_path))
+        
+        # Apply whitelist rules
+        current_score = email_context.llm_score or 0.0
+        new_score, tags = apply_whitelist(email_context, rules, current_score)
+        
+        # Update email context
+        email_context.llm_score = new_score
+        email_context.whitelist_boost = new_score - current_score
+        email_context.whitelist_tags = tags
+        
+        if tags or email_context.whitelist_boost != 0.0:
+            self.logger.debug(
+                f"Whitelist applied to UID {email_context.uid} "
+                f"(account {self.account_id}): "
+                f"boost={email_context.whitelist_boost}, tags={tags}"
+            )
+    
+    def _generate_note(
+        self,
+        email_context: EmailContext,
+        classification_result: ClassificationResult
+    ) -> None:
+        """
+        Generate note for processed email.
+        
+        Args:
+            email_context: EmailContext to generate note for
+            classification_result: ClassificationResult from decision logic
+        """
+        try:
+            # Convert EmailContext to email_data dict for note generator
+            email_data = {
+                'uid': email_context.uid,
+                'subject': email_context.subject,
+                'from': email_context.sender,
+                'body': email_context.parsed_body or email_context.raw_text or '',
+                'html_body': email_context.raw_html or '',
+                'date': None,  # TODO: Extract from IMAP if available
+                'to': []  # TODO: Extract from IMAP if available
+            }
+            
+            # Generate note using note generator
+            note_content = self.note_generator.generate_note(
+                email_data=email_data,
+                classification_result=classification_result
+            )
+            
+            # TODO: Write note to file system
+            # For now, we just log that note was generated
+            self.logger.info(
+                f"Generated note for UID {email_context.uid} "
+                f"(account {self.account_id}): {len(note_content)} characters"
+            )
+            
+        except Exception as e:
+            self.logger.error(
+                f"Note generation failed for UID {email_context.uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+    
+    def _generate_raw_note(self, email_context: EmailContext) -> None:
+        """
+        Generate raw markdown note without AI classification.
+        
+        Args:
+            email_context: EmailContext to generate note for
+        """
+        try:
+            # Parse content for raw note
+            self._parse_content(email_context)
+            
+            # Create minimal email_data for raw note
+            email_data = {
+                'uid': email_context.uid,
+                'subject': email_context.subject,
+                'from': email_context.sender,
+                'body': email_context.parsed_body or email_context.raw_text or '',
+                'html_body': email_context.raw_html or '',
+                'date': None,
+                'to': []
+            }
+            
+            # Generate note without classification result (raw markdown)
+            note_content = self.note_generator.generate_note(
+                email_data=email_data,
+                classification_result=None  # No AI classification for raw notes
+            )
+            
+            # TODO: Write note to file system
+            self.logger.info(
+                f"Generated raw note for UID {email_context.uid} "
+                f"(account {self.account_id}): {len(note_content)} characters"
+            )
+            
+        except Exception as e:
+            self.logger.error(
+                f"Raw note generation failed for UID {email_context.uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+    
+    def _mark_email_processed(self, uid: str) -> None:
+        """
+        Mark email as processed in IMAP.
+        
+        Args:
+            uid: Email UID
+        """
+        try:
+            processed_tag = self.config.get('imap', {}).get('processed_tag', 'AIProcessed')
+            self._imap_conn.set_flag(uid, processed_tag)
+        except Exception as e:
+            self.logger.warning(
+                f"Failed to mark email UID {uid} as processed "
+                f"for account {self.account_id}: {e}"
+            )
+    
+    def _log_processing_summary(self) -> None:
+        """Log summary of processing run."""
+        context = self._processing_context
+        import time
+        
+        elapsed_time = time.time() - context.get('start_time', 0)
+        
+        self.logger.info(
+            f"Processing summary for account {self.account_id}: "
+            f"fetched={context.get('emails_fetched', 0)}, "
+            f"processed={context.get('emails_processed', 0)}, "
+            f"dropped={len(self._dropped_emails)}, "
+            f"recorded={len(self._recorded_emails)}, "
+            f"time={elapsed_time:.2f}s"
+        )

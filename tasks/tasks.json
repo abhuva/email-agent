@@ -545,7 +545,7 @@
       "id": 8,
       "title": "Create Account Processor Class",
       "description": "Implement the AccountProcessor class for isolated per-account processing",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         5,
         7
@@ -576,7 +576,7 @@
           "id": 3,
           "title": "Design and implement the core processing pipeline in run()",
           "description": "Implement run() to orchestrate the per-account processing pipeline: fetch items, apply blacklist check, parse content, call LLM, apply whitelist modifiers, and produce notes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -610,7 +610,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
