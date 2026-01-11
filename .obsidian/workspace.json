@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "prd-v4.md",
+                "file": "README-AI.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "prd-v4"
+              "title": "README-AI"
             }
           }
         ],
@@ -149,13 +149,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "prd-v4.md",
+                "file": "README-AI.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von prd-v4"
+              "title": "Gliederung von README-AI"
             }
           },
           {
@@ -240,6 +240,8 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "prd-v4.md",
+    "pdd_V4.md",
     "docs/v4-account-processor.md",
     "src/__pycache__/account_processor.cpython-313.pyc",
     "tests/__pycache__/test_account_processor.cpython-313-pytest-8.3.5.pyc",
@@ -255,13 +257,11 @@
     "src/__pycache__/content_parser.cpython-313.pyc",
     "tests/__pycache__/test_content_parser.cpython-313-pytest-8.3.5.pyc",
     "old pdd+prd/prd.md",
-    "pdd_V4.md",
     "docs/v4-main-integration-design.md",
     "docs/v4-models.md",
     "docs/test-isolation-fix.md",
     "docs/v4-configuration.md",
     "README-AI.md",
-    "prd-v4.md",
     "Merkzettel.md",
     "old pdd+prd/pdd 1.md",
     "docs/TROUBLESHOOTING.md",

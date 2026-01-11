@@ -12,6 +12,7 @@ The AccountProcessor orchestrates:
 - LLM classification
 - Whitelist rule application
 - Note generation
+- Safety interlock with cost estimation
 
 State Isolation:
     Each AccountProcessor instance maintains its own:
@@ -47,6 +48,7 @@ import logging
 import imaplib
 from typing import Dict, Any, Optional, List, Callable
 from pathlib import Path
+from dataclasses import dataclass
 
 from src.models import EmailContext, from_imap_dict
 from src.content_parser import parse_html_content
@@ -63,6 +65,185 @@ from src.note_generator import NoteGenerator
 from src.decision_logic import DecisionLogic, ClassificationResult
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CostEstimate:
+    """Cost estimation result for email processing operation."""
+    email_count: int
+    estimated_cost: float
+    currency: str
+    cost_per_email: float
+    tokens_per_email: int
+    model_name: str
+    breakdown: Dict[str, Any]
+    
+    def __str__(self) -> str:
+        """Format cost estimate for display."""
+        return (
+            f"Estimated cost: {self.currency}{self.estimated_cost:.4f} "
+            f"for {self.email_count} email(s) "
+            f"({self.currency}{self.cost_per_email:.4f} per email, "
+            f"model: {self.model_name})"
+        )
+
+
+def prompt_user_confirmation(
+    cost_estimate: CostEstimate,
+    confirmation_callback: Optional[Callable[[str], str]] = None
+) -> bool:
+    """
+    Prompt user for confirmation before proceeding with high-cost operation.
+    
+    This function displays the cost estimate and asks for explicit user confirmation.
+    It can be used in CLI environments or with custom confirmation handlers.
+    
+    Args:
+        cost_estimate: CostEstimate object with cost information
+        confirmation_callback: Optional callback function for custom confirmation handling.
+                             If provided, should accept a prompt string and return user input.
+                             If None, uses built-in input() function.
+    
+    Returns:
+        True if user confirmed, False if cancelled
+    """
+    # Display cost information
+    print("\n" + "=" * 70)
+    print("SAFETY INTERLOCK: Cost Estimation")
+    print("=" * 70)
+    print(f"Emails to process: {cost_estimate.email_count}")
+    print(f"Model: {cost_estimate.model_name}")
+    print(f"Estimated cost: {cost_estimate.currency}{cost_estimate.estimated_cost:.4f}")
+    print(f"Cost per email: {cost_estimate.currency}{cost_estimate.cost_per_email:.4f}")
+    if cost_estimate.tokens_per_email > 0:
+        print(f"Estimated tokens per email: {cost_estimate.tokens_per_email:,}")
+    print("=" * 70)
+    print("\n⚠️  WARNING: This is a potentially high-cost operation.")
+    print("Processing will make API calls that may incur charges.")
+    print("=" * 70 + "\n")
+    
+    # Get user confirmation
+    if confirmation_callback:
+        response = confirmation_callback(
+            "Type 'yes' to confirm and proceed, or anything else to cancel: "
+        )
+    else:
+        response = input("Type 'yes' to confirm and proceed, or anything else to cancel: ")
+    
+    confirmed = response.lower().strip() == 'yes'
+    
+    if confirmed:
+        print("✓ Confirmed. Proceeding with email processing...\n")
+    else:
+        print("✗ Cancelled. Email processing aborted by safety interlock.\n")
+    
+    return confirmed
+
+
+def estimate_processing_cost(
+    email_count: int,
+    model_config: Dict[str, Any],
+    safety_config: Optional[Dict[str, Any]] = None
+) -> CostEstimate:
+    """
+    Estimate the cost of processing emails based on email count and model configuration.
+    
+    This function calculates the estimated cost using:
+    - Email count (from IMAP search)
+    - Model pricing (from config)
+    - Average tokens per email (from config or default)
+    
+    Args:
+        email_count: Number of emails to process
+        model_config: Model configuration dictionary containing pricing info
+                     Expected keys:
+                     - model: Model name/identifier
+                     - cost_per_1k_tokens: Cost per 1000 tokens (float)
+                     - cost_per_email: Optional direct cost per email (overrides token-based)
+        safety_config: Optional safety interlock configuration
+                      Expected keys:
+                      - average_tokens_per_email: Average tokens per email (default: 2000)
+                      - currency: Currency symbol (default: '$')
+    
+    Returns:
+        CostEstimate object with cost breakdown and formatted display string
+    
+    Raises:
+        ValueError: If required configuration is missing or invalid
+    """
+    if email_count < 0:
+        raise ValueError(f"Email count must be non-negative, got {email_count}")
+    
+    if email_count == 0:
+        # Return zero cost for zero emails
+        model_name = model_config.get('model', 'unknown')
+        currency = (safety_config or {}).get('currency', '$')
+        return CostEstimate(
+            email_count=0,
+            estimated_cost=0.0,
+            currency=currency,
+            cost_per_email=0.0,
+            tokens_per_email=0,
+            model_name=model_name,
+            breakdown={'total_emails': 0, 'total_tokens': 0, 'cost': 0.0}
+        )
+    
+    # Get model name
+    model_name = model_config.get('model', 'unknown')
+    
+    # Get safety config defaults
+    safety = safety_config or {}
+    average_tokens_per_email = safety.get('average_tokens_per_email', 2000)
+    currency = safety.get('currency', '$')
+    
+    # Check if direct cost_per_email is specified (takes precedence)
+    if 'cost_per_email' in model_config:
+        cost_per_email = float(model_config['cost_per_email'])
+        total_cost = email_count * cost_per_email
+        
+        return CostEstimate(
+            email_count=email_count,
+            estimated_cost=total_cost,
+            currency=currency,
+            cost_per_email=cost_per_email,
+            tokens_per_email=0,  # Not applicable for direct pricing
+            model_name=model_name,
+            breakdown={
+                'total_emails': email_count,
+                'pricing_model': 'direct_per_email',
+                'cost_per_email': cost_per_email,
+                'total_cost': total_cost
+            }
+        )
+    
+    # Token-based pricing
+    if 'cost_per_1k_tokens' not in model_config:
+        raise ValueError(
+            f"Model config must contain either 'cost_per_email' or 'cost_per_1k_tokens', "
+            f"got: {list(model_config.keys())}"
+        )
+    
+    cost_per_1k_tokens = float(model_config['cost_per_1k_tokens'])
+    total_tokens = email_count * average_tokens_per_email
+    total_cost = (total_tokens / 1000.0) * cost_per_1k_tokens
+    cost_per_email = total_cost / email_count if email_count > 0 else 0.0
+    
+    return CostEstimate(
+        email_count=email_count,
+        estimated_cost=total_cost,
+        currency=currency,
+        cost_per_email=cost_per_email,
+        tokens_per_email=average_tokens_per_email,
+        model_name=model_name,
+        breakdown={
+            'total_emails': email_count,
+            'pricing_model': 'token_based',
+            'tokens_per_email': average_tokens_per_email,
+            'total_tokens': total_tokens,
+            'cost_per_1k_tokens': cost_per_1k_tokens,
+            'total_cost': total_cost
+        }
+    )
 
 
 class AccountProcessorError(Exception):
@@ -179,11 +360,24 @@ class ConfigurableImapClient(ImapClient):
             logger.error(error_msg)
             raise IMAPConnectionError(error_msg) from e
     
-    def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False) -> List[Dict[str, Any]]:
+    def count_unprocessed_emails(self, force_reprocess: bool = False) -> tuple[int, List[str]]:
         """
-        Retrieve unprocessed emails using account-specific query and processed_tag.
+        Count unprocessed emails using IMAP.search without fetching.
         
-        Overrides parent method to use account-specific config instead of settings facade.
+        This method performs a search to get the list of matching email UIDs
+        and returns the count and UID list. This is used for cost estimation
+        before actual email fetching.
+        
+        Args:
+            force_reprocess: If True, include processed emails in search
+            
+        Returns:
+            Tuple of (email_count, list_of_uids)
+            - email_count: Number of matching emails
+            - list_of_uids: List of email UIDs (as strings)
+            
+        Raises:
+            IMAPFetchError: If search fails
         """
         self._ensure_connected()
         
@@ -191,16 +385,15 @@ class ConfigurableImapClient(ImapClient):
             # Get query and processed_tag from account config
             user_query = self._imap_config.get('query', 'ALL')
             processed_tag = self._imap_config.get('processed_tag', 'AIProcessed')
-            max_emails_per_run = max_emails or self._account_config.get('processing', {}).get('max_emails_per_run')
             
             if force_reprocess:
-                logger.info(f"Searching for emails (force-reprocess mode, query: {user_query})")
+                logger.info(f"Counting emails (force-reprocess mode, query: {user_query})")
                 search_query = user_query
             else:
-                logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
+                logger.info(f"Counting unprocessed emails (query: {user_query}, exclude: {processed_tag})")
                 search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
             
-            # Search for UIDs
+            # Search for UIDs (no fetching)
             typ, data = self._imap.uid('SEARCH', None, search_query)
             
             if typ != 'OK':
@@ -208,7 +401,7 @@ class ConfigurableImapClient(ImapClient):
             
             if not data or not data[0]:
                 logger.info("No unprocessed emails found")
-                return []
+                return (0, [])
             
             # Parse UIDs
             uid_bytes = data[0]
@@ -221,14 +414,81 @@ class ConfigurableImapClient(ImapClient):
             
             if not uids:
                 logger.info("No emails found" if force_reprocess else "No unprocessed emails found")
-                return []
+                return (0, [])
             
             logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
+            return (len(uids), uids)
             
-            # Limit number of emails if specified
-            if max_emails_per_run and len(uids) > max_emails_per_run:
-                logger.info(f"Limiting to {max_emails_per_run} emails (found {len(uids)})")
-                uids = uids[:max_emails_per_run]
+        except IMAPFetchError:
+            raise
+        except Exception as e:
+            error_msg = f"Error counting unprocessed emails: {e}"
+            logger.error(error_msg)
+            raise IMAPFetchError(error_msg) from e
+    
+    def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False, uids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve unprocessed emails using account-specific query and processed_tag.
+        
+        Overrides parent method to use account-specific config instead of settings facade.
+        
+        Args:
+            max_emails: Maximum number of emails to fetch
+            force_reprocess: If True, include processed emails
+            uids: Optional pre-fetched list of UIDs to use (for safety interlock flow)
+        """
+        self._ensure_connected()
+        
+        try:
+            # If UIDs are provided (from safety interlock), use them directly
+            if uids is not None:
+                logger.info(f"Fetching {len(uids)} email(s) using provided UIDs")
+                # Limit number of emails if specified
+                if max_emails and len(uids) > max_emails:
+                    logger.info(f"Limiting to {max_emails} emails (found {len(uids)})")
+                    uids = uids[:max_emails]
+            else:
+                # Get query and processed_tag from account config
+                user_query = self._imap_config.get('query', 'ALL')
+                processed_tag = self._imap_config.get('processed_tag', 'AIProcessed')
+                max_emails_per_run = max_emails or self._account_config.get('processing', {}).get('max_emails_per_run')
+                
+                if force_reprocess:
+                    logger.info(f"Searching for emails (force-reprocess mode, query: {user_query})")
+                    search_query = user_query
+                else:
+                    logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
+                    search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
+                
+                # Search for UIDs
+                typ, data = self._imap.uid('SEARCH', None, search_query)
+                
+                if typ != 'OK':
+                    raise IMAPFetchError(f"IMAP search failed: {data}")
+                
+                if not data or not data[0]:
+                    logger.info("No unprocessed emails found")
+                    return []
+                
+                # Parse UIDs
+                uid_bytes = data[0]
+                if isinstance(uid_bytes, bytes):
+                    uid_str = uid_bytes.decode('utf-8')
+                else:
+                    uid_str = str(uid_bytes)
+                
+                uids = [uid.strip() for uid in uid_str.split() if uid.strip()]
+                
+                if not uids:
+                    logger.info("No emails found" if force_reprocess else "No unprocessed emails found")
+                    return []
+                
+                logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
+                
+                # Limit number of emails if specified
+                if max_emails_per_run and len(uids) > max_emails_per_run:
+                    logger.info(f"Limiting to {max_emails_per_run} emails (found {len(uids)})")
+                    uids = uids[:max_emails_per_run]
             
             # Fetch emails
             emails = []
@@ -337,7 +597,8 @@ class AccountProcessor:
         note_generator: NoteGenerator,
         parser: Callable[[str, str], tuple],
         decision_logic: Optional[DecisionLogic] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        confirmation_callback: Optional[Callable[[str], str]] = None
     ):
         """
         Initialize AccountProcessor with account-specific configuration and dependencies.
@@ -382,6 +643,9 @@ class AccountProcessor:
         if logger is None:
             logger = logging.getLogger(f"{__name__}.{account_id}")
         self.logger = logger
+        
+        # Confirmation callback (for testing/mocking)
+        self._confirmation_callback = confirmation_callback
         
         # Runtime state (per-instance, not shared)
         self._imap_conn: Optional[ImapClient] = None
@@ -443,18 +707,24 @@ class AccountProcessor:
             self.logger.error(error_msg)
             raise AccountProcessorSetupError(error_msg) from e
     
-    def run(self) -> None:
+    def run(self, force_reprocess: bool = False) -> None:
         """
         Execute the processing pipeline for this account.
         
         This method assumes setup() has been called successfully. It:
-        1. Fetches emails from IMAP
-        2. For each email:
+        1. Counts emails using IMAP.search (safety interlock)
+        2. Estimates cost based on email count and model config
+        3. Prompts user for confirmation if cost exceeds threshold
+        4. Fetches emails from IMAP (only if confirmed)
+        5. For each email:
            - Checks blacklist rules
            - Parses content (HTML to Markdown)
            - Calls LLM for classification
            - Applies whitelist rules
            - Generates notes
+        
+        Args:
+            force_reprocess: If True, include processed emails in search
         
         Raises:
             AccountProcessorRunError: If run fails critically
@@ -471,8 +741,73 @@ class AccountProcessor:
         self._processing_context['start_time'] = time.time()
         
         try:
-            # Fetch emails from IMAP
-            emails = self._fetch_emails()
+            # Safety Interlock: Step 1 - Count emails before fetching
+            self.logger.info("Safety interlock: Counting emails before processing...")
+            email_count, uids = self._imap_conn.count_unprocessed_emails(force_reprocess=force_reprocess)
+            
+            if email_count == 0:
+                self.logger.info("No emails to process. Exiting.")
+                return
+            
+            # Safety Interlock: Step 2 - Estimate cost
+            safety_config = self.config.get('safety_interlock', {})
+            model_config = self.config.get('classification', {})
+            
+            # Check if safety interlock is enabled
+            interlock_enabled = safety_config.get('enabled', True)
+            cost_threshold = safety_config.get('cost_threshold', 0.0)
+            skip_below_threshold = safety_config.get('skip_confirmation_below_threshold', False)
+            
+            if interlock_enabled:
+                try:
+                    cost_estimate = estimate_processing_cost(
+                        email_count=email_count,
+                        model_config=model_config,
+                        safety_config=safety_config
+                    )
+                    
+                    self.logger.info(f"Cost estimate: {cost_estimate}")
+                    
+                    # Safety Interlock: Step 3 - Check threshold and prompt for confirmation
+                    needs_confirmation = True
+                    if skip_below_threshold and cost_estimate.estimated_cost <= cost_threshold:
+                        self.logger.info(
+                            f"Cost ({cost_estimate.currency}{cost_estimate.estimated_cost:.4f}) "
+                            f"is below threshold ({cost_estimate.currency}{cost_threshold:.4f}). "
+                            f"Skipping confirmation."
+                        )
+                        needs_confirmation = False
+                    
+                    if needs_confirmation:
+                        # Safety Interlock: Step 4 - Prompt user for confirmation
+                        confirmed = prompt_user_confirmation(
+                            cost_estimate,
+                            confirmation_callback=self._confirmation_callback
+                        )
+                        
+                        if not confirmed:
+                            self.logger.warning(
+                                f"Processing aborted by safety interlock for account {self.account_id}. "
+                                f"User cancelled operation."
+                            )
+                            return
+                    
+                except (ValueError, KeyError) as e:
+                    self.logger.warning(
+                        f"Cost estimation failed: {e}. "
+                        f"Proceeding without cost check (safety interlock may be misconfigured)."
+                    )
+                    # Continue without cost check if estimation fails
+            else:
+                self.logger.info("Safety interlock is disabled. Proceeding without cost check.")
+            
+            # Safety Interlock: Step 5 - Fetch emails using pre-counted UIDs
+            max_emails = self.config.get('processing', {}).get('max_emails_per_run')
+            emails = self._imap_conn.get_unprocessed_emails(
+                max_emails=max_emails,
+                force_reprocess=force_reprocess,
+                uids=uids  # Use pre-counted UIDs to avoid re-searching
+            )
             self._processing_context['emails_fetched'] = len(emails)
             
             self.logger.info(

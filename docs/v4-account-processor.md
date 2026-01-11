@@ -1,6 +1,6 @@
 # V4 Account Processor Module
 
-**Task:** 8  
+**Task:** 8, 9  
 **Status:** ✅ Complete  
 **PDD Reference:** Section 2.1, 4.2.1
 
@@ -15,6 +15,7 @@ The AccountProcessor provides:
 - **Pipeline Orchestration:** Coordinates the complete email processing pipeline
 - **Resource Management:** Handles IMAP connection lifecycle and cleanup
 - **Error Isolation:** Failures in one account don't affect others
+- **Safety Interlock:** Cost estimation and user confirmation before high-cost operations (Task 9)
 
 ## Module Location
 
@@ -39,16 +40,24 @@ The AccountProcessor provides:
 
 ### Processing Pipeline
 
-The AccountProcessor executes the following pipeline for each email:
+The AccountProcessor executes the following pipeline:
 
+**Pre-Processing (Safety Interlock):**
 ```
-1. Blacklist Check → DROP, RECORD, or PASS
-2. Content Parsing → HTML to Markdown (with fallback)
-3. LLM Classification → Spam and importance scores
-4. Decision Logic → Classification result
-5. Whitelist Rules → Score boost and tags
-6. Note Generation → Obsidian note creation
-7. IMAP Flag Setting → Mark as processed
+0. Email Counting → IMAP.search to count emails before fetching
+1. Cost Estimation → Calculate estimated cost based on email count and model pricing
+2. User Confirmation → Prompt user for explicit approval (if cost exceeds threshold)
+```
+
+**Processing Pipeline (per email):**
+```
+3. Blacklist Check → DROP, RECORD, or PASS
+4. Content Parsing → HTML to Markdown (with fallback)
+5. LLM Classification → Spam and importance scores
+6. Decision Logic → Classification result
+7. Whitelist Rules → Score boost and tags
+8. Note Generation → Obsidian note creation
+9. IMAP Flag Setting → Mark as processed
 ```
 
 ## State Isolation
@@ -127,6 +136,19 @@ imap:
 
 processing:
   max_emails_per_run: 10
+
+safety_interlock:
+  enabled: true
+  cost_threshold: 0.10
+  skip_confirmation_below_threshold: false
+  average_tokens_per_email: 2000
+  currency: '$'
+
+classification:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  cost_per_1k_tokens: 0.0001  # Required for cost estimation
+  # OR use direct pricing:
+  # cost_per_email: 0.001
 ```
 
 ## API Reference
@@ -160,13 +182,23 @@ Set up resources required for processing this account.
 **Raises:**
 - `AccountProcessorSetupError`: If setup fails
 
-#### `run() -> None`
+#### `run(force_reprocess: bool = False) -> None`
 
 Execute the processing pipeline for this account.
 
-- Fetches emails from IMAP
+**Safety Interlock Flow:**
+1. Counts emails using `IMAP.search` (no fetching yet)
+2. Estimates cost based on email count and model pricing
+3. Prompts user for confirmation if cost exceeds threshold (or if forced)
+4. Only proceeds with fetching if confirmed
+
+**Processing Flow:**
+- Fetches emails from IMAP (using pre-counted UIDs)
 - Processes each email through the pipeline
 - Generates notes and sets IMAP flags
+
+**Parameters:**
+- `force_reprocess` (bool): If True, include processed emails in search
 
 **Raises:**
 - `AccountProcessorRunError`: If run fails critically
@@ -268,3 +300,4 @@ This module implements:
 - **Section 4.2.1:** Account Processor lifecycle (setup/run/teardown)
 - **Section 5.1:** EmailContext data model usage
 - **State Isolation:** Complete separation between accounts
+- **Task 9:** Safety interlock with cost estimation and user confirmation

@@ -47,6 +47,10 @@ classification:
   temperature: 0.2                     # LLM temperature (0.0-2.0, lower = more deterministic)
   retry_attempts: 3                     # Number of retry attempts for failed API calls
   retry_delay_seconds: 5                # Initial delay between retries (exponential backoff)
+  # Cost estimation (optional, but recommended for safety interlock)
+  cost_per_1k_tokens: 0.0001            # Cost per 1000 tokens (example: $0.0001 per 1K tokens)
+  # OR use direct pricing:
+  # cost_per_email: 0.001                # Direct cost per email (overrides token-based pricing)
 
 # Summarization Configuration
 # Settings for email summarization task (for important emails)
@@ -67,6 +71,29 @@ processing:
   # Optional - only if you want summarization
   summarization_tags:
     - 'important'  # Tag generated when importance_score >= threshold
+
+# Safety Interlock Configuration
+# Safety mechanism to prevent accidental high-cost operations
+safety_interlock:
+  enabled: true                         # Enable/disable safety interlock (default: true)
+  cost_threshold: 0.10                  # Cost threshold in currency units (default: 0.10)
+                                        # Operations below this threshold may skip confirmation
+  skip_confirmation_below_threshold: false  # Skip confirmation if cost is below threshold (default: false)
+  average_tokens_per_email: 2000       # Average tokens per email for cost estimation (default: 2000)
+  currency: '$'                         # Currency symbol for cost display (default: '$')
+  
+# Classification Model Pricing
+# Add pricing information to classification config for cost estimation
+# You can specify either cost_per_1k_tokens (token-based) or cost_per_email (direct pricing)
+classification:
+  model: 'google/gemini-2.5-flash-lite-preview-09-2025'
+  temperature: 0.2
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  # Cost estimation (optional, but recommended for safety interlock)
+  cost_per_1k_tokens: 0.0001            # Cost per 1000 tokens (example: $0.0001 per 1K tokens)
+  # OR use direct pricing:
+  # cost_per_email: 0.001                # Direct cost per email (overrides token-based pricing)
 
 # Environment Variable Overrides
 # You can override any config value using environment variables.

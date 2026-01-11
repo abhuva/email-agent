@@ -17,7 +17,10 @@ from src.account_processor import (
     AccountProcessorSetupError,
     AccountProcessorRunError,
     ConfigurableImapClient,
-    create_imap_client_from_config
+    create_imap_client_from_config,
+    estimate_processing_cost,
+    prompt_user_confirmation,
+    CostEstimate
 )
 from src.models import EmailContext, from_imap_dict
 from src.rules import ActionEnum
@@ -50,6 +53,7 @@ def mock_imap_client():
     client._connected = False
     client.connect = Mock()
     client.disconnect = Mock()
+    client.count_unprocessed_emails = Mock(return_value=(0, []))
     client.get_unprocessed_emails = Mock(return_value=[])
     client.get_email_by_uid = Mock()
     client.set_flag = Mock(return_value=True)
@@ -212,13 +216,17 @@ class TestAccountProcessorRun:
     def test_run_with_no_emails(self, account_processor, mock_imap_client):
         """Test run() when no emails are found."""
         account_processor.setup()
-        mock_imap_client.get_unprocessed_emails.return_value = []
+        # Mock count to return zero emails
+        mock_imap_client.count_unprocessed_emails.return_value = (0, [])
+        # Disable safety interlock for this test
+        account_processor.config['safety_interlock'] = {'enabled': False}
         
         account_processor.run()
         
         # Verify no emails were processed
         assert len(account_processor._processed_emails) == 0
-        assert account_processor._processing_context['emails_fetched'] == 0
+        # Verify count_unprocessed_emails was called
+        mock_imap_client.count_unprocessed_emails.assert_called_once()
     
     def test_run_processes_emails(self, account_processor, mock_imap_client, 
                                   mock_llm_client, mock_note_generator):
@@ -233,7 +241,11 @@ class TestAccountProcessorRun:
             'body': 'Plain text body',
             'html_body': '<p>HTML body</p>'
         }
+        # Mock count to return 1 email
+        mock_imap_client.count_unprocessed_emails.return_value = (1, ['123'])
         mock_imap_client.get_unprocessed_emails.return_value = [email_data]
+        # Disable safety interlock for this test
+        account_processor.config['safety_interlock'] = {'enabled': False}
         
         # Mock blacklist to return PASS
         with patch('src.account_processor.check_blacklist', return_value=ActionEnum.PASS):
@@ -329,7 +341,11 @@ class TestAccountProcessorPipeline:
             'from': 'spam@example.com',
             'body': 'Spam content'
         }
+        # Mock count to return 1 email
+        mock_imap_client.count_unprocessed_emails.return_value = (1, ['123'])
         mock_imap_client.get_unprocessed_emails.return_value = [email_data]
+        # Disable safety interlock for this test
+        account_processor.config['safety_interlock'] = {'enabled': False}
         
         # Mock blacklist to return DROP
         with patch('src.account_processor.check_blacklist', return_value=ActionEnum.DROP):
@@ -349,7 +365,11 @@ class TestAccountProcessorPipeline:
             'from': 'record@example.com',
             'body': 'Record content'
         }
+        # Mock count to return 1 email
+        mock_imap_client.count_unprocessed_emails.return_value = (1, ['123'])
         mock_imap_client.get_unprocessed_emails.return_value = [email_data]
+        # Disable safety interlock for this test
+        account_processor.config['safety_interlock'] = {'enabled': False}
         
         # Mock blacklist to return RECORD
         with patch('src.account_processor.check_blacklist', return_value=ActionEnum.RECORD):
@@ -371,7 +391,11 @@ class TestAccountProcessorPipeline:
             'body': 'Plain text',
             'html_body': '<p>HTML content</p>'
         }
+        # Mock count to return 1 email
+        mock_imap_client.count_unprocessed_emails.return_value = (1, ['123'])
         mock_imap_client.get_unprocessed_emails.return_value = [email_data]
+        # Disable safety interlock for this test
+        account_processor.config['safety_interlock'] = {'enabled': False}
         
         # Mock blacklist to return PASS
         with patch('src.account_processor.check_blacklist', return_value=ActionEnum.PASS):
@@ -393,3 +417,284 @@ class TestAccountProcessorPipeline:
         
         # Verify email was marked as processed
         mock_imap_client.set_flag.assert_called()
+
+
+class TestSafetyInterlock:
+    """Test safety interlock with cost estimation."""
+    
+    def test_cost_estimation_token_based(self):
+        """Test cost estimation with token-based pricing."""
+        model_config = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001
+        }
+        safety_config = {
+            'average_tokens_per_email': 2000,
+            'currency': '$'
+        }
+        
+        estimate = estimate_processing_cost(
+            email_count=10,
+            model_config=model_config,
+            safety_config=safety_config
+        )
+        
+        assert estimate.email_count == 10
+        assert estimate.model_name == 'test-model'
+        assert estimate.tokens_per_email == 2000
+        assert estimate.estimated_cost == 0.02  # 10 emails * 2000 tokens / 1000 * 0.001
+        assert estimate.cost_per_email == 0.002
+        assert estimate.currency == '$'
+    
+    def test_cost_estimation_direct_pricing(self):
+        """Test cost estimation with direct per-email pricing."""
+        model_config = {
+            'model': 'test-model',
+            'cost_per_email': 0.005
+        }
+        safety_config = {
+            'currency': '$'
+        }
+        
+        estimate = estimate_processing_cost(
+            email_count=5,
+            model_config=model_config,
+            safety_config=safety_config
+        )
+        
+        assert estimate.email_count == 5
+        assert estimate.estimated_cost == 0.025  # 5 emails * 0.005
+        assert estimate.cost_per_email == 0.005
+        assert estimate.tokens_per_email == 0  # Not applicable for direct pricing
+    
+    def test_cost_estimation_zero_emails(self):
+        """Test cost estimation with zero emails."""
+        model_config = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001
+        }
+        
+        estimate = estimate_processing_cost(
+            email_count=0,
+            model_config=model_config
+        )
+        
+        assert estimate.email_count == 0
+        assert estimate.estimated_cost == 0.0
+        assert estimate.cost_per_email == 0.0
+    
+    def test_cost_estimation_missing_config(self):
+        """Test cost estimation raises error with missing config."""
+        model_config = {
+            'model': 'test-model'
+            # Missing cost_per_1k_tokens and cost_per_email
+        }
+        
+        with pytest.raises(ValueError, match="cost_per_email.*cost_per_1k_tokens"):
+            estimate_processing_cost(
+                email_count=10,
+                model_config=model_config
+            )
+    
+    def test_cost_estimation_negative_count(self):
+        """Test cost estimation raises error with negative email count."""
+        model_config = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001
+        }
+        
+        with pytest.raises(ValueError, match="non-negative"):
+            estimate_processing_cost(
+                email_count=-1,
+                model_config=model_config
+            )
+    
+    @patch('builtins.input', return_value='yes')
+    def test_prompt_user_confirmation_yes(self, mock_input):
+        """Test user confirmation with 'yes' response."""
+        estimate = CostEstimate(
+            email_count=10,
+            estimated_cost=0.05,
+            currency='$',
+            cost_per_email=0.005,
+            tokens_per_email=2000,
+            model_name='test-model',
+            breakdown={}
+        )
+        
+        result = prompt_user_confirmation(estimate)
+        
+        assert result is True
+        mock_input.assert_called_once()
+    
+    @patch('builtins.input', return_value='no')
+    def test_prompt_user_confirmation_no(self, mock_input):
+        """Test user confirmation with 'no' response."""
+        estimate = CostEstimate(
+            email_count=10,
+            estimated_cost=0.05,
+            currency='$',
+            cost_per_email=0.005,
+            tokens_per_email=2000,
+            model_name='test-model',
+            breakdown={}
+        )
+        
+        result = prompt_user_confirmation(estimate)
+        
+        assert result is False
+        mock_input.assert_called_once()
+    
+    def test_prompt_user_confirmation_custom_callback(self):
+        """Test user confirmation with custom callback."""
+        estimate = CostEstimate(
+            email_count=10,
+            estimated_cost=0.05,
+            currency='$',
+            cost_per_email=0.005,
+            tokens_per_email=2000,
+            model_name='test-model',
+            breakdown={}
+        )
+        
+        def mock_callback(prompt):
+            return 'yes'
+        
+        result = prompt_user_confirmation(estimate, confirmation_callback=mock_callback)
+        
+        assert result is True
+    
+    def test_safety_interlock_count_emails(self, account_processor, mock_imap_client):
+        """Test that safety interlock counts emails before fetching."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails to return email count and UIDs
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(5, ['1', '2', '3', '4', '5']))
+        mock_imap_client.get_unprocessed_emails = Mock(return_value=[])
+        
+        # Configure safety interlock
+        account_processor.config['safety_interlock'] = {
+            'enabled': True,
+            'cost_threshold': 0.10,
+            'skip_confirmation_below_threshold': False
+        }
+        account_processor.config['classification'] = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001
+        }
+        
+        # Mock confirmation to return True
+        def mock_confirmation(prompt):
+            return 'yes'
+        account_processor._confirmation_callback = mock_confirmation
+        
+        account_processor.run()
+        
+        # Verify count_unprocessed_emails was called
+        mock_imap_client.count_unprocessed_emails.assert_called_once()
+    
+    def test_safety_interlock_zero_emails(self, account_processor, mock_imap_client):
+        """Test safety interlock with zero emails (should exit early)."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails to return zero emails
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(0, []))
+        
+        account_processor.run()
+        
+        # Verify get_unprocessed_emails was NOT called (early exit)
+        mock_imap_client.get_unprocessed_emails.assert_not_called()
+    
+    def test_safety_interlock_below_threshold(self, account_processor, mock_imap_client):
+        """Test safety interlock skips confirmation when cost is below threshold."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails to return 1 email
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(1, ['1']))
+        mock_imap_client.get_unprocessed_emails = Mock(return_value=[])
+        
+        # Configure safety interlock with threshold
+        account_processor.config['safety_interlock'] = {
+            'enabled': True,
+            'cost_threshold': 0.10,
+            'skip_confirmation_below_threshold': True,
+            'average_tokens_per_email': 2000
+        }
+        account_processor.config['classification'] = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001  # 1 email * 2000 tokens / 1000 * 0.001 = 0.002 (below threshold)
+        }
+        
+        account_processor.run()
+        
+        # Verify get_unprocessed_emails was called (no confirmation needed)
+        mock_imap_client.get_unprocessed_emails.assert_called_once()
+    
+    def test_safety_interlock_user_cancels(self, account_processor, mock_imap_client):
+        """Test safety interlock when user cancels confirmation."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails to return emails
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(10, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']))
+        
+        # Configure safety interlock
+        account_processor.config['safety_interlock'] = {
+            'enabled': True,
+            'cost_threshold': 0.10,
+            'skip_confirmation_below_threshold': False
+        }
+        account_processor.config['classification'] = {
+            'model': 'test-model',
+            'cost_per_1k_tokens': 0.001
+        }
+        
+        # Mock confirmation to return False (user cancels)
+        def mock_confirmation(prompt):
+            return 'no'
+        account_processor._confirmation_callback = mock_confirmation
+        
+        account_processor.run()
+        
+        # Verify get_unprocessed_emails was NOT called (user cancelled)
+        mock_imap_client.get_unprocessed_emails.assert_not_called()
+    
+    def test_safety_interlock_disabled(self, account_processor, mock_imap_client):
+        """Test that safety interlock can be disabled."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(5, ['1', '2', '3', '4', '5']))
+        mock_imap_client.get_unprocessed_emails = Mock(return_value=[])
+        
+        # Configure safety interlock as disabled
+        account_processor.config['safety_interlock'] = {
+            'enabled': False
+        }
+        
+        account_processor.run()
+        
+        # Verify get_unprocessed_emails was called (interlock disabled)
+        mock_imap_client.get_unprocessed_emails.assert_called_once()
+    
+    def test_safety_interlock_cost_estimation_failure(self, account_processor, mock_imap_client):
+        """Test safety interlock handles cost estimation failures gracefully."""
+        account_processor.setup()
+        
+        # Mock count_unprocessed_emails
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(5, ['1', '2', '3', '4', '5']))
+        mock_imap_client.get_unprocessed_emails = Mock(return_value=[])
+        
+        # Configure safety interlock but with missing cost config (will fail estimation)
+        account_processor.config['safety_interlock'] = {
+            'enabled': True
+        }
+        account_processor.config['classification'] = {
+            'model': 'test-model'
+            # Missing cost_per_1k_tokens and cost_per_email
+        }
+        
+        # Should continue without cost check (logs warning)
+        account_processor.run()
+        
+        # Verify get_unprocessed_emails was called (continues despite estimation failure)
+        mock_imap_client.get_unprocessed_emails.assert_called_once()

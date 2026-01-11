@@ -626,7 +626,7 @@
       "id": 9,
       "title": "Implement Safety Interlock with Cost Estimation",
       "description": "Create the safety mechanism to prevent accidental high-cost operations",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         8
       ],
@@ -638,7 +638,7 @@
           "id": 1,
           "title": "Add pre-fetch email counting using IMAP.search in AccountProcessor",
           "description": "Introduce a preliminary IMAP.search step in AccountProcessor to count candidate emails before any fetching occurs.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Identify the code path in AccountProcessor where email fetching currently begins (e.g., the method that first issues IMAP.fetch or equivalent). Before any fetch calls, insert a new step that uses IMAP.search with the same search criteria used for fetching to retrieve only the list of matching message IDs. From this list, compute the email count (length of IDs array). Ensure that this search result is not immediately fetched, and that the count and message ID list are stored in a suitable structure (e.g., a local variable or a small value object) that can be passed to subsequent steps in the processing flow."
         },
@@ -646,7 +646,7 @@
           "id": 2,
           "title": "Implement cost estimation function based on email count and model config",
           "description": "Create a reusable helper that estimates operation cost from the email count and model pricing configuration.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -656,7 +656,7 @@
           "id": 3,
           "title": "Display estimated cost and prompt user for confirmation",
           "description": "Integrate a user-facing confirmation step that shows the estimated cost and clearly asks for explicit approval before proceeding.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -666,7 +666,7 @@
           "id": 4,
           "title": "Wire safety interlock logic into AccountProcessor control flow",
           "description": "Treat the pre-count, cost estimation, and confirmation as a safety interlock that must pass before email fetching can execute.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -676,7 +676,7 @@
           "id": 5,
           "title": "Add configuration, thresholds, and tests for the safety interlock",
           "description": "Finalize the feature with configuration options, thresholds for what counts as high-cost, and automated tests covering the interlock behavior.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -686,7 +686,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
