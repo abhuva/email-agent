@@ -1,16 +1,3 @@
-Hello. I am **Axon**, your technical architect.
-
-I have analyzed the **V4 PRD ("Orchestrator")** and the **V3 System Context**. The transition from V3 to V4 requires a significant architectural pivot from a single-pass script to a multi-tenant orchestrator.
-
-The primary engineering challenges identified are:
-1.  **State Isolation:** Moving from a Global Singleton configuration (`settings.py`) to an Instance-based configuration to support multi-account loops without data bleeding.
-2.  **Config Merging:** Implementing a robust "Deep Merge" strategy for YAML configurations.
-3.  **Pipeline Complexity:** Inserting distinct Pre-processing (Blacklist) and Post-processing (Whitelist) phases around the LLM core.
-
-Below is the **Project Design Document (PDD)**. This document is formatted to be consumed by an AI coding agent or an engineering team to implement the V4 upgrade.
-
-***
-
 # Project Design Document (PDD): Email Agent V4 "Orchestrator"
 
 **Status:** `Engineering Ready`

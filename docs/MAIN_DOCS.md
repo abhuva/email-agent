@@ -6,7 +6,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
 - [pdd.md](../pdd.md) — Product Design Document V3 (✅ Complete, Current Version), foundational upgrade with score-based classification, CLI controls, and templating.
 - [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete, Historical), outlining Obsidian integration and note creation features.
-- [prd.md](../prd.md) — Product Requirements Document
+- [prd.md](prd.md) — Product Requirements Document
 
 ## User Guides
 - **[Complete Guide](COMPLETE_GUIDE.md)** — Comprehensive user guide covering installation, configuration, usage, Obsidian integration, troubleshooting, and deployment (for end users).
@@ -57,6 +57,7 @@ This is the top-level guide for all docs, implementation details, and project st
   - ✅ Task 2: Configuration loader with deep merge logic
   - ✅ Task 3: Configuration schema validation
 - **[V4 Models](v4-models.md)** — EmailContext data class for pipeline state tracking (Task 4) ✅
+- **[V4 Content Parser](v4-content-parser.md)** — HTML to Markdown conversion with fallback (Task 5) ✅
 
 ## Analysis & Reports
 - **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄

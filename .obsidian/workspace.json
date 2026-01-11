@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "pdd_V4.md",
+                "file": "prd-v4.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "pdd_V4"
+              "title": "prd-v4"
             }
           }
         ],
@@ -121,8 +121,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "57eec9babc93e0d3",
@@ -150,13 +149,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "pdd_V4.md",
+                "file": "prd-v4.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von pdd_V4"
+              "title": "Gliederung von prd-v4"
             }
           },
           {
@@ -241,25 +240,28 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "docs/v4-content-parser.md",
+    "LIVE_TEST_SETUP.md",
+    "src/__pycache__/content_parser.cpython-313.pyc",
+    "tests/__pycache__/test_content_parser.cpython-313-pytest-8.3.5.pyc",
+    "tests/test_content_parser.py",
+    "src/content_parser.py",
+    "src/__pycache__/runtime_config.cpython-313.pyc",
+    "tests/__pycache__/test_runtime_config.cpython-313-pytest-8.3.5.pyc",
+    "tests/test_runtime_config.py",
+    "src/runtime_config.py",
+    "old pdd+prd/prd.md",
+    "pdd_V4.md",
+    "docs/v4-main-integration-design.md",
     "docs/v4-models.md",
     "src/__pycache__/models.cpython-313.pyc",
     "tests/__pycache__/test_models.cpython-313-pytest-8.3.5.pyc",
-    "tests/test_models.py",
-    "src/models.py",
-    "src/__pycache__/config_validator.cpython-313.pyc",
-    "tests/__pycache__/test_config_validator.cpython-313-pytest-8.3.5.pyc",
-    "tests/test_config_validator.py",
-    "src/config_validator.py",
-    "src/__pycache__/config_schema.cpython-313.pyc",
-    "tests/__pycache__/test_config_schema.cpython-313-pytest-8.3.5.pyc",
     "docs/test-isolation-fix.md",
     "docs/v4-configuration.md",
     "README-AI.md",
-    "pdd_V4.md",
     "prd-v4.md",
     "Merkzettel.md",
-    "prd.md",
-    "pdd.md",
+    "old pdd+prd/pdd 1.md",
     "docs/TROUBLESHOOTING.md",
     "Beobachtungen Merkzettel.md",
     "docs/note_template_jina.md",
