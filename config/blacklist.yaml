@@ -1,0 +1,25 @@
+# Blacklist Rules Configuration
+# 
+# Blacklist rules are applied BEFORE AI processing (pre-processing).
+# Rules can either DROP emails (skip processing entirely) or RECORD them
+# (generate a raw markdown file without AI classification).
+#
+# Rule Structure:
+# - trigger: The field to match against ("sender", "subject", or "domain")
+# - value: The value to match (exact match for sender/subject, domain match for domain)
+# - action: What to do when matched ("drop" or "record")
+#
+# Examples:
+# - trigger: "sender"
+#   value: "no-reply@spam.com"
+#   action: "drop"  # Skip this email entirely
+#
+# - trigger: "domain"
+#   value: "spam-domain.com"
+#   action: "drop"  # Drop all emails from this domain
+#
+# - trigger: "subject"
+#   value: "Unsubscribe"
+#   action: "record"  # Generate raw markdown but skip AI processing
+#
+# blocked_items: []

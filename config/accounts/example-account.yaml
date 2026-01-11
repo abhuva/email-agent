@@ -1,0 +1,34 @@
+# Account-Specific Configuration
+# This file demonstrates the structure for account-specific configuration overrides.
+# 
+# Naming Convention: Use <account-id>.yaml or <tenant-name>.yaml
+# Example: work.yaml, personal.yaml, client-xyz.yaml
+#
+# This configuration will be deep-merged over the global config.yaml
+# - Dictionaries: Deep merged (keys in this file overwrite keys in global config)
+# - Lists: Completely replaced (lists in this file replace lists in global config)
+# - Primitives: Overwritten (values in this file replace values in global config)
+#
+# Account-specific settings that can be overridden:
+# account_id: example-account
+#
+# imap:
+#   server: imap.example.com
+#   port: 993
+#   username: user@example.com
+#   password_env: IMAP_PASSWORD_EXAMPLE
+#   query: ALL
+#   processed_tag: AIProcessed
+#
+# paths:
+#   obsidian_vault: /path/to/account-specific/vault
+#   log_file: logs/example-account.log
+#
+# openrouter:
+#   model: google/gemini-2.5-flash-lite-preview-09-2025
+#   temperature: 0.2
+#
+# processing:
+#   importance_threshold: 7
+#   spam_threshold: 4
+#   max_emails_per_run: 10

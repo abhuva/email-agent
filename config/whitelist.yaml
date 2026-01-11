@@ -1,0 +1,32 @@
+# Whitelist Rules Configuration
+#
+# Whitelist rules are applied AFTER AI processing (post-processing).
+# Rules can boost importance scores and add tags to emails that match.
+#
+# Rule Structure:
+# - trigger: The field to match against ("sender", "subject", or "domain")
+# - value: The value to match (exact match for sender/subject, domain match for domain)
+# - action: Must be "boost" for whitelist rules
+# - score_boost: Integer value to add to importance_score (e.g., 20 adds 20 points)
+# - add_tags: List of tags to add to the email (e.g., ["#vip", "#work"])
+#
+# Examples:
+# - trigger: "domain"
+#   value: "important-client.com"
+#   action: "boost"
+#   score_boost: 20
+#   add_tags: ["#vip", "#work"]
+#
+# - trigger: "sender"
+#   value: "boss@company.com"
+#   action: "boost"
+#   score_boost: 15
+#   add_tags: ["#priority"]
+#
+# - trigger: "subject"
+#   value: "URGENT"
+#   action: "boost"
+#   score_boost: 10
+#   add_tags: ["#urgent"]
+#
+# allowed_items: []
