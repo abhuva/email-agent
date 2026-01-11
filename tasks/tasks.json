@@ -1291,7 +1291,7 @@
           "id": 3,
           "title": "Implement Rules Engine ↔ processing pipeline integration tests",
           "description": "Create integration tests that verify the Rules Engine is invoked by the processing pipeline and that rule evaluations correctly influence pipeline behavior and outputs.",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -1312,7 +1312,7 @@
           "id": 5,
           "title": "Create end-to-end-style integration scenarios and CI execution",
           "description": "Combine the individual integrations into higher-level scenarios that exercise multiple components together and ensure integration tests run reliably in CI.",
-          "status": "pending",
+          "status": "in-progress",
           "dependencies": [
             2,
             3,
@@ -1324,7 +1324,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "in-progress",
           "dependencies": [
             1,
             2,
