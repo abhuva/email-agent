@@ -872,7 +872,7 @@
           "id": 1,
           "title": "Design centralized logging configuration and context schema",
           "description": "Define a unified logging configuration and the standard context fields that will be attached to all log messages across the multi-account processing application.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "• Choose the logging framework (e.g., language-standard logging library plus any structured logging/JSON formatter) and decide on log format (JSON vs plain text), log levels, and handlers/appenders (console, file, remote).\n• Design a common log context schema including fields such as correlation_id, account_id, job_id, component/module, environment, and request_id so every log line can be tied back to a specific account and processing run.\n• Define logger naming conventions (e.g., per module/component) and how child loggers inherit configuration from a root logger.\n• Document expectations for log level usage (DEBUG/INFO/WARN/ERROR) and what should/should not be logged (e.g., no secrets, PII handling rules).\n• Output of this subtask should be a short spec/config document and, if applicable, a base logging config file/template (e.g., logging.yaml/logging.json or equivalent) that will be referenced by the implementation subtasks."
         },
@@ -880,7 +880,7 @@
           "id": 2,
           "title": "Implement startup-time logging override and centralized configuration loader",
           "description": "Create a centralized mechanism that initializes and overrides the application’s logging configuration on startup so that all components use the same enhanced logging settings.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -890,7 +890,7 @@
           "id": 3,
           "title": "Implement contextual logging utilities for multi-account processing",
           "description": "Create helper utilities to attach and propagate contextual information (account, correlation IDs, etc.) so that all log messages include the required context automatically.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -901,7 +901,7 @@
           "id": 4,
           "title": "Add structured logging for account processing lifecycle and configuration overrides",
           "description": "Integrate logging into the multi-account processing flows to record processing start/end for each account and to log configuration overrides in a structured, consistent way.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -912,7 +912,7 @@
           "id": 5,
           "title": "Refactor application components to adopt centralized logging and validate end-to-end behavior",
           "description": "Update existing modules to use the new centralized and contextual logging system exclusively, and verify that logging works correctly across the entire multi-account processing flow.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
