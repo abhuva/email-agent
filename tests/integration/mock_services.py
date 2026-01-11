@@ -273,6 +273,84 @@ class MockImapClient(ImapClient):
             return 0
             
         return len(self._emails)
+        
+    def count_unprocessed_emails(self, force_reprocess: bool = False) -> tuple[int, List[str]]:
+        """
+        Count unprocessed emails and return their UIDs.
+        
+        Args:
+            force_reprocess: If True, ignore processed flags
+            
+        Returns:
+            Tuple of (count, list of UIDs)
+            
+        Raises:
+            IMAPFetchError: If not connected
+        """
+        if not self._connected:
+            raise IMAPFetchError("Not connected to IMAP server")
+            
+        if self._empty_inbox:
+            return (0, [])
+            
+        if force_reprocess:
+            # Return all emails
+            uids = [email.uid for email in self._emails.values()]
+            return (len(uids), uids)
+        else:
+            # Return only unprocessed emails (not flagged with AIProcessed)
+            uids = [
+                email.uid for email in self._emails.values()
+                if 'AIProcessed' not in email.flags
+            ]
+            return (len(uids), uids)
+            
+    def get_unprocessed_emails(
+        self,
+        max_emails: Optional[int] = None,
+        force_reprocess: bool = False,
+        uids: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get unprocessed emails from mock inbox.
+        
+        Args:
+            max_emails: Maximum number of emails to return
+            force_reprocess: If True, ignore processed flags
+            uids: Optional list of UIDs to fetch (if provided, only fetch these)
+            
+        Returns:
+            List of email dictionaries
+            
+        Raises:
+            IMAPFetchError: If not connected
+        """
+        if not self._connected:
+            raise IMAPFetchError("Not connected to IMAP server")
+        
+        # If UIDs provided, fetch only those
+        if uids:
+            emails = []
+            for uid in uids:
+                if uid in self._emails:
+                    emails.append(self.fetch_email_by_uid(uid))
+            if max_emails:
+                emails = emails[:max_emails]
+            return emails
+            
+        # Get unprocessed emails
+        if force_reprocess:
+            unprocessed = list(self._emails.values())
+        else:
+            unprocessed = [
+                email for email in self._emails.values()
+                if 'AIProcessed' not in email.flags
+            ]
+        
+        if max_emails:
+            unprocessed = unprocessed[:max_emails]
+            
+        return [self.fetch_email_by_uid(email.uid) for email in unprocessed]
 
 
 class MockLLMClient(LLMClient):
