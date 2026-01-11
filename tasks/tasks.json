@@ -4,7 +4,7 @@
       "id": 1,
       "title": "Create Configuration Directory Structure",
       "description": "Set up the directory structure for global and account-specific configurations",
-      "status": "pending",
+      "status": "done",
       "dependencies": [],
       "priority": "high",
       "details": "Create the following directory structure: config/ (for global config.yaml), config/accounts/ (for account-specific YAML files), and ensure proper permissions. Create placeholder files for blacklist.yaml and whitelist.yaml. This task establishes the foundation for the configuration system.",
@@ -14,7 +14,7 @@
           "id": 1,
           "title": "Create base configuration directory structure",
           "description": "Create the root configuration directory and the subdirectory for account-specific configurations.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) In the project root, create a `config/` directory to hold all configuration files. 2) Inside `config/`, create a subdirectory `accounts/` for account-specific YAML files. 3) If applicable, add these directories to any project scaffolding or setup scripts (e.g., a Makefile target or project bootstrap script) so that they are created automatically on new environments."
         },
@@ -22,7 +22,7 @@
           "id": 2,
           "title": "Create global configuration file placeholder",
           "description": "Add a placeholder global config.yaml file in the config directory with minimal valid structure.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -32,7 +32,7 @@
           "id": 3,
           "title": "Create account-specific configuration file placeholders",
           "description": "Set up example account-specific YAML files inside config/accounts/ to demonstrate per-account configuration.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -42,7 +42,7 @@
           "id": 4,
           "title": "Create blacklist and whitelist configuration placeholders",
           "description": "Add placeholder YAML files for blacklist and whitelist configuration and place them appropriately in the config hierarchy.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -52,7 +52,7 @@
           "id": 5,
           "title": "Set and document appropriate filesystem permissions for configuration directories and files",
           "description": "Define, apply, and document the required permissions for the config directory tree and its files.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -65,7 +65,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
