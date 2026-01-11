@@ -63,6 +63,7 @@ from src.imap_client import ImapClient, IMAPConnectionError, IMAPFetchError
 from src.llm_client import LLMClient, LLMResponse
 from src.note_generator import NoteGenerator
 from src.decision_logic import DecisionLogic, ClassificationResult
+from src.progress import create_progress_bar, tqdm_write
 
 logger = logging.getLogger(__name__)
 
@@ -490,13 +491,20 @@ class ConfigurableImapClient(ImapClient):
                     logger.info(f"Limiting to {max_emails_per_run} emails (found {len(uids)})")
                     uids = uids[:max_emails_per_run]
             
-            # Fetch emails
+            # Fetch emails with progress bar
             emails = []
-            for uid in uids:
+            # Get account identifier from config (username as fallback)
+            account_name = self._imap_config.get('username', 'account')
+            for uid in create_progress_bar(
+                uids,
+                desc=f"Fetching emails ({account_name})",
+                unit="emails"
+            ):
                 try:
                     email_data = self.get_email_by_uid(uid)
                     emails.append(email_data)
                 except IMAPFetchError as e:
+                    tqdm_write(f"Skipping email UID {uid} due to fetch error: {e}")
                     logger.warning(f"Skipping email UID {uid} due to fetch error: {e}")
                     continue
             
@@ -814,17 +822,22 @@ class AccountProcessor:
                 f"Fetched {len(emails)} email(s) for account {self.account_id}"
             )
             
-            # Process each email
-            for email_dict in emails:
+            # Process each email with progress bar
+            for email_dict in create_progress_bar(
+                emails,
+                desc=f"Processing emails ({self.account_id})",
+                unit="emails"
+            ):
                 try:
                     self._process_message(email_dict)
                 except Exception as e:
                     # Log error but continue processing other emails
-                    self.logger.error(
+                    error_msg = (
                         f"Error processing email UID {email_dict.get('uid', 'unknown')} "
-                        f"for account {self.account_id}: {e}",
-                        exc_info=True
+                        f"for account {self.account_id}: {e}"
                     )
+                    tqdm_write(error_msg)
+                    self.logger.error(error_msg, exc_info=True)
                     continue
             
             # Log summary

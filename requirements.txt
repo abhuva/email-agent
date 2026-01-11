@@ -9,3 +9,4 @@ html2text
 rich
 jinja2
 markdown
+tqdm

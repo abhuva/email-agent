@@ -63,6 +63,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V4 Master Orchestrator](v4-orchestrator.md)** — Multi-account orchestrator with CLI integration (Task 10) ✅
 - **[V4 CLI Multi-Account Support](v3-cli.md#v4-mode-multi-account)** — CLI commands for multi-account processing: `process --account <name>`, `process --all`, `show-config --account <name>` (Task 11) ✅
 - **[V4 Enhanced Logging System](v4-logging-system.md)** — Centralized logging with context, account lifecycle tracking, and configuration override logging (Task 12) ✅
+- **[V4 Progress Bars](v4-progress-bars.md)** — Progress indicators for email fetching, content parsing, LLM processing, and note generation (Task 13) ✅
 - **[V4 Main Entry Point](v4-main-integration-design.md)** — Refactored main.py with V3/V4 mode detection, MasterOrchestrator integration, and lifecycle management (Task 18) ✅
 
 ## Analysis & Reports
