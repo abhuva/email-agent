@@ -1,12 +1,15 @@
-# V4 Rules Engine - Blacklist Rules
+# V4 Rules Engine - Blacklist and Whitelist Rules
 
-**Task:** 6  
+**Task:** 6 (Blacklist), 7 (Whitelist)  
 **Status:** ✅ Complete  
 **PDD Reference:** Section 2.2, 3.2, 4.2.2
 
 ## Overview
 
-The Rules Engine provides blacklist and whitelist rule processing functionality for the V4 email processing pipeline. Blacklist rules are applied **BEFORE** AI processing (pre-processing) to filter out unwanted emails, either by dropping them entirely or recording them without AI classification.
+The Rules Engine provides blacklist and whitelist rule processing functionality for the V4 email processing pipeline. 
+
+- **Blacklist rules** are applied **BEFORE** AI processing (pre-processing) to filter out unwanted emails, either by dropping them entirely or recording them without AI classification.
+- **Whitelist rules** are applied **AFTER** AI processing (post-processing) to boost importance scores and add tags to emails that match.
 
 ## Purpose
 
@@ -21,17 +24,26 @@ The blacklist rules component provides:
 
 - **File:** `src/rules.py`
 - **Test File:** `tests/test_rules.py`
-- **Configuration:** `config/blacklist.yaml`
+- **Configuration:** 
+  - `config/blacklist.yaml` (blacklist rules)
+  - `config/whitelist.yaml` (whitelist rules)
 
 ## Architecture
 
 ### Core Components
 
+**Blacklist Components:**
 1. **ActionEnum:** Enumeration of possible actions (DROP, RECORD, PASS)
 2. **BlacklistRule:** Dataclass representing a single blacklist rule
-3. **Rule Loading:** Functions to load and validate rules from YAML
-4. **Rule Matching:** Helper functions for matching emails against rules
-5. **Rule Evaluation:** Main function to check emails against all rules
+3. **Rule Loading:** Functions to load and validate blacklist rules from YAML
+4. **Rule Matching:** Helper functions for matching emails against blacklist rules
+5. **Rule Evaluation:** Main function to check emails against all blacklist rules
+
+**Whitelist Components:**
+1. **WhitelistRule:** Dataclass representing a single whitelist rule
+2. **Rule Loading:** Functions to load and validate whitelist rules from YAML
+3. **Rule Matching:** Helper functions for matching emails against whitelist rules
+4. **Score Application:** Main function to apply whitelist rules and adjust scores/tags
 
 ### Data Structures
 
@@ -56,9 +68,22 @@ class BlacklistRule:
     raw_value: Optional[str]   # Original value for reference
 ```
 
+#### WhitelistRule
+
+```python
+@dataclass
+class WhitelistRule:
+    trigger_type: str          # "sender", "subject", or "domain"
+    value: str                 # Pattern/value to match
+    score_boost: float         # Score boost to apply (>= 0)
+    tags: List[str]            # Tags to add when matched
+    pattern: Optional[Pattern]  # Compiled regex (if applicable)
+    raw_value: Optional[str]   # Original value for reference
+```
+
 ## Configuration
 
-### YAML Format
+### Blacklist YAML Format
 
 Blacklist rules are defined in `config/blacklist.yaml`:
 
@@ -86,22 +111,68 @@ blocked_items:
     action: "drop"
 ```
 
-### Rule Schema
+### Blacklist Rule Schema
 
-Each rule must have:
+Each blacklist rule must have:
 - **trigger:** One of `"sender"`, `"subject"`, or `"domain"` (case-insensitive)
 - **value:** The pattern to match against (string)
 - **action:** One of `"drop"`, `"record"`, or `"pass"` (case-insensitive)
 
+### Whitelist YAML Format
+
+Whitelist rules are defined in `config/whitelist.yaml`:
+
+```yaml
+# Direct list format
+- trigger: "domain"
+  value: "important-client.com"
+  action: "boost"
+  score_boost: 20
+  add_tags: ["#vip", "#work"]
+
+- trigger: "sender"
+  value: "boss@company.com"
+  action: "boost"
+  score_boost: 15
+  add_tags: ["#priority"]
+
+- trigger: "subject"
+  value: "URGENT"
+  action: "boost"
+  score_boost: 10
+  add_tags: ["#urgent"]
+```
+
+Or using the `allowed_items` key:
+
+```yaml
+allowed_items:
+  - trigger: "domain"
+    value: "important-client.com"
+    action: "boost"
+    score_boost: 20
+    add_tags: ["#vip", "#work"]
+```
+
+### Whitelist Rule Schema
+
+Each whitelist rule must have:
+- **trigger:** One of `"sender"`, `"subject"`, or `"domain"` (case-insensitive)
+- **value:** The pattern to match against (string)
+- **action:** Must be `"boost"` (case-insensitive)
+- **score_boost:** Numeric value (integer or float) >= 0 to add to importance_score
+- **add_tags:** List of tag strings (optional, defaults to empty list)
+
 ### Matching Semantics
 
+Both blacklist and whitelist rules use the same matching semantics:
 - **Sender/Subject:** Case-insensitive substring matching (contains)
 - **Domain:** Case-insensitive exact domain matching
 - **Regex Support:** Values containing regex characters are automatically compiled as regex patterns
 
 ## API Reference
 
-### Loading Rules
+### Loading Blacklist Rules
 
 ```python
 from src.rules import load_blacklist_rules
@@ -111,6 +182,25 @@ rules = load_blacklist_rules("config/blacklist.yaml")
 ```
 
 **Returns:** `List[BlacklistRule]` - List of validated rules (empty list if file missing or invalid)
+
+**Raises:** `InvalidRuleError` - If YAML cannot be parsed
+
+**Behavior:**
+- Missing file: Returns empty list (logs warning)
+- Empty file: Returns empty list (logs warning)
+- Malformed rules: Skipped with warning, valid rules still loaded
+- Invalid YAML: Raises `InvalidRuleError`
+
+### Loading Whitelist Rules
+
+```python
+from src.rules import load_whitelist_rules
+
+# Load rules from YAML file
+rules = load_whitelist_rules("config/whitelist.yaml")
+```
+
+**Returns:** `List[WhitelistRule]` - List of validated rules (empty list if file missing or invalid)
 
 **Raises:** `InvalidRuleError` - If YAML cannot be parsed
 
@@ -155,7 +245,43 @@ else:  # PASS
 2. **RECORD** (medium) - If any rule matches with RECORD action, return RECORD
 3. **PASS** (lowest) - Default if no rules match
 
+### Applying Whitelist
+
+```python
+from src.rules import apply_whitelist
+from src.models import EmailContext
+
+# Create email context (after LLM classification)
+email = EmailContext(
+    uid="12345",
+    sender="boss@company.com",
+    subject="Test"
+)
+email.llm_score = 5.0  # Initial score from LLM
+
+# Load whitelist rules
+whitelist_rules = load_whitelist_rules("config/whitelist.yaml")
+
+# Apply whitelist rules
+new_score, tags = apply_whitelist(email, whitelist_rules, email.llm_score)
+
+# Update email context
+email.llm_score = new_score
+email.whitelist_tags = tags
+```
+
+**Returns:** `tuple[float, List[str]]` - (new_score, tags_list) where:
+- `new_score`: Current score plus all matching rules' score_boost values
+- `tags_list`: List of all unique tags from matching rules (duplicates removed)
+
+**Behavior:**
+- Multiple matching rules are cumulative (all boosts and tags are applied)
+- Duplicate tags are automatically removed
+- Empty rules list returns unchanged score and empty tags list
+
 ### Rule Validation
+
+**Blacklist Rule Validation:**
 
 ```python
 from src.rules import validate_blacklist_rule
@@ -172,6 +298,31 @@ rule = validate_blacklist_rule(raw_rule)
 **Returns:** `BlacklistRule` - Validated rule object
 
 **Raises:** `InvalidRuleError` - If rule is malformed
+
+**Whitelist Rule Validation:**
+
+```python
+from src.rules import validate_whitelist_rule
+
+raw_rule = {
+    "trigger": "domain",
+    "value": "important-client.com",
+    "action": "boost",
+    "score_boost": 20,
+    "add_tags": ["#vip", "#work"]
+}
+
+rule = validate_whitelist_rule(raw_rule)
+```
+
+**Returns:** `WhitelistRule` - Validated rule object
+
+**Raises:** `InvalidRuleError` - If rule is malformed
+
+**Validation Rules:**
+- `score_boost` must be >= 0 (can be integer or float)
+- `add_tags` must be a list of non-empty strings (optional, defaults to empty list)
+- `action` must be exactly `"boost"` for whitelist rules
 
 ## Usage Examples
 
@@ -210,10 +361,10 @@ def process_email(email_dict):
     email = from_imap_dict(email_dict)
     
     # Load blacklist rules
-    rules = load_blacklist_rules("config/blacklist.yaml")
+    blacklist_rules = load_blacklist_rules("config/blacklist.yaml")
     
     # Check blacklist (pre-processing)
-    action = check_blacklist(email, rules)
+    action = check_blacklist(email, blacklist_rules)
     
     if action == ActionEnum.DROP:
         logger.info(f"Email {email.uid} dropped by blacklist")
@@ -226,7 +377,17 @@ def process_email(email_dict):
         return email
     
     # Continue with normal processing
-    # ... AI classification, etc.
+    # ... Content parsing, AI classification, etc.
+    email.llm_score = llm_client.classify(email)
+    
+    # Apply whitelist rules (post-processing)
+    whitelist_rules = load_whitelist_rules("config/whitelist.yaml")
+    new_score, tags = apply_whitelist(email, whitelist_rules, email.llm_score)
+    email.llm_score = new_score
+    email.whitelist_tags = tags
+    
+    # Generate final note with adjusted score and tags
+    generate_note(email)
     return email
 ```
 
@@ -258,6 +419,7 @@ The module uses structured logging:
 
 Comprehensive test coverage in `tests/test_rules.py`:
 
+**Blacklist Tests:**
 - **ActionEnum Tests:** Enum value validation
 - **BlacklistRule Tests:** Dataclass validation
 - **Rule Validation Tests:** YAML parsing and validation
@@ -265,33 +427,43 @@ Comprehensive test coverage in `tests/test_rules.py`:
 - **Evaluation Tests:** Priority handling, multiple rules
 - **Loading Tests:** File handling, error cases
 
+**Whitelist Tests:**
+- **WhitelistRule Tests:** Dataclass validation (score_boost, tags)
+- **Rule Validation Tests:** YAML parsing and validation (action="boost" requirement)
+- **Matching Tests:** Sender, subject, and domain matching
+- **Application Tests:** Score boosting, tag accumulation, duplicate handling
+- **Loading Tests:** File handling, error cases
+
 Run tests:
 ```bash
 pytest tests/test_rules.py -v
 ```
 
+**Test Count:** 103 tests total (57 blacklist + 46 whitelist)
+
 ## Integration Points
 
 ### Pipeline Integration
 
-Blacklist rules are applied at the **pre-processing stage**:
+**Blacklist rules** are applied at the **pre-processing stage**:
+**Whitelist rules** are applied at the **post-processing stage** (after LLM classification):
 
 ```
-IMAP Fetch → Blacklist Check → [DROP/RECORD/PASS] → Content Parser → LLM → ...
+IMAP Fetch → Blacklist Check → [DROP/RECORD/PASS] → Content Parser → LLM → Whitelist Check → Final Score/Tags
 ```
 
 ### Dependencies
 
-- **EmailContext:** Uses `sender` and `subject` fields
-- **YAML Configuration:** Loads from `config/blacklist.yaml`
+- **EmailContext:** Uses `sender` and `subject` fields for matching
+- **YAML Configuration:** Loads from `config/blacklist.yaml` and `config/whitelist.yaml`
 - **Logging:** Uses standard Python logging
 
 ### Future Extensions
 
-- **Whitelist Rules:** Similar structure for whitelist processing (Task 7)
 - **Regex Patterns:** Enhanced regex support for complex matching
 - **Rule Priorities:** Explicit priority levels for rules
 - **Rule Groups:** Grouping rules for better organization
+- **Conditional Rules:** Rules that depend on multiple conditions
 
 ## PDD Alignment
 
@@ -299,7 +471,8 @@ This implementation follows PDD V4 specifications:
 
 - **Section 2.2:** Rules Engine component
 - **Section 3.2:** Rules schema (YAML format)
-- **Section 4.2.2:** Blacklist check in pipeline
+- **Section 4.2.2:** Blacklist check in pipeline (pre-processing)
+- **Section 4.2.2:** Whitelist application in pipeline (post-processing)
 
 ## See Also
 

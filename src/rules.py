@@ -6,6 +6,9 @@ Blacklist rules are applied BEFORE AI processing (pre-processing) to either
 DROP emails (skip processing entirely) or RECORD them (generate raw markdown
 without AI classification).
 
+Whitelist rules are applied AFTER AI processing (post-processing) to boost
+importance scores and add tags to emails that match.
+
 Integration Pattern:
     Rules are loaded from YAML configuration files and applied to EmailContext
     objects as they move through the processing pipeline:
@@ -13,6 +16,8 @@ Integration Pattern:
     1. Load rules: rules = load_blacklist_rules(config_path)
     2. Check blacklist: action = check_blacklist(email_context, rules)
     3. Apply action: Based on action (DROP, RECORD, PASS), proceed accordingly
+    4. After LLM classification: rules = load_whitelist_rules(config_path)
+    5. Apply whitelist: new_score, tags = apply_whitelist(email_context, rules, current_score)
     
     Example:
         >>> from src.models import EmailContext
@@ -42,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 class InvalidRuleError(Exception):
-    """Exception raised when a blacklist rule is invalid or malformed."""
+    """Exception raised when a rule (blacklist or whitelist) is invalid or malformed."""
     pass
 
 
@@ -604,3 +609,444 @@ def check_blacklist(email_obj: EmailContext, rules: List[BlacklistRule]) -> Acti
             continue
     
     return highest_action
+
+
+@dataclass
+class WhitelistRule:
+    """
+    Represents a single whitelist rule for email score boosting and tagging.
+    
+    Whitelist rules are applied after AI processing to boost importance scores
+    and add tags to emails that match. Each rule specifies a trigger type
+    (sender, subject, or domain), a value to match against, a score boost to
+    apply, and optional tags to add.
+    
+    Fields:
+        trigger_type: Type of field to match ("sender", "subject", or "domain")
+        value: The value to match against (exact match for sender/subject,
+              domain match for domain trigger)
+        score_boost: Numeric value to add to importance_score (must be >= 0)
+        tags: List of tags to add to the email (list of strings)
+        pattern: Optional compiled regex pattern if value contains regex
+        raw_value: Original value string for reference
+    
+    Example:
+        >>> rule = WhitelistRule(
+        ...     trigger_type="domain",
+        ...     value="important-client.com",
+        ...     score_boost=20,
+        ...     tags=["#vip", "#work"]
+        ... )
+        >>> rule.trigger_type
+        'domain'
+    """
+    trigger_type: str  # "sender", "subject", or "domain"
+    value: str  # The pattern/value to match
+    score_boost: float  # Score boost to apply (must be >= 0)
+    tags: List[str]  # Tags to add when rule matches
+    
+    # Optional fields for regex support
+    pattern: Optional[Pattern[str]] = None  # Compiled regex if value is regex
+    raw_value: Optional[str] = None  # Original value for reference
+    
+    def __post_init__(self):
+        """Validate rule after initialization."""
+        if self.trigger_type not in ("sender", "subject", "domain"):
+            raise ValueError(
+                f"Invalid trigger_type: {self.trigger_type}. "
+                f"Must be one of: sender, subject, domain"
+            )
+        
+        if not self.value:
+            raise ValueError("Rule value cannot be empty")
+        
+        if self.score_boost < 0:
+            raise ValueError(f"score_boost must be >= 0, got {self.score_boost}")
+        
+        if not isinstance(self.tags, list):
+            raise ValueError(f"tags must be a list, got {type(self.tags)}")
+        
+        # Validate tags are non-empty strings
+        for tag in self.tags:
+            if not isinstance(tag, str):
+                raise ValueError(f"All tags must be strings, got {type(tag)}")
+            if not tag.strip():
+                raise ValueError("Tags cannot be empty strings")
+
+
+def validate_whitelist_rule(raw_rule: Dict[str, Any]) -> WhitelistRule:
+    """
+    Validate and convert a raw rule dictionary into a WhitelistRule object.
+    
+    This function checks that all required fields are present, validates
+    trigger types, score_boost values, and tags, and handles regex pattern
+    compilation if needed.
+    
+    Args:
+        raw_rule: Dictionary with rule data from YAML file.
+                 Expected keys: trigger, value, action, score_boost, add_tags
+    
+    Returns:
+        Validated WhitelistRule object
+    
+    Raises:
+        InvalidRuleError: If the rule is malformed or invalid
+    
+    Example:
+        >>> raw_rule = {
+        ...     "trigger": "domain",
+        ...     "value": "important-client.com",
+        ...     "action": "boost",
+        ...     "score_boost": 20,
+        ...     "add_tags": ["#vip", "#work"]
+        ... }
+        >>> rule = validate_whitelist_rule(raw_rule)
+        >>> rule.trigger_type
+        'domain'
+    """
+    if not isinstance(raw_rule, dict):
+        raise InvalidRuleError(
+            f"Rule must be a dictionary, got {type(raw_rule).__name__}"
+        )
+    
+    # Extract and validate trigger type
+    trigger = raw_rule.get("trigger")
+    if not trigger:
+        raise InvalidRuleError("Rule missing required field: 'trigger'")
+    
+    trigger_str = str(trigger).lower().strip()
+    if trigger_str not in ("sender", "subject", "domain"):
+        raise InvalidRuleError(
+            f"Invalid trigger type: '{trigger}'. "
+            f"Must be one of: sender, subject, domain"
+        )
+    
+    # Extract and validate value
+    value = raw_rule.get("value")
+    if value is None:
+        raise InvalidRuleError("Rule missing required field: 'value'")
+    
+    value_str = str(value).strip()
+    if not value_str:
+        raise InvalidRuleError("Rule 'value' cannot be empty")
+    
+    # Extract and validate action (must be "boost" for whitelist)
+    action_str = raw_rule.get("action")
+    if not action_str:
+        raise InvalidRuleError("Rule missing required field: 'action'")
+    
+    action_str_lower = str(action_str).lower().strip()
+    if action_str_lower != "boost":
+        raise InvalidRuleError(
+            f"Invalid action for whitelist rule: '{action_str}'. "
+            f"Must be 'boost'"
+        )
+    
+    # Extract and validate score_boost
+    score_boost = raw_rule.get("score_boost")
+    if score_boost is None:
+        raise InvalidRuleError("Rule missing required field: 'score_boost'")
+    
+    # Convert to float and validate
+    try:
+        score_boost_float = float(score_boost)
+    except (ValueError, TypeError):
+        raise InvalidRuleError(
+            f"score_boost must be a number, got {type(score_boost).__name__}: {score_boost}"
+        )
+    
+    if score_boost_float < 0:
+        raise InvalidRuleError(
+            f"score_boost must be >= 0, got {score_boost_float}"
+        )
+    
+    # Extract and validate tags
+    tags = raw_rule.get("add_tags", [])
+    if not isinstance(tags, list):
+        raise InvalidRuleError(
+            f"add_tags must be a list, got {type(tags).__name__}"
+        )
+    
+    # Validate and normalize tags
+    validated_tags = []
+    for idx, tag in enumerate(tags):
+        if not isinstance(tag, str):
+            raise InvalidRuleError(
+                f"Tag at index {idx} must be a string, got {type(tag).__name__}"
+            )
+        tag_str = str(tag).strip()
+        if not tag_str:
+            raise InvalidRuleError(f"Tag at index {idx} cannot be empty")
+        validated_tags.append(tag_str)
+    
+    # Try to compile as regex if value looks like a regex pattern
+    pattern = None
+    raw_value = value_str
+    
+    # Check if value contains regex-like patterns (simple heuristic)
+    regex_indicators = ['*', '?', '^', '$', '[', ']', '(', ')', '|', '+', '{', '}']
+    if any(char in value_str for char in regex_indicators):
+        try:
+            pattern = re.compile(value_str, re.IGNORECASE)
+            logger.debug(f"Compiled regex pattern for whitelist rule: {value_str}")
+        except re.error as e:
+            # If regex compilation fails, treat as literal string
+            logger.warning(
+                f"Whitelist rule value '{value_str}' contains regex characters but failed to "
+                f"compile as regex: {e}. Treating as literal string."
+            )
+            pattern = None
+    
+    return WhitelistRule(
+        trigger_type=trigger_str,
+        value=value_str,
+        score_boost=score_boost_float,
+        tags=validated_tags,
+        pattern=pattern,
+        raw_value=raw_value
+    )
+
+
+def load_whitelist_rules(config_path: Union[str, Path]) -> List[WhitelistRule]:
+    """
+    Load whitelist rules from a YAML configuration file.
+    
+    This function reads a YAML file containing whitelist rules, validates each
+    rule, and returns a list of WhitelistRule objects. Malformed rules are
+    skipped with a warning log message, allowing the system to continue
+    processing with valid rules.
+    
+    Args:
+        config_path: Path to the whitelist YAML configuration file
+    
+    Returns:
+        List of validated WhitelistRule objects. Empty list if file doesn't
+        exist or contains no valid rules.
+    
+    Raises:
+        InvalidRuleError: If the YAML file cannot be read or parsed
+    
+    Example:
+        >>> rules = load_whitelist_rules("config/whitelist.yaml")
+        >>> len(rules)
+        2
+        >>> rules[0].trigger_type
+        'domain'
+    """
+    config_path = Path(config_path)
+    
+    # Handle missing file gracefully (return empty list)
+    if not config_path.exists():
+        logger.warning(f"Whitelist config file not found: {config_path}. Using empty rules list.")
+        return []
+    
+    # Load YAML file
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            raw_data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise InvalidRuleError(
+            f"YAML parse error in {config_path}: {e}"
+        ) from e
+    except IOError as e:
+        raise InvalidRuleError(
+            f"Error reading whitelist config file {config_path}: {e}"
+        ) from e
+    
+    # Handle empty or None YAML
+    if raw_data is None:
+        logger.warning(f"Whitelist config file {config_path} is empty. Using empty rules list.")
+        return []
+    
+    # Extract rules list
+    # YAML structure can be either:
+    # 1. A list of rules directly: [{trigger: ..., value: ..., action: ..., score_boost: ..., add_tags: ...}, ...]
+    # 2. A dict with 'allowed_items' key: {allowed_items: [{trigger: ..., ...}, ...]}
+    rules_list = []
+    
+    if isinstance(raw_data, list):
+        # Direct list format
+        rules_list = raw_data
+    elif isinstance(raw_data, dict):
+        # Dict format - look for 'allowed_items' key
+        if 'allowed_items' in raw_data:
+            allowed_items = raw_data['allowed_items']
+            if isinstance(allowed_items, list):
+                rules_list = allowed_items
+            else:
+                logger.warning(
+                    f"Expected 'allowed_items' to be a list in {config_path}, "
+                    f"got {type(allowed_items).__name__}. Using empty rules list."
+                )
+        else:
+            # Try to find any list value in the dict
+            for key, value in raw_data.items():
+                if isinstance(value, list):
+                    rules_list = value
+                    logger.info(f"Using '{key}' list from {config_path} as rules")
+                    break
+    else:
+        logger.warning(
+            f"Unexpected YAML structure in {config_path}: expected list or dict, "
+            f"got {type(raw_data).__name__}. Using empty rules list."
+        )
+        return []
+    
+    # Validate and convert each rule
+    validated_rules = []
+    skipped_count = 0
+    
+    for idx, raw_rule in enumerate(rules_list, start=1):
+        try:
+            rule = validate_whitelist_rule(raw_rule)
+            validated_rules.append(rule)
+        except InvalidRuleError as e:
+            skipped_count += 1
+            logger.warning(
+                f"Skipping malformed whitelist rule #{idx} in {config_path}: {e}. "
+                f"Rule data: {raw_rule}"
+            )
+        except Exception as e:
+            skipped_count += 1
+            logger.error(
+                f"Unexpected error validating whitelist rule #{idx} in {config_path}: {e}. "
+                f"Rule data: {raw_rule}",
+                exc_info=True
+            )
+    
+    if skipped_count > 0:
+        logger.warning(
+            f"Skipped {skipped_count} invalid whitelist rule(s) from {config_path}. "
+            f"Loaded {len(validated_rules)} valid rule(s)."
+        )
+    else:
+        logger.info(f"Loaded {len(validated_rules)} whitelist rule(s) from {config_path}")
+    
+    return validated_rules
+
+
+def whitelist_rule_matches_email(email_obj: EmailContext, rule: WhitelistRule) -> bool:
+    """
+    Check if an email matches a whitelist rule (dispatches to appropriate matcher).
+    
+    This function reuses the same trigger matching logic as blacklist rules
+    but works with WhitelistRule objects. It dispatches to the appropriate
+    matching function based on the rule's trigger type.
+    
+    Args:
+        email_obj: EmailContext object to check
+        rule: WhitelistRule to match against
+    
+    Returns:
+        True if the email matches the rule, False otherwise
+    
+    Example:
+        >>> email = EmailContext(uid="1", sender="boss@company.com", subject="Test")
+        >>> rule = WhitelistRule(
+        ...     trigger_type="sender",
+        ...     value="boss@company.com",
+        ...     score_boost=15,
+        ...     tags=["#priority"]
+        ... )
+        >>> whitelist_rule_matches_email(email, rule)
+        True
+    """
+    # Reuse the existing trigger matching logic by creating a temporary
+    # BlacklistRule-like structure for matching (we only need trigger_type, value, pattern)
+    # We can't directly use match_sender_rule etc. because they expect BlacklistRule,
+    # so we'll implement the matching logic inline here
+    
+    if rule.trigger_type == "sender":
+        if not email_obj.sender:
+            return False
+        return _match_pattern(rule.value, rule.pattern, email_obj.sender)
+    elif rule.trigger_type == "subject":
+        if not email_obj.subject:
+            return False
+        return _match_pattern(rule.value, rule.pattern, email_obj.subject)
+    elif rule.trigger_type == "domain":
+        if not email_obj.sender:
+            return False
+        domain = _extract_domain_from_email(email_obj.sender)
+        if not domain:
+            return False
+        if rule.pattern:
+            return _match_pattern(rule.value, rule.pattern, domain)
+        else:
+            return rule.value.lower() == domain.lower()
+    else:
+        logger.warning(f"Unknown trigger type: {rule.trigger_type}")
+        return False
+
+
+def apply_whitelist(
+    email_obj: EmailContext,
+    rules: List[WhitelistRule],
+    current_score: float
+) -> tuple[float, List[str]]:
+    """
+    Apply whitelist rules to an email, adjusting score and accumulating tags.
+    
+    This function iterates through the provided whitelist rules and checks if
+    the email matches any of them. When a rule matches, its score_boost is
+    added to the current score and its tags are added to the tags list.
+    Multiple matching rules are cumulative - all matching rules' boosts and
+    tags are applied.
+    
+    Args:
+        email_obj: EmailContext object to check against whitelist rules
+        rules: List of WhitelistRule objects to check
+        current_score: Current importance score (before whitelist adjustments)
+    
+    Returns:
+        Tuple of (new_score, tags_list) where:
+        - new_score: Current score plus all matching rules' score_boost values
+        - tags_list: List of all tags from matching rules (duplicates removed)
+    
+    Example:
+        >>> from src.models import EmailContext
+        >>> from src.rules import load_whitelist_rules, apply_whitelist
+        >>> 
+        >>> email = EmailContext(uid="1", sender="boss@company.com", subject="Test")
+        >>> rules = load_whitelist_rules("config/whitelist.yaml")
+        >>> new_score, tags = apply_whitelist(email, rules, 5.0)
+        >>> new_score
+        20.0
+        >>> tags
+        ['#priority']
+    """
+    if not rules:
+        return (current_score, [])
+    
+    new_score = current_score
+    tags_list = []
+    
+    for rule in rules:
+        try:
+            # Check if this rule matches the email
+            if whitelist_rule_matches_email(email_obj, rule):
+                # Apply score boost
+                new_score += rule.score_boost
+                
+                # Add tags (avoid duplicates)
+                for tag in rule.tags:
+                    if tag not in tags_list:
+                        tags_list.append(tag)
+                
+                logger.debug(
+                    f"Email {email_obj.uid} matched whitelist rule: "
+                    f"{rule.trigger_type}={rule.value}, "
+                    f"boost={rule.score_boost}, tags={rule.tags}"
+                )
+        
+        except Exception as e:
+            # Defensive handling: if a rule causes an unexpected error,
+            # log it and continue with other rules
+            logger.warning(
+                f"Error checking whitelist rule {rule.trigger_type}={rule.value} "
+                f"against email {email_obj.uid}: {e}. Skipping this rule.",
+                exc_info=True
+            )
+            continue
+    
+    return (new_score, tags_list)
