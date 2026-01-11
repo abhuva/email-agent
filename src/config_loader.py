@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from src.config_validator import ConfigSchemaValidator, ValidationResult
+from src.logging_helpers import log_config_overrides, log_config_merge
 
 logger = logging.getLogger(__name__)
 
@@ -378,6 +379,34 @@ class ConfigLoader:
         
         # Load account-specific configuration (optional - returns {} if missing)
         account_config = self.load_account_config(account_name)
+        
+        # Log configuration merge
+        log_config_merge(
+            account_id=account_name,
+            global_config_keys=list(global_config.keys()),
+            account_config_keys=list(account_config.keys()),
+            merged_keys=list(global_config.keys()) + list(account_config.keys())
+        )
+        
+        # Log configuration overrides (account-specific values that differ from global)
+        if account_config:
+            # Find keys that are overridden (simplified - just log top-level overrides)
+            overrides = {}
+            for key, value in account_config.items():
+                if key in global_config:
+                    if value != global_config[key]:
+                        overrides[key] = value
+                else:
+                    # New key in account config
+                    overrides[key] = value
+            
+            if overrides:
+                log_config_overrides(
+                    overrides=overrides,
+                    account_id=account_name,
+                    source='account_config',
+                    scope='account'
+                )
         
         # Deep merge: global as base, account as override
         merged_config = self.deep_merge(global_config, account_config)

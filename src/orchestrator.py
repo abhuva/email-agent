@@ -64,6 +64,7 @@ See Also:
 """
 import logging
 import time
+import uuid
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
@@ -87,6 +88,8 @@ from src.config import ConfigError
 from src.summarization import check_summarization_required
 from src.email_summarization import generate_email_summary
 from src.openrouter_client import OpenRouterClient
+from src.logging_context import set_account_context, set_correlation_id, clear_context, with_account_context
+from src.logging_helpers import log_account_start, log_account_end, log_config_overrides, log_error_with_context
 
 logger = logging.getLogger(__name__)
 
@@ -1609,8 +1612,12 @@ Examples:
             failed_accounts=0
         )
         
+        # Generate correlation ID for this orchestration run
+        correlation_id = str(uuid.uuid4())
+        set_correlation_id(correlation_id)
+        
         self.logger.info("=" * 60)
-        self.logger.info("V4 Master Orchestrator: Starting multi-account processing")
+        self.logger.info(f"V4 Master Orchestrator: Starting multi-account processing [correlation_id={correlation_id}]")
         self.logger.info("=" * 60)
         
         try:
@@ -1645,85 +1652,77 @@ Examples:
                 account_start_time = time.time()
                 processor = None
                 
-                self.logger.info("=" * 60)
-                self.logger.info(f"Processing account: {account_id}")
-                self.logger.info("=" * 60)
-                
-                try:
-                    # Create AccountProcessor for this account
-                    processor = self.create_account_processor(account_id)
+                # Set account context for this account's processing
+                with with_account_context(account_id=account_id, correlation_id=correlation_id):
+                    self.logger.info("=" * 60)
+                    log_account_start(account_id, correlation_id=correlation_id)
+                    self.logger.info("=" * 60)
                     
-                    # Set up account (IMAP connection, etc.)
-                    processor.setup()
-                    
-                    # Run processing
-                    processor.run()
-                    
-                    # Teardown (cleanup, close connections)
-                    processor.teardown()
-                    
-                    # Record success
-                    account_time = time.time() - account_start_time
-                    result.successful_accounts += 1
-                    result.account_results[account_id] = (True, None)
-                    self.logger.info(
-                        f"✓ Account '{account_id}' processed successfully in {account_time:.2f}s"
-                    )
-                    
-                except AccountProcessorSetupError as e:
-                    # Setup failed (e.g., IMAP connection error)
-                    account_time = time.time() - account_start_time
-                    result.failed_accounts += 1
-                    error_msg = f"Setup failed: {e}"
-                    result.account_results[account_id] = (False, error_msg)
-                    self.logger.error(
-                        f"✗ Account '{account_id}' setup failed after {account_time:.2f}s: {e}",
-                        exc_info=True
-                    )
-                    
-                except AccountProcessorRunError as e:
-                    # Processing failed
-                    account_time = time.time() - account_start_time
-                    result.failed_accounts += 1
-                    error_msg = f"Processing failed: {e}"
-                    result.account_results[account_id] = (False, error_msg)
-                    self.logger.error(
-                        f"✗ Account '{account_id}' processing failed after {account_time:.2f}s: {e}",
-                        exc_info=True
-                    )
-                    
-                except AccountProcessorError as e:
-                    # General AccountProcessor error
-                    account_time = time.time() - account_start_time
-                    result.failed_accounts += 1
-                    error_msg = f"AccountProcessor error: {e}"
-                    result.account_results[account_id] = (False, error_msg)
-                    self.logger.error(
-                        f"✗ Account '{account_id}' failed after {account_time:.2f}s: {e}",
-                        exc_info=True
-                    )
-                    
-                except Exception as e:
-                    # Unexpected error
-                    account_time = time.time() - account_start_time
-                    result.failed_accounts += 1
-                    error_msg = f"Unexpected error: {type(e).__name__}: {e}"
-                    result.account_results[account_id] = (False, error_msg)
-                    self.logger.error(
-                        f"✗ Account '{account_id}' failed with unexpected error after {account_time:.2f}s: {e}",
-                        exc_info=True
-                    )
-                    
-                finally:
-                    # Ensure cleanup happens even on failure
-                    if processor is not None:
-                        try:
-                            processor.teardown()
-                        except Exception as cleanup_error:
-                            self.logger.warning(
-                                f"Error during cleanup for account '{account_id}': {cleanup_error}",
-                                exc_info=True
-                            )
+                    try:
+                        # Create AccountProcessor for this account
+                        processor = self.create_account_processor(account_id)
+                        
+                        # Set up account (IMAP connection, etc.)
+                        processor.setup()
+                        
+                        # Run processing
+                        processor.run()
+                        
+                        # Teardown (cleanup, close connections)
+                        processor.teardown()
+                        
+                        # Record success
+                        account_time = time.time() - account_start_time
+                        result.successful_accounts += 1
+                        result.account_results[account_id] = (True, None)
+                        log_account_end(account_id, success=True, processing_time=account_time, correlation_id=correlation_id)
+                        
+                    except AccountProcessorSetupError as e:
+                        # Setup failed (e.g., IMAP connection error)
+                        account_time = time.time() - account_start_time
+                        result.failed_accounts += 1
+                        error_msg = f"Setup failed: {e}"
+                        result.account_results[account_id] = (False, error_msg)
+                        log_account_end(account_id, success=False, processing_time=account_time, correlation_id=correlation_id, error=error_msg)
+                        log_error_with_context(e, account_id=account_id, correlation_id=correlation_id, operation='setup')
+                        
+                    except AccountProcessorRunError as e:
+                        # Processing failed
+                        account_time = time.time() - account_start_time
+                        result.failed_accounts += 1
+                        error_msg = f"Processing failed: {e}"
+                        result.account_results[account_id] = (False, error_msg)
+                        log_account_end(account_id, success=False, processing_time=account_time, correlation_id=correlation_id, error=error_msg)
+                        log_error_with_context(e, account_id=account_id, correlation_id=correlation_id, operation='processing')
+                        
+                    except AccountProcessorError as e:
+                        # General AccountProcessor error
+                        account_time = time.time() - account_start_time
+                        result.failed_accounts += 1
+                        error_msg = f"AccountProcessor error: {e}"
+                        result.account_results[account_id] = (False, error_msg)
+                        log_account_end(account_id, success=False, processing_time=account_time, correlation_id=correlation_id, error=error_msg)
+                        log_error_with_context(e, account_id=account_id, correlation_id=correlation_id, operation='account_processing')
+                        
+                    except Exception as e:
+                        # Unexpected error
+                        account_time = time.time() - account_start_time
+                        result.failed_accounts += 1
+                        error_msg = f"Unexpected error: {type(e).__name__}: {e}"
+                        result.account_results[account_id] = (False, error_msg)
+                        log_account_end(account_id, success=False, processing_time=account_time, correlation_id=correlation_id, error=error_msg)
+                        log_error_with_context(e, account_id=account_id, correlation_id=correlation_id, operation='unexpected')
+                        
+                    finally:
+                        # Ensure cleanup happens even on failure
+                        if processor is not None:
+                            try:
+                                processor.teardown()
+                            except Exception as cleanup_error:
+                                self.logger.warning(
+                                    f"Error during cleanup for account '{account_id}': {cleanup_error}",
+                                    exc_info=True
+                                )
             
             # Step 4: Generate summary
             result.total_time = time.time() - start_time
@@ -1771,11 +1770,17 @@ def main():
     """
     import sys
     
-    # Set up basic logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # Initialize centralized logging (first thing on startup)
+    try:
+        from src.logging_config import init_logging
+        init_logging()
+    except Exception as e:
+        # Fallback to basic logging if centralized logging fails
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        logger.warning(f"Could not initialize centralized logging, using basic logging: {e}")
     
     # Create orchestrator and run
     orchestrator = MasterOrchestrator()
