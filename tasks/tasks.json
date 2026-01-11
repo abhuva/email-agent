@@ -1261,7 +1261,7 @@
       "id": 17,
       "title": "Implement Integration Tests",
       "description": "Create tests that verify component interactions",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         16
       ],
@@ -1302,7 +1302,7 @@
           "id": 4,
           "title": "Implement Content Parser ↔ LLM processing integration tests",
           "description": "Create integration tests that verify the interaction between the Content Parser and the LLM processing layer, ensuring that parsed content is correctly transformed into LLM prompts/inputs and that LLM outputs are handled as expected.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1312,7 +1312,7 @@
           "id": 5,
           "title": "Create end-to-end-style integration scenarios and CI execution",
           "description": "Combine the individual integrations into higher-level scenarios that exercise multiple components together and ensure integration tests run reliably in CI.",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [
             2,
             3,
@@ -1324,7 +1324,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [
             1,
             2,

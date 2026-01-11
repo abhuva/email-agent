@@ -1,6 +1,6 @@
 # Task ID: 17
 # Title: Implement Integration Tests
-# Status: pending
+# Status: done
 # Dependencies: 16
 # Priority: medium
 # Description: Create tests that verify component interactions
@@ -11,37 +11,37 @@ Develop integration tests that verify the interaction between components: 1) Con
 Execute integration tests in a controlled environment. Verify components interact correctly and maintain proper state throughout the processing pipeline.
 
 # Subtasks:
-## 1. Set up integration test infrastructure and mocks [pending]
+## 1. Set up integration test infrastructure and mocks [done]
 ### Dependencies: None
 ### Description: Establish the integration testing project structure and create mock implementations for external services (IMAP, LLM) to isolate component interactions.
 ### Details:
 1) Create or confirm a dedicated integration test module/folder (e.g., `tests/integration/`) separate from unit tests, wired into the existing test runner (JUnit, pytest, Jest, etc.). 2) Define interfaces or abstraction layers for external dependencies if not already present (e.g., `ImapClient`, `LlmClient`), so that real and mock implementations can be swapped via dependency injection or configuration. 3) Implement mock IMAP service: a fake `ImapClient` that returns deterministic mailboxes, messages, and error conditions from in-memory fixtures instead of a real server; allow configuration of edge cases (empty inbox, malformed message, connection error). 4) Implement mock LLM service: a fake `LlmClient` that returns predefined responses based on input prompts or test scenario identifiers, including normal responses, long responses, and error timeouts. 5) Provide common test utilities: factory methods/builders for creating sample configuration files, accounts, rule sets, and raw content payloads; helper to reset mocks between tests. 6) Add base integration test class/setup hooks that configure the system under test to use the mock IMAP and mock LLM by default (e.g., via environment variables, DI container, or test configuration profile).
 
-## 2. Implement ConfigLoader ↔ AccountProcessor integration tests [pending]
+## 2. Implement ConfigLoader ↔ AccountProcessor integration tests [done]
 ### Dependencies: 17.1
 ### Description: Create integration tests that verify ConfigLoader correctly provides configuration and account data to AccountProcessor and that the processor behaves as expected for different configuration scenarios.
 ### Details:
 1) Identify the public entry point that wires `ConfigLoader` output into `AccountProcessor` (e.g., a service method or pipeline orchestrator); use that integration boundary as the system under test. 2) Prepare test configuration artifacts (files, env-based configs, or DB records) using test fixtures: a) valid configuration with multiple accounts, b) configuration with missing/invalid fields, c) configuration with optional overrides. 3) Write tests that: a) execute the loader+processor flow with a valid config and assert that the expected number of accounts are created/processed, with correct properties mapped (IDs, credentials, flags), b) verify that configuration defaults and overrides are honored by `AccountProcessor` (e.g., default folders, retry limits, feature flags), c) ensure that invalid configuration entries are handled according to requirements (skipped, error raised, or logged) and that errors do not affect valid accounts. 4) Include negative and edge-case tests: empty configuration, duplicate accounts, unknown configuration keys; assert on failure modes, error messages, or error objects. 5) If configuration affects downstream dependencies (e.g., which IMAP host to use), assert that the processor interacts with the mock IMAP client using values coming from `ConfigLoader` (check parameters passed into mocks or call counts). 6) Ensure tests are deterministic: seed all inputs via fixtures and avoid reliance on external state or current time (mock clock if needed).
 
-## 3. Implement Rules Engine ↔ processing pipeline integration tests [pending]
+## 3. Implement Rules Engine ↔ processing pipeline integration tests [done]
 ### Dependencies: 17.1, 17.2
 ### Description: Create integration tests that verify the Rules Engine is invoked by the processing pipeline and that rule evaluations correctly influence pipeline behavior and outputs.
 ### Details:
 1) Identify the pipeline entry point that receives items (e.g., messages/accounts) and delegates to the Rules Engine, then proceeds with downstream processing (e.g., routing, tagging, or transformations). 2) Define representative rule sets as test fixtures: a) simple routing rules (e.g., move to folder X if condition Y), b) rules with multiple conditions and priorities, c) rules that should not match. 3) Using mock IMAP and any other external dependencies, construct pipeline inputs (messages/accounts) that are designed to trigger specific rules; persist them only in memory or in mock storage. 4) Write integration tests that: a) run the pipeline with a given rule set and input and assert that the correct rules are evaluated and applied (check side effects like folder changes, flags, or generated actions), b) verify rule ordering and precedence (e.g., first-match vs. all-match behavior), c) confirm that items with no matching rules follow the default pipeline path. 5) Implement negative and error-path tests: invalid rule definitions, conflicting rules, or rules that cause the Rules Engine to raise errors; assert that the pipeline handles these gracefully (fallback behavior, error logging, or partial processing) without crashing. 6) Where possible, assert on both the Rules Engine outputs (e.g., returned actions) and the final pipeline state (e.g., updated entities), ensuring that the integration, not just the engine in isolation, is correct.
 
-## 4. Implement Content Parser ↔ LLM processing integration tests [pending]
+## 4. Implement Content Parser ↔ LLM processing integration tests [done]
 ### Dependencies: 17.1
 ### Description: Create integration tests that verify the interaction between the Content Parser and the LLM processing layer, ensuring that parsed content is correctly transformed into LLM prompts/inputs and that LLM outputs are handled as expected.
 ### Details:
 1) Identify the component or service that orchestrates `ContentParser` and the LLM client (e.g., a use case or handler) and treat this as the integration boundary. 2) Define input content fixtures: plain text, HTML emails, multi-part content, attachments, and edge cases (empty body, non-UTF8, malformed HTML). 3) Configure the mock LLM client to return deterministic responses depending on the input prompt or metadata (e.g., by embedding scenario IDs or key phrases in the prompt). 4) Write integration tests that: a) feed raw content into the orchestrator, assert that `ContentParser` produces the expected structured representation (titles, bodies, metadata), and that the generated LLM prompt matches expectations (e.g., contains certain sections or tokens), b) validate that the system correctly interprets mock LLM responses (e.g., extracted entities, classifications, summaries) and maps them into domain objects or annotations. 5) Add tests for partial and error responses: truncated output, invalid JSON, or simulated LLM timeouts; assert that error handling paths are triggered (retries, fallbacks, or error reporting) and that no corrupted data is persisted. 6) If streaming responses are supported, create tests that simulate chunked LLM outputs from the mock client and ensure that the orchestrator aggregates them correctly and preserves ordering. 7) Ensure tests do not rely on any real network or LLM API keys—enforce this via test configuration checks or guard assertions in setup.
 
-## 5. Create end-to-end-style integration scenarios and CI execution [pending]
+## 5. Create end-to-end-style integration scenarios and CI execution [done]
 ### Dependencies: 17.2, 17.3, 17.4
 ### Description: Combine the individual integrations into higher-level scenarios that exercise multiple components together and ensure integration tests run reliably in CI.
 ### Details:
 1) Design a small set of realistic end-to-end integration scenarios that flow through `ConfigLoader`, `AccountProcessor`, Rules Engine, Content Parser, and mock LLM where appropriate—for example: load config → process accounts → fetch mock messages → apply rules → parse content → call mock LLM → store results. 2) Implement scenario tests that: a) set up configuration, accounts, rules, and content fixtures using the utilities from earlier subtasks, b) run the main processing entry point or a near-production pipeline, c) assert on final observable outcomes (e.g., account states, message routing, parsed structures, LLM-derived annotations) rather than internal implementation details. 3) Ensure that all tests remain fast and deterministic so they can be run on every CI build (e.g., limit data volume, avoid sleeps, and rely on in-memory or ephemeral storage). 4) Integrate the integration test suite into the CI pipeline: add appropriate commands or jobs, configure test reporting (failures, logs), and set thresholds so that any failing integration test blocks the build. 5) Document how to run the integration tests locally (commands, required environment variables, test profiles) in a `TESTING.md` or similar file, including notes on how to extend tests when new components or external services are added. 6) Optionally tag tests (e.g., `@integration`, `@e2e-light`) so they can be selectively run by developers or CI jobs as needed.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 17.1, 17.2, 17.3, 17.4, 17.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
