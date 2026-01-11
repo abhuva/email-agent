@@ -11,9 +11,10 @@ alwaysApply: true
 ## Required Reading Order
 
 1. **[README-AI.md](mdc:README-AI.md)** - Complete project structure, architecture, and development context (optimized for AI agents)
-2. **[pdd.md](mdc:pdd.md)** - Current product requirements and V3 features
+2. **[pdd_V4.md](mdc:pdd_V4.md)** - V4 product requirements (current development) or **[pdd.md](mdc:pdd.md)** - V3 product requirements
 3. **Task Master:** Run `task-master next` to see current task context
 4. **Module docs:** Review relevant docs in `docs/` as needed
+5. **Task Completion Workflow:** Review [task_completion_workflow.mdc](mdc:.cursor/rules/task_completion_workflow.mdc) - **MANDATORY for every task**
 
 ## Key Files for AI Agents
 
@@ -24,14 +25,16 @@ alwaysApply: true
 
 ## Development Rules
 
+- **MANDATORY task completion workflow** - See [task_completion_workflow.mdc](mdc:.cursor/rules/task_completion_workflow.mdc) - **Every task must complete: tests, docs, rules review, mark done, commit**
 - **Always commit tasks.json after status changes** - See [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc)
 - **Commit after each subtask** - See [git_commits.mdc](mdc:.cursor/rules/git_commits.mdc)
 - **Use Task Master tools** - See [taskmaster.mdc](mdc:.cursor/rules/taskmaster.mdc)
 
 ## Project Status
 
-- **V1:** Complete (Email Tagging)
-- **V2:** In Progress (Obsidian Integration)
+- **V3:** Complete (Foundational Upgrade) - Production-ready on `main` branch
+- **V4:** In Development (Orchestrator) - Multi-tenant platform on `v4-orchestrator` branch
+- **V1, V2:** Historical versions
 - **Current Task:** Check `tasks/tasks.json` or run `task-master next`
 
 ## Important Patterns

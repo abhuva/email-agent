@@ -1,49 +1,55 @@
 # Task ID: 14
-# Title: Integrate all components into main processing flow
-# Status: done
-# Dependencies: 3, 4, 6, 7, 9, 10, 11, 12
-# Priority: high
-# Description: Combine all modules into a cohesive email processing pipeline with appropriate control flow.
+# Title: Create Default Configuration Templates
+# Status: pending
+# Dependencies: 3
+# Priority: medium
+# Description: Develop default configuration files for global and account settings
 # Details:
-Integrate all components into a main processing flow that handles: email retrieval (all or by UID), LLM classification, decision logic application, note generation, file writing, and IMAP flag setting. Implement appropriate control flow based on CLI arguments (--dry-run, --force-reprocess, --uid). Include comprehensive logging throughout the process. Ensure proper error handling at each step to prevent crashes. Create src/orchestrator.py for high-level business logic orchestration. Add performance requirement: Local operations < 1s, no memory leaks during batch processing. Update to use click (not argparse) for CLI parsing. Reference settings.py facade throughout.
+Create template configuration files: 1) Default global config.yaml with all settings, 2) Example account configuration with common overrides, 3) Template blacklist.yaml and whitelist.yaml with example rules. Include detailed comments explaining each setting and its purpose.
 
 # Test Strategy:
-Test the complete processing flow with various CLI argument combinations. Verify correct behavior for single email processing and batch processing. Check error handling with simulated failures at different stages. Verify performance meets requirements.
+Validate all template files against the configuration schema. Verify they can be loaded without errors and produce expected merged configurations.
 
 # Subtasks:
-## 1. Create core pipeline architecture and CLI argument handling [done]
+## 1. Define configuration schema and directory layout [pending]
 ### Dependencies: None
-### Description: Establish the main program structure with click-based CLI argument parsing and basic control flow
+### Description: Identify all global and account-level configuration settings, their data types, defaults, and relationships, and decide on the directory structure and file naming conventions for config.yaml, blacklist.yaml, and whitelist.yaml.
 ### Details:
-Implement the main entry point that parses CLI arguments (--dry-run, --force-reprocess, --uid) using click as specified in the PDD. Create a Pipeline class in src/orchestrator.py that will orchestrate the entire email processing flow. Set up the basic program structure with configuration loading through the settings.py facade, logging initialization, and error handling framework. Define the high-level pipeline steps as methods that will be implemented in subsequent tasks. Ensure the CLI structure follows exactly: `python main.py process` with flags as specified in the PDD.
+1) List all configuration domains (e.g., logging, authentication, rate limiting, feature flags, integrations). 2) For each domain, enumerate individual settings, valid values, and default behaviors. 3) Distinguish which settings belong in the **global config** vs. which are **account overrides**; document precedence rules (e.g., account > global). 4) Define the YAML structure for each file: key nesting, section names, and how rules are expressed in blacklist/whitelist files. 5) Decide on directory layout (e.g., `/config/global/config.yaml`, `/config/accounts/example_account.yaml`, `/config/rules/blacklist.yaml`, `/config/rules/whitelist.yaml`) and file naming patterns. 6) Capture this as a short schema/ADR document to be used as the reference for subsequent template creation.
 
-## 2. Implement email retrieval and selection logic [done]
+## 2. Create default global config.yaml template with full settings [pending]
 ### Dependencies: 14.1
-### Description: Add the ability to retrieve emails from IMAP and select which ones to process based on CLI arguments
+### Description: Implement the default global config.yaml template that includes all known settings, structured according to the schema, with safe defaults and detailed comments explaining each setting and its purpose.
 ### Details:
-Integrate the email retrieval module (src/imap_client.py) into the pipeline. Implement logic to either retrieve all emails or specific emails by UID based on CLI arguments. Add filtering to exclude already processed emails unless --force-reprocess is specified. Include appropriate logging for the retrieval process and error handling for IMAP connection issues. Return a collection of email objects that will be passed to the next pipeline stage. Use the settings.py facade to access all configuration values, including the processed tag name (settings.get_imap_processed_tag()).
+1) Create `config/global/config.yaml` (or agreed path) using the structure defined in the schema. 2) Add all global settings as keys with sensible, secure defaults (e.g., non-destructive, minimal-permission defaults where applicable). 3) Group settings into logical sections with clear top-level comments describing each section. 4) For each setting, add an inline or preceding comment describing: what it does, accepted values and units, default behavior, example uses, and any security/performance implications. 5) Ensure comments explain how this global value interacts with account overrides and rule files. 6) Validate the YAML syntax (via linter or existing config loader) and adjust formatting for readability and consistency (indentation, quoting, list formatting).
 
-## 3. Integrate LLM classification and decision logic [done]
-### Dependencies: 14.2
-### Description: Connect the LLM classification module and implement the decision tree for email processing
+## 3. Create example account configuration template with common overrides [pending]
+### Dependencies: 14.1, 14.2
+### Description: Develop an example account-level configuration YAML that demonstrates typical overrides of global settings and documents how per-account configuration should be used.
 ### Details:
-For each email retrieved in the previous step, call the LLM classification module (src/llm_client.py) to categorize the email. Implement the decision logic that determines what actions to take based on the classification results. Include conditional logic that respects the --dry-run flag to prevent actual modifications when in dry run mode. Add comprehensive logging of classification results and decisions to both logging systems. Implement error handling for LLM API failures with appropriate fallback strategies. Use the settings.py facade to access all configuration values, including thresholds (settings.get_importance_threshold() and settings.get_spam_threshold()).
+1) Create `config/accounts/example-account.yaml` (or agreed name) mirroring the relevant parts of the global schema. 2) Populate it with realistic example values that differ from the global defaults to clearly illustrate override behavior (e.g., higher rate limits, different feature flags, custom logging level). 3) Add comments at the top explaining the precedence model (how and when account config overrides global config) and how to create additional account configs (naming and placement). 4) For each overridden setting, add comments explaining why you might override it and any constraints (e.g., maximum allowed values, environment-specific notes). 5) Include at least one example of an account-specific setting that does not appear in the global config if the design allows such extensions, and document how the system handles unknown/extra keys. 6) Validate YAML syntax and ensure comment style, formatting, and terminology are consistent with the global config template.
 
-## 4. Add note generation and file writing capabilities [done]
-### Dependencies: 14.3
-### Description: Integrate note generation for classified emails and implement file writing functionality
+## 4. Create blacklist.yaml and whitelist.yaml rule templates with examples [pending]
+### Dependencies: 14.1
+### Description: Implement template blacklist.yaml and whitelist.yaml files containing example rule definitions that cover common use cases and clearly document rule structure, matching semantics, and evaluation order.
 ### Details:
-For emails that require notes based on the decision logic, call the note generation module (src/note_generator.py). Implement the file writing functionality to save generated notes to the appropriate location with proper naming conventions. Create directory structures if they don't exist. Add logging for file operations and implement error handling for file system issues. Ensure the --dry-run flag prevents actual file writing while still logging what would have been written. Use the settings.py facade to access all configuration values, including file paths.
+1) Create `config/rules/blacklist.yaml` and `config/rules/whitelist.yaml` (or agreed paths). 2) Based on the schema, define the top-level structure for rules (e.g., lists of rule objects with fields such as `id`, `type`, `pattern`, `condition`, `enabled`, `priority`, `description`). 3) Add multiple example rules in each file to demonstrate different rule types and conditions (e.g., blocking by IP, account ID, domain, feature, or action; whitelisting specific exceptions). 4) In comments, document how rules are evaluated: precedence of whitelist vs. blacklist, rule priority fields, first-match vs. all-match behavior, and what happens on no match. 5) Explain the syntax for patterns (literal vs. regex/glob), case sensitivity, and any performance/security considerations (e.g., avoid overly broad regex). 6) Include guidance comments on how to disable rules safely, how to add new ones, and any naming or ID conventions required by the system. 7) Validate YAML syntax and keep formatting consistent with the other config templates.
 
-## 5. Implement IMAP flag setting and finalize pipeline execution flow [done]
-### Dependencies: 14.4
-### Description: Add the ability to mark emails as processed in IMAP and complete the end-to-end pipeline
+## 5. Add cross-file documentation, usage notes, and integration checks [pending]
+### Dependencies: 14.2, 14.3, 14.4
+### Description: Ensure all template files are coherently documented, reference each other where relevant, and are validated against the intended loader/validation logic so they can be used as reliable starting points.
 ### Details:
-Integrate the IMAP flag setting module to mark emails as processed after successful handling. Respect the --dry-run flag to prevent actual flag modifications in dry run mode. Implement the final pipeline execution flow that chains all components together with proper error propagation. Add summary logging at the end of processing with statistics (emails processed, errors encountered, etc.). Implement cleanup operations for resources like IMAP connections. Test the entire pipeline with various combinations of CLI arguments to ensure proper functioning. Ensure performance meets requirements: Local operations < 1s, no memory leaks during batch processing. Use the settings.py facade to access all configuration values.
+1) Add a short header comment to each template file describing its role, how it interacts with the other configuration files, and where it should be placed in a typical deployment. 2) Cross-reference related files in comments (e.g., in global config mention that blacklist/whitelist rules further refine behavior; in account config mention which global sections are most commonly overridden). 3) If a schema or validation tool exists, run each template through it and fix any inconsistencies; if not, at least load them with the application’s config loader in a test environment to ensure compatibility. 4) Where there are implicit conventions (e.g., required keys, naming of accounts, or rule IDs), document these explicitly in comments or a brief `README` comment block at the top of the main template. 5) Finalize formatting and comment style for consistency across all templates, and ensure that the templates are checked into version control in an appropriate location, ready for other developers or operators to copy and customize.
 
-## 6. Create src/orchestrator.py for high-level business logic orchestration [done]
-### Dependencies: 14.5
-### Description: Implement a central orchestration module to coordinate all components of the system
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 14.1, 14.2, 14.3, 14.4, 14.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
-Create src/orchestrator.py to serve as the central coordination point for the application's business logic. This module should: 1) Define high-level workflow functions that coordinate the interactions between other modules, 2) Implement the main processing pipeline that handles the end-to-end email processing flow, 3) Manage state and context throughout the processing lifecycle, 4) Handle error propagation and recovery strategies, 5) Implement performance optimizations to meet the requirement of local operations < 1s and no memory leaks during batch processing. Use the settings.py facade to access all configuration values. Document the orchestrator's architecture and responsibilities clearly.
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=14 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 14 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 14 - Create Default Configuration Templates [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

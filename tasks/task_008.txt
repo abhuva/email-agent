@@ -1,43 +1,87 @@
 # Task ID: 8
-# Title: Create default note template
-# Status: done
-# Dependencies: 7
-# Priority: medium
-# Description: Design a default Markdown template that includes frontmatter for metadata and a structured body for email content.
+# Title: Create Account Processor Class
+# Status: pending
+# Dependencies: 5, 7
+# Priority: high
+# Description: Implement the AccountProcessor class for isolated per-account processing
 # Details:
-Create a default template file that includes YAML frontmatter for storing metadata as specified in PDD Section 3.2, including llm_output section with importance_score, spam_score, model_used and processing_meta section with script_version: "3.0", processed_at, status: "success" or "error". Add dynamic tag addition: add "important" tag if score >= threshold. Include a structured body section for email content with placeholders for all relevant email fields (subject, sender, date, body, etc.). Add conditional sections based on classification results. Ensure the template is well-commented for user customization.
+Create src/account_processor.py with an AccountProcessor class that handles the processing pipeline for a single account. Implement setup(), run(), and teardown() methods. Include IMAP connection management and the core processing pipeline: blacklist check, content parsing, LLM processing, whitelist modifiers, and note generation. Ensure complete state isolation.
 
 # Test Strategy:
-Render the template with various email data to verify output formatting. Check that frontmatter includes all required metadata fields. Verify conditional sections render appropriately based on classification.
+Create unit tests with mock IMAP connections. Test the full pipeline with various email scenarios. Verify state isolation by processing multiple accounts sequentially.
 
 # Subtasks:
-## 1. Define YAML frontmatter structure for email metadata [done]
+## 1. Define AccountProcessor class skeleton and state isolation [pending]
 ### Dependencies: None
-### Description: Create the YAML frontmatter section of the template that will store all email metadata as specified in PDD Section 3.2
+### Description: Create src/account_processor.py with the AccountProcessor class, its constructor, and core attributes ensuring per-account state isolation.
 ### Details:
-Design the frontmatter section at the top of the Markdown template that includes fields as specified in PDD Section 3.2: llm_output section with importance_score, spam_score, model_used and processing_meta section with script_version: "3.0", processed_at, status: "success" or "error". Include dynamic tag addition logic to add "important" tag if score >= threshold. Format using proper YAML syntax with clear field names and example values. Add comments explaining each field's purpose and possible values.
+1. Create the file src/account_processor.py.
+2. Define a class `AccountProcessor` following your project’s naming and style conventions.
+3. Design `__init__(self, account_config, imap_client_factory, llm_client, blacklist_service, whitelist_service, note_generator, parser, logger)` (adapt names to existing abstractions) so that all dependencies for processing a single account are passed in or derived from immutable configuration rather than using globals or shared mutable state.
+4. Store only account-specific state on `self` (e.g., `self.account_id`, `self.config`, `self.logger`, `self._imap_conn`, `self._processing_context`), avoiding class variables and shared singletons.
+5. Document the class docstring explaining its responsibility: isolated processing pipeline for a single account, including IMAP connection management and pipeline orchestration.
+6. Ensure that any reusable utilities are injected or imported as stateless helpers, not as shared mutable objects, to preserve isolation between AccountProcessor instances.
 
-## 2. Design structured body section for email content [done]
+## 2. Implement setup() with IMAP connection management and initialization [pending]
 ### Dependencies: 8.1
-### Description: Create the main body section of the template with placeholders for email content
+### Description: Implement the setup phase to prepare all resources required for processing a single account, with a focus on IMAP connection lifecycle.
 ### Details:
-Below the frontmatter, create a structured Markdown format for the email body that includes: 1) A header section with rendered versions of key metadata (subject as H1, sender/date as subheading), 2) The main email content section with placeholder text, 3) Formatting for handling attachments list, 4) Proper Markdown syntax for distinguishing quoted replies or forwarded content. Use HTML comments to separate sections for clarity. Ensure the structure aligns with the PDD specifications.
+1. Add a `setup(self)` instance method to AccountProcessor.
+2. Inside `setup`, establish the IMAP connection using the injected `imap_client_factory` or existing IMAP wrapper, using credentials and server details from `self.config`.
+3. Store the resulting connection object on `self._imap_conn`, and ensure it is not shared with other accounts (one connection per AccountProcessor instance).
+4. Perform any account-specific initialization required by downstream components (e.g., load account-specific blacklist/whitelist data, prefetch folders, initialize a per-run processing context dict or object on `self._processing_context`).
+5. Add robust error handling: if IMAP connection or initialization fails, log the error through `self.logger` and either raise a well-defined exception or set an internal failure state that `run()` can inspect.
+6. Ensure `setup` is idempotent or clearly documented as single-use; guard against reusing a closed or already-open connection if that can occur in your environment.
 
-## 3. Implement conditional sections based on classification [done]
+## 3. Design and implement the core processing pipeline in run() [pending]
 ### Dependencies: 8.2
-### Description: Add template sections that appear conditionally based on classification results
+### Description: Implement run() to orchestrate the per-account processing pipeline: fetch items, apply blacklist check, parse content, call LLM, apply whitelist modifiers, and produce notes.
 ### Details:
-Create conditional sections that will render differently based on classification results, including: 1) A warning banner section for high spam_score emails, 2) Visual indicators for importance level, 3) Template variations for different email categories (newsletter, personal, transactional, etc.). Use HTML comments to indicate conditional logic and provide examples of how each condition would render. Implement the dynamic tag addition logic specified in the PDD to add "important" tag if score >= threshold.
+1. Add a `run(self)` method that assumes `setup()` has succeeded (optionally validate internal state, e.g., `self._imap_conn` is not None, and fail fast if not).
+2. Decide on the processing unit (e.g., individual emails/messages) and obtain them from the IMAP connection by calling existing utility functions or methods on `self._imap_conn`.
+3. For each item:
+   - Perform **blacklist check** by consulting the injected `blacklist_service` or equivalent; skip or mark messages failing the blacklist criteria, and log the action.
+   - Perform **content parsing** using the injected `parser` to extract normalized fields (sender, subject, body, attachments, metadata) into a structured object stored in a local variable or attached to the processing context.
+   - Perform **LLM processing** by calling the injected `llm_client` with the parsed content, following existing prompt/response patterns; capture outputs such as classifications, summaries, or decisions.
+   - Apply **whitelist modifiers** using `whitelist_service` or equivalent, adjusting the LLM or parsed results according to account-specific whitelist rules (e.g., promoting/allowing certain senders or patterns).
+   - Perform **note generation** by calling the injected `note_generator` with the combined parsed content, LLM result, and whitelist-modified data to produce the final note object or text.
+4. Collect results (e.g., list of generated notes and any metadata) in a local list or a clearly scoped attribute of `self._processing_context`, not in any shared/global structure.
+5. Add logging at key steps (start/end of run, per-stage errors, counts of processed/filtered messages).
+6. Ensure exceptions in processing a single item are caught and logged without breaking the entire account run, unless failures are unrecoverable; define and use internal helper methods (e.g., `_process_message(msg)`) if this improves clarity while keeping state encapsulated.
 
-## 4. Add comprehensive template comments and customization guidance [done]
-### Dependencies: 8.3
-### Description: Include detailed comments throughout the template to guide user customization
+## 4. Implement teardown() and resource cleanup guaranteeing isolation [pending]
+### Dependencies: 8.2, 8.3
+### Description: Implement teardown() to reliably release IMAP connections and any other per-account resources, preserving clean state boundaries.
 ### Details:
-Add HTML comments throughout the template that explain: 1) The purpose of each section, 2) How to customize specific elements, 3) Variables/placeholders that will be replaced with actual content, 4) Syntax guidance for advanced formatting options. Ensure comments are clear, helpful for new users, and formatted in a way that won't interfere with the rendered note. Reference the PDD as the authoritative technical specification.
+1. Add a `teardown(self)` method responsible for cleaning up all resources allocated in `setup()` and `run()`.
+2. If `self._imap_conn` is open, close or logout via the appropriate IMAP API calls, handling and logging any exceptions during close without raising them further unless required by your error-handling design.
+3. Clear or reset any per-run state stored in `self._processing_context` and other transient attributes (e.g., temporary caches, message buffers) to avoid accidental reuse across future runs of the same object (or document if objects are single-use).
+4. Ensure that no global or shared resources are modified during teardown, only this instance’s resources.
+5. Consider implementing the context manager protocol (`__enter__` / `__exit__`) to call `setup()` and `teardown()` automatically if that matches project patterns, but keep the primary public API as explicit `setup()`, `run()`, `teardown()`.
+6. Add tests (or at least log checks) to verify that after `teardown()`, the IMAP connection is closed and internal state does not leak (e.g., `self._imap_conn` set to None, context cleared).
 
-## 5. Create template file with example data and usage instructions [done]
-### Dependencies: 8.4
-### Description: Finalize the template file with example data and add usage documentation
+## 5. Integrate AccountProcessor usage pattern and validate state isolation [pending]
+### Dependencies: 8.1, 8.2, 8.3, 8.4
+### Description: Define the standard usage pattern for AccountProcessor, ensure it integrates with the surrounding system, and verify that processing for different accounts remains fully isolated.
 ### Details:
-Combine all previous components into a single Markdown template file at the location specified in the PDD (paths.template_file: 'config/note_template.md.j2'). Include a complete example with realistic sample data. Add a 'Template Usage' section at the bottom that explains: 1) How the template will be applied to emails, 2) How to create custom templates, 3) Available variables and their usage, 4) Best practices for template modification. Save the file in the appropriate location in the project structure with proper naming convention as specified in the PDD.
+1. In the part of the codebase that orchestrates multi-account processing (e.g., a manager or scheduler), integrate `AccountProcessor` so that each account gets its own instance constructed with its own configuration and dependencies.
+2. Establish the canonical call pattern, e.g., `processor = AccountProcessor(...); processor.setup(); processor.run(); processor.teardown()`, or the equivalent context-managed form, and update any existing orchestration code to follow this pattern.
+3. Add or update unit/integration tests to:
+   - Create two AccountProcessor instances with different account configs and verify their internal state (config, IMAP connection details, processing context) does not overlap or depend on one another.
+   - Simulate concurrent or sequential runs across accounts and confirm that blacklists, whitelists, LLM prompts, and generated notes remain account-specific.
+   - Verify that failures in one account’s `run()` do not affect the others beyond whatever error signaling the orchestrator expects.
+4. Refine logging to include an account identifier in all log messages from AccountProcessor, so logs can be correlated per account without implying shared state.
+5. Update any relevant documentation or README sections to describe how to instantiate and use AccountProcessor and to emphasize its per-account isolation guarantees.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 8.1, 8.2, 8.3, 8.4, 8.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=8 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 8 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 8 - Create Account Processor Class [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

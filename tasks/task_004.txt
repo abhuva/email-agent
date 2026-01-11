@@ -1,43 +1,84 @@
 # Task ID: 4
-# Title: Implement LLM interaction module
-# Status: done
-# Dependencies: 1
+# Title: Create EmailContext Data Class
+# Status: pending
+# Dependencies: 3
 # Priority: high
-# Description: Create a module to handle LLM API calls with retry logic and structured JSON response parsing.
+# Description: Implement the EmailContext data class to track email state through the processing pipeline
 # Details:
-Implement an LLM client (src/llm_client.py) that sends prompts requesting structured JSON responses with spam_score and importance_score. Add configurable retry logic for failed API calls. Parse JSON responses and handle malformed responses gracefully. Use the temperature setting from the configuration. Include detailed logging of API interactions for debugging. MUST use settings.get_openrouter_api_url() and settings.get_openrouter_api_key() from settings.py facade. API contract: POST to URL from settings, Bearer token auth, JSON response with {"spam_score": <int>, "importance_score": <int>}.
+Create a data class in src/models.py that contains all email metadata and state: uid, sender, subject, raw_html, raw_text, parsed_body, is_html_fallback, llm_score, llm_tags, whitelist_boost, whitelist_tags, and result_action. This class will be passed through the processing pipeline and maintain the state of each email.
 
 # Test Strategy:
-Test successful API calls and response parsing. Verify retry logic works with simulated failures. Test handling of malformed JSON responses. Verify temperature setting is correctly applied.
+Create unit tests to verify proper initialization, attribute access, and state transitions of the EmailContext class.
 
 # Subtasks:
-## 1. Create basic LLM client structure [done]
+## 1. Define EmailContext dataclass structure in src/models.py [pending]
 ### Dependencies: None
-### Description: Set up the foundation for the LLM client module with settings facade and basic API call functionality
+### Description: Create the EmailContext dataclass with all required fields and type hints inside src/models.py.
 ### Details:
-Create a new module src/llm_client.py with a class that handles LLM interactions. Implement configuration loading using the settings.py facade to read API keys (settings.get_openrouter_api_key()), endpoints (settings.get_openrouter_api_url()), and default parameters (including temperature). Define the basic structure for making API calls to the LLM service with proper error handling. Include a method signature for sending prompts that will later be enhanced with retry logic and response parsing. Ensure all configuration access is through the settings facade, not directly from YAML.
+1. Open/create src/models.py.
+2. Import dataclass utilities: `from dataclasses import dataclass, field` and typing primitives like `from typing import Optional, List` (or other containers as appropriate).
+3. Declare `@dataclass` and define `class EmailContext:`.
+4. Add fields with explicit type hints for all required attributes: `uid`, `sender`, `subject`, `raw_html`, `raw_text`, `parsed_body`, `is_html_fallback`, `llm_score`, `llm_tags`, `whitelist_boost`, `whitelist_tags`, and `result_action`.
+5. Use appropriate types, for example: `uid: str`, `sender: str`, `subject: str`, `raw_html: Optional[str]`, `raw_text: Optional[str]`, `parsed_body: Optional[str]` (or a richer type if parser returns a structure), `is_html_fallback: bool`, `llm_score: Optional[float]`, `llm_tags: List[str]`, `whitelist_boost: float`, `whitelist_tags: List[str]`, `result_action: Optional[str]`.
+6. Ensure the file exports EmailContext (e.g., by listing it in `__all__` if that pattern is used in the project).
 
-## 2. Implement prompt formatting for structured JSON responses [done]
+## 2. Configure sensible defaults and mutability for EmailContext fields [pending]
 ### Dependencies: 4.1
-### Description: Create functionality to format prompts that specifically request structured JSON responses with required fields
+### Description: Add default values and factories so that EmailContext instances can be created safely and predictably throughout the pipeline.
 ### Details:
-Develop a prompt formatter that appends instructions to user prompts requesting structured JSON responses. Ensure the formatter explicitly requests spam_score and importance_score fields in the response. Include validation to ensure the prompt maintains the correct format regardless of user input. Create unit tests to verify the formatter correctly structures prompts for JSON responses. The API contract must follow the PDD specification: POST to URL from settings, Bearer token auth, JSON response with {"spam_score": <int>, "importance_score": <int>}.
+1. Decide which fields must be required vs optional at construction; remove defaults from required fields (e.g., `uid`, `sender`, `subject`) so Python enforces them.
+2. For optional or pipeline-populated fields, set defaults:
+   - Use `Optional[...] = None` for values not known at instantiation (e.g., `parsed_body`, `llm_score`, `result_action`).
+   - Use `field(default_factory=list)` for list fields like `llm_tags` and `whitelist_tags` to avoid shared mutable defaults.
+   - Provide reasonable numeric defaults (e.g., `whitelist_boost: float = 0.0`, `is_html_fallback: bool = False`).
+3. Decide whether the dataclass should be mutable; if the pipeline updates the same instance step by step, keep `@dataclass` without `frozen=True`.
+4. Optionally configure `repr`/`eq` behavior (e.g., accept defaults, or exclude large fields like `raw_html` from repr using `field(repr=False)` if necessary for logging readability).
 
-## 3. Add configurable retry logic for API calls [done]
-### Dependencies: 4.1
-### Description: Implement robust retry mechanism for handling transient failures in LLM API calls
+## 3. Add documentation and helper methods to EmailContext [pending]
+### Dependencies: 4.2
+### Description: Document the purpose of EmailContext and add lightweight helper methods that encapsulate common state transitions or checks.
 ### Details:
-Enhance the basic API call functionality with configurable retry logic. Implement exponential backoff strategy with jitter. Make retry attempts (settings.get_openrouter_retry_attempts(), default 3), delays (settings.get_openrouter_retry_delay_seconds(), default 5), and conditions configurable through the settings facade. Handle different types of failures appropriately (network errors, rate limiting, server errors). Add detailed logging for each retry attempt including reason for failure and backoff time.
+1. Add a class docstring explaining that EmailContext tracks an email’s metadata and processing state through the pipeline, and briefly describe each field’s role.
+2. Add small convenience methods where useful, for example:
+   - `def add_llm_tag(self, tag: str) -> None:` to append to `llm_tags` while preventing duplicates if desired.
+   - `def add_whitelist_tag(self, tag: str, boost: float = 0.0) -> None:` to register a whitelist tag and optionally adjust `whitelist_boost`.
+   - `def is_scored(self) -> bool:` returning `self.llm_score is not None`.
+   - `def has_result(self) -> bool:` returning `self.result_action is not None`.
+3. Keep methods minimal and side-effect clear, since this class is primarily a state container used across multiple pipeline stages.
+4. If your codebase uses type checking (mypy/pyright), ensure method signatures match existing conventions (e.g., return types annotated, no unused parameters).
 
-## 4. Implement JSON response parsing and validation [done]
-### Dependencies: 4.1, 4.2
-### Description: Create functionality to parse, validate and safely extract data from LLM JSON responses
+## 4. Integrate EmailContext into the processing pipeline [pending]
+### Dependencies: 4.3
+### Description: Update pipeline components to construct, pass, and mutate EmailContext instances instead of using ad-hoc dictionaries or parameter sets.
 ### Details:
-Develop a response parser that extracts and validates JSON from LLM responses. Implement schema validation to ensure responses contain required fields (spam_score and importance_score). Handle malformed JSON gracefully with appropriate error messages and fallback values. Create a structured response object that standardizes access to parsed data. Add unit tests with various response scenarios including valid, malformed, and missing field cases. Ensure the parser follows the API contract specified in the PDD.
+1. Identify all existing pipeline entry points where email data is first available (e.g., IMAP fetchers, webhook handlers) and replace current email-structure representations with `EmailContext` construction.
+2. Ensure all necessary fields are populated at creation time: `uid`, `sender`, `subject`, `raw_html`/`raw_text`, and any other immediately known values.
+3. For each pipeline stage (parsing, scoring, whitelisting, action selection, etc.), update signatures to accept and return `EmailContext` instead of individual parameters or generic containers.
+4. Within each stage, write to the corresponding fields on the `EmailContext` instance (e.g., parser sets `parsed_body` and `is_html_fallback`, LLM step sets `llm_score` and `llm_tags`, whitelist step sets `whitelist_tags` and adjusts `whitelist_boost`, final decision step sets `result_action`).
+5. Ensure that logging and debugging statements use `EmailContext`’s repr or selected attributes, avoiding printing large raw content if that is a concern.
 
-## 5. Implement comprehensive logging system [done]
-### Dependencies: 4.1, 4.3, 4.4
-### Description: Add detailed logging throughout the LLM interaction process for monitoring and debugging
+## 5. Add tests for EmailContext behavior and pipeline usage [pending]
+### Dependencies: 4.4
+### Description: Create or extend tests to validate EmailContext structure, defaults, and correct state transitions across pipeline steps.
 ### Details:
-Implement a comprehensive logging system that captures all aspects of LLM interactions. Log prompt details (with sensitive information redacted), API call parameters including temperature setting, response data, parsing results, and any errors encountered. Add timing information for performance monitoring. Create different log levels for normal operation vs. debugging. Ensure logs are structured in a way that facilitates analysis and troubleshooting. Integrate the logging with the application's main logging system. Use the settings facade to access log file paths and other logging configuration.
+1. In the test suite (e.g., tests/test_models.py and relevant pipeline test files), add tests that instantiate `EmailContext` with minimal required fields and assert defaults for optional fields (None, empty lists, numeric defaults, etc.).
+2. Test helper methods added to EmailContext (e.g., `add_llm_tag`, `add_whitelist_tag`, `is_scored`, `has_result`) to confirm they behave as expected and mutate state correctly.
+3. Write integration-style tests for key pipeline flows that:
+   - Construct an initial `EmailContext`.
+   - Pass it through the main pipeline stages.
+   - Assert that fields such as `parsed_body`, `llm_score`, `llm_tags`, `whitelist_boost`, `whitelist_tags`, and `result_action` are set/updated as expected.
+4. If type checking or linting is part of CI, run those tools to ensure EmailContext and its usage conform to project standards.
+5. Adjust tests and implementation if any missing or mis-typed fields are discovered during testing.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 4.1, 4.2, 4.3, 4.4, 4.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=4 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 4 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 4 - Create EmailContext Data Class [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

@@ -1,154 +1,55 @@
 # Task ID: 18
-# Title: Implement Comprehensive V3 Test Suite with Unit, Integration, and E2E Coverage
+# Title: Update Main Entry Point
 # Status: pending
-# Dependencies: 15
+# Dependencies: 10, 11, 12
 # Priority: high
-# Description: Develop a complete test suite for all V3 modules covering unit tests with mocks, integration tests with --dry-run, and live end-to-end tests for the entire pipeline.
+# Description: Refactor the main.py file to use the new architecture
 # Details:
-Create a structured test suite organized by module and test type, focusing on filling the identified coverage gaps:
-
-1. **Unit Tests**:
-   - EXISTING COVERAGE: CLI, Config, IMAP Client, LLM Client, Decision Logic, Note Generator, Error Handling, Logger, Prompt Renderer
-   - MISSING COVERAGE (PRIORITY):
-     - Complete test_orchestrator.py (CRITICAL - core coordination logic) - build upon partially completed work
-     - Create test_backfill.py for backfill functionality
-     - Create test_cleanup_flags.py for cleanup flags command
-
-2. **Integration Tests**:
-   - Create test_integration_v3_workflow.py for end-to-end V3 workflow with --dry-run
-   - Implement integration tests for force-reprocess functionality
-   - Implement integration tests for cleanup-flags command
-   - Implement integration tests for backfill command
-   - Test orchestrator's coordination of multiple modules
-   - Test pipeline execution with simulated inputs
-
-3. **End-to-End Tests**:
-   - Create tests with real IMAP connections to test accounts
-   - Test with actual LLM API calls (consider using a staging API key)
-   - Test full pipeline execution with various email types:
-     - Simple emails
-     - Emails with attachments
-     - Thread emails
-     - Emails in different languages
-     - Emails with unusual formatting
-   - Test edge cases:
-     - Very large emails
-     - Rate limiting scenarios
-     - Connection interruptions
-     - Malformed responses
-
-4. **Test Infrastructure**:
-   - Develop V3 config fixtures (with proper structure)
-   - Create mock IMAP server fixtures
-   - Create mock LLM API fixtures
-   - Prepare test email data fixtures
-   - Implement dry-run test helpers
-
-Implement test fixtures and helpers to facilitate testing. Create a CI-compatible test suite that can run automatically, with appropriate mocking for external dependencies in CI environments.
+Update the main entry point to use the MasterOrchestrator and new CLI. Ensure proper initialization of all components and clean shutdown. Handle command-line arguments and environment variables according to the new multi-account architecture.
 
 # Test Strategy:
-Verify implementation using the following approach:
-
-1. **Test Coverage Metrics**:
-   - Ensure at least 80% code coverage across all modules
-   - Use Jest's coverage reporting to identify gaps
-   - Verify all critical paths have test coverage
-   - Focus on filling the identified gaps in test coverage
-
-2. **Test Validation**:
-   - Unit tests should run quickly (<30 seconds total) and not depend on external services
-   - Integration tests should verify correct module interactions
-   - E2E tests should confirm the system works with real dependencies
-
-3. **Specific Test Cases to Verify**:
-   - Orchestrator: Test the complete processing pipeline and coordination logic (CRITICAL)
-   - Backfill: Test functionality for processing historical emails
-   - Cleanup-flags: Test command for managing processing flags
-   - Force-reprocess: Test reprocessing of previously processed emails
-   - Integration: Test end-to-end workflow with --dry-run mode
-   - E2E: Test with real services and edge cases
-
-4. **Test Environment**:
-   - Create a dedicated test environment with test email accounts
-   - Set up test fixtures that can be reset between test runs
-   - Implement test helpers for common operations
-   - Develop the identified test infrastructure needs
-
-5. **CI Integration**:
-   - Ensure tests can run in CI environment
-   - Set up appropriate mocking for external dependencies in CI
-   - Configure test reporting for easy identification of failures
+Test the main entry point with various command-line arguments. Verify correct initialization and execution flow.
 
 # Subtasks:
-## 18.1. Complete test_orchestrator.py unit tests [pending]
+## 1. Analyze new architecture integration points for main.py [pending]
 ### Dependencies: None
-### Description: Finish the partially completed orchestrator tests, focusing on core coordination logic, module interactions, and error handling paths.
+### Description: Review the new architecture to determine how main.py should initialize and interact with MasterOrchestrator and the new CLI, and identify all required inputs (CLI args, env vars, config).
 ### Details:
+1) Inspect the MasterOrchestrator API: constructor signature, required dependencies, lifecycle methods (e.g., start(), run(), shutdown()). Document what must be provided at startup vs. what is discovered at runtime. 2) Inspect the new CLI module: how it parses arguments, how commands/subcommands are represented, and what object(s) it expects the entry point to supply (e.g., a callback, an application context, or a MasterOrchestrator instance). 3) List all configuration sources used in the new multi-account architecture (environment variables, config files, secrets, CLI flags). For each, specify key names, expected types, and which parts of the system consume them. 4) Based on existing main.py behavior, map old responsibilities (argument parsing, single-account setup, logging setup, etc.) to new equivalents in the architecture, noting anything that can now be delegated to the CLI or MasterOrchestrator. 5) Produce a short design note (can be a comment or markdown in the repo) describing the intended main() flow at a high level: parse CLI → build config from env + args → construct orchestrator → dispatch command → handle shutdown.
 
-
-## 18.2. Create test_backfill.py unit tests [pending]
-### Dependencies: None
-### Description: Develop comprehensive unit tests for the backfill functionality, including command parsing, execution logic, and error handling.
+## 2. Implement unified configuration and environment handling for multi-account [pending]
+### Dependencies: 18.1
+### Description: Create or refactor a configuration layer used by main.py to resolve CLI arguments and environment variables into a structured, multi-account-aware configuration object.
 ### Details:
+1) Define a configuration model (e.g., dataclasses or plain classes) that explicitly represents multi-account state: list of accounts/profiles, per-account credentials or identifiers, global options, logging level, etc. 2) Implement functions/utilities to read and validate environment variables relevant to the new architecture (e.g., ACCOUNT_IDS, default profile, API endpoints), including sensible defaults and clear error messages when required variables are missing or invalid. 3) Implement a function that merges CLI arguments (from the new CLI parser) with environment-derived values into a single configuration object, applying precedence rules (typically: CLI > env > defaults). 4) Add validation logic for multi-account scenarios: e.g., ensure at least one account is configured, prevent conflicting flags (like mutually exclusive options), and normalize structures (e.g., split comma-separated env vars into lists). 5) Expose a simple entry function, such as build_runtime_config(parsed_args) → Config, that main.py can call to obtain a ready-to-use configuration for the MasterOrchestrator.
 
-
-## 18.3. Create test_cleanup_flags.py unit tests [pending]
-### Dependencies: None
-### Description: Implement unit tests for the cleanup-flags command, covering flag identification, removal logic, and safety mechanisms.
+## 3. Refactor main.py to construct and run MasterOrchestrator [pending]
+### Dependencies: 18.1, 18.2
+### Description: Update main.py to define a clear main() entry function that builds configuration, initializes all core components, constructs MasterOrchestrator, and delegates control flow to it.
 ### Details:
+1) Introduce or update a main() function that becomes the single entry point for program logic, leaving only the if __name__ == "__main__": guard to call main(). 2) Within main(), create the necessary shared infrastructure components (e.g., logging setup, event loop if async, HTTP clients, repositories) that the MasterOrchestrator depends on, or delegate their creation to factory methods when they already exist. 3) Call the configuration builder from subtask 2 with the parsed CLI args to obtain a complete configuration object, and pass this into the MasterOrchestrator constructor or initialization method as required by the new architecture. 4) Invoke the appropriate orchestrator lifecycle method(s) to execute the requested operation (e.g., orchestrator.run(), orchestrator.execute_command(...)), ensuring that control flow is centralized there instead of scattered in main.py. 5) Add structured error handling around orchestrator execution (try/except) to log failures and return appropriate exit codes to the OS, keeping any complex recovery logic inside the orchestrator where possible.
 
-
-## 18.4. Develop test infrastructure components [pending]
-### Dependencies: None
-### Description: Create the necessary test fixtures and helpers identified in the coverage analysis: V3 config fixtures, mock IMAP server, mock LLM API, test email data, and dry-run helpers.
+## 4. Integrate new CLI parsing and command dispatch in main.py [pending]
+### Dependencies: 18.1, 18.2, 18.3
+### Description: Wire the new CLI module into main.py so that command-line arguments are parsed according to the new interface and correctly mapped to orchestrator actions and multi-account behavior.
 ### Details:
+1) Replace or remove any legacy argparse/CLI handling in main.py, and instead import and use the new CLI entry (e.g., a function that builds the parser or directly returns parsed arguments). 2) Ensure the CLI parser defines all commands, subcommands, and options required for the multi-account architecture (e.g., --account, --all-accounts, profile names), and that parsed_args structure matches what the configuration builder expects. 3) Adapt main() so that it first obtains parsed_args from the new CLI, then calls the config builder (subtask 2), and finally passes both the configuration and any CLI-specific command identifiers to the MasterOrchestrator. 4) Map CLI commands/subcommands to orchestrator actions in a clear, maintainable way (e.g., a dispatch table, pattern matching, or methods on the orchestrator), ensuring each command can operate on one or multiple accounts as specified. 5) Verify that help output and error messages from the CLI remain accurate after refactoring, and update any usage examples or comments that reference the old CLI behavior.
 
-
-## 18.5. Implement test_integration_v3_workflow.py [pending]
-### Dependencies: None
-### Description: Create integration tests for the end-to-end V3 workflow using --dry-run mode to verify module interactions without external dependencies.
+## 5. Implement clean shutdown and lifecycle management in main entry point [pending]
+### Dependencies: 18.3, 18.4
+### Description: Ensure main.py manages application lifecycle and shutdown correctly, including resource cleanup, signal handling (if required), and consistent exit codes.
 ### Details:
+1) Identify all resources that require explicit cleanup in the new architecture (e.g., open network connections, thread pools, async event loops, file handles) and ensure that MasterOrchestrator exposes methods or context managers to clean them up. 2) Wrap orchestrator execution in appropriate constructs (try/finally or async context managers) within main() so that cleanup is always attempted, even on errors. 3) If the architecture requires responding to termination signals (SIGINT/SIGTERM), add optional signal handlers that trigger a graceful shutdown path on the orchestrator and prevent abrupt termination where feasible. 4) Normalize exit behavior: decide on and implement a small set of exit codes (e.g., 0 for success, non-zero for different categories of failure) and ensure they are consistently returned based on orchestrator results and raised exceptions. 5) Add minimal logging around startup and shutdown events in main.py (or via orchestrator hooks) to make it easy to trace initialization and teardown in logs, and run a manual test by starting and stopping the program under typical scenarios to confirm clean shutdown.
 
-
-## 18.6. Implement integration tests for force-reprocess functionality [done]
-### Dependencies: None
-### Description: Develop integration tests for the force-reprocess feature, verifying it correctly identifies and reprocesses previously handled emails.
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 18.1, 18.2, 18.3, 18.4, 18.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
-
-
-## 18.7. Implement integration tests for cleanup-flags command [pending]
-### Dependencies: None
-### Description: Create integration tests for the cleanup-flags command, testing its interaction with the IMAP system and verification mechanisms.
-### Details:
-
-
-## 18.8. Implement integration tests for backfill command [pending]
-### Dependencies: None
-### Description: Develop integration tests for the backfill command, verifying its ability to process historical emails according to specified parameters.
-### Details:
-
-
-## 18.9. Create E2E tests with live IMAP connections [pending]
-### Dependencies: None
-### Description: Implement end-to-end tests using real IMAP connections to test accounts, verifying email retrieval, processing, and flag management.
-### Details:
-
-
-## 18.10. Create E2E tests with live LLM API [pending]
-### Dependencies: None
-### Description: Develop end-to-end tests using actual LLM API calls (with staging API key), verifying prompt construction, response handling, and error recovery.
-### Details:
-
-
-## 18.11. Implement E2E tests for edge cases [pending]
-### Dependencies: None
-### Description: Create specialized end-to-end tests for edge cases: very large emails, rate limiting scenarios, connection interruptions, and malformed responses.
-### Details:
-
-
-## 18.12. Configure CI integration for test suite [pending]
-### Dependencies: None
-### Description: Set up the test suite to run in CI environments with appropriate mocking for external dependencies and clear reporting of test results.
-### Details:
-
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=18 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 18 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 18 - Update Main Entry Point [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

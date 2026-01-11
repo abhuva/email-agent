@@ -1,43 +1,93 @@
 # Task ID: 13
-# Title: Create cleanup-flags command
-# Status: done
-# Dependencies: 2, 3
+# Title: Add Progress Bars for Processing Steps
+# Status: pending
+# Dependencies: 11, 12
 # Priority: low
-# Description: Implement a safeguarded command to remove application-specific flags from the mail server.
+# Description: Implement progress indicators for long-running operations
 # Details:
-Implement the 'cleanup-flags' subcommand that removes only application-specific IMAP flags (as defined in the configuration) from emails on the server. Include a MANDATORY confirmation prompt with clear warnings about the operation as required by the PDD (security requirement). Add a dry-run option for this command to show which flags would be removed without actually removing them. Implement detailed logging of flag removal operations.
+Add progress bars for email processing steps using a library like tqdm. Implement progress tracking for: email fetching, content parsing, LLM processing, and note generation. Ensure progress bars work correctly with multi-account processing.
 
 # Test Strategy:
-Test the command with confirmation and cancellation. Verify only application-specific flags are removed. Check that the dry-run option shows flags without removing them. Verify logging of flag removal operations.
+Test progress bar display with various email counts. Verify accurate progress reporting and proper cleanup after completion.
 
 # Subtasks:
-## 1. Define configuration structure for application-specific IMAP flags [done]
+## 1. Introduce tqdm dependency and progress configuration utilities [pending]
 ### Dependencies: None
-### Description: Create a configuration schema to define which IMAP flags are considered application-specific and should be managed by the cleanup command
+### Description: Add tqdm as a dependency and create a small utility layer to standardize progress bar creation and configuration across the project.
 ### Details:
-Implement a configuration section in the application's config file that allows users to define which IMAP flags are considered application-specific. The configuration should include: 1) A list of flag patterns to match (e.g., 'MyApp/*'), 2) Optional exclusion patterns, 3) Documentation on the format and impact of these settings. Ensure the configuration is validated when loaded and provide helpful error messages for invalid configurations. Use the settings.py facade to access these configuration values.
+1. Add `tqdm` to the project dependencies (e.g., requirements.txt/pyproject.toml) and ensure it is installed in the dev environment.
+2. Create a module such as `progress.py` (or similar) that wraps tqdm usage, e.g.:
+   - `from tqdm.auto import tqdm`
+   - Helper functions like `create_progress_bar(total: int, desc: str, unit: str = "items") -> tqdm`.
+3. In this utility, centralize common settings (e.g., `mininterval`, `ncols`, `disable` flag from a config env var, consistent units).
+4. Expose helper functions for both iterable-based and manual-update scenarios, e.g.:
+   - `with tqdm(total=total, desc=desc) as pbar: ... pbar.update(n)` for non-iterable processes.
+5. Ensure the utilities are non-UI-blocking (no input) and work both in CLI and notebook environments by using `tqdm.auto`.
 
-## 2. Implement flag scanning functionality [done]
+## 2. Add progress bars for email fetching per account [pending]
 ### Dependencies: 13.1
-### Description: Create a module to scan and identify application-specific flags on emails based on the configuration
+### Description: Instrument the email fetching logic with tqdm-based progress bars, showing progress per account and overall where possible.
 ### Details:
-Develop a function that connects to the IMAP server, scans emails in specified folders, and identifies flags matching the patterns defined in the configuration. The function should: 1) Accept connection parameters and folder specifications, 2) Return a structured report of emails and their matching flags, 3) Include error handling for connection issues, 4) Be optimized for performance with large mailboxes by using appropriate IMAP commands and batching. Use the settings.py facade to access any configuration values needed.
+1. Identify the function(s) responsible for fetching emails, e.g., `fetch_emails_for_account(account)` and any higher-level coordinator that loops over accounts.
+2. Where a list/iterator of email IDs or messages is already available (e.g., after listing messages for an account), wrap the loop with tqdm from the progress utility:
+   - `for msg in tqdm(messages, desc=f"Fetching emails ({account.name})", unit="emails"):`.
+3. If you fetch emails in chunks or without a known total, create a manual tqdm with `total` set once you know the count, or omit `total` and allow tqdm to infer from the iterable length.
+4. If multi-account fetching is done in a loop, add an outer progress bar for accounts: `for account in tqdm(accounts, desc="Accounts", unit="acct"):` and keep the inner bar for per-account emails.
+5. Ensure progress bars do not break existing logging; use `tqdm.write()` for log lines inside loops to avoid mangling the bar.
 
-## 3. Implement dry-run functionality [done]
-### Dependencies: 13.2
-### Description: Create a command option and supporting code to preview flag removal operations without making changes
+## 3. Add progress bars for email content parsing [pending]
+### Dependencies: 13.1, 13.2
+### Description: Track progress while parsing email content for each account, displaying the number of emails parsed and time estimates.
 ### Details:
-Implement a '--dry-run' flag for the command that shows which flags would be removed without actually removing them. The output should: 1) List each email that would be affected (showing identifiers like UID and subject), 2) Show which flags would be removed from each email, 3) Provide summary statistics (total emails affected, total flags to be removed), 4) Format the output in a clear, readable way. This functionality should reuse the scanning module from subtask 2 but skip the actual modification steps.
+1. Locate the parsing pipeline, e.g., `parse_email_contents(emails)` or similar batch parsing step following fetching.
+2. Wrap the main parsing loop with tqdm from the progress utility, using a clear description and units, e.g.:
+   - `for email in tqdm(emails, desc=f"Parsing content ({account.name})", unit="emails"):`.
+3. If parsing is done in multiple stages (e.g., header, body, attachments), consider either:
+   - a single progress bar over emails with inner non-progress loops, or
+   - a single bar with more granular `desc` updates if needed.
+4. For streaming or generator-based parsing, use a manual `total` if the email count is known in advance; otherwise allow dynamic statistics without ETA.
+5. Make sure parsing progress bars are created per account (reusing the same pattern used in fetching) and that they appear logically after any fetching bars to avoid visual clutter.
 
-## 4. Implement flag removal functionality with confirmation prompt [done]
-### Dependencies: 13.2
-### Description: Create the core functionality to remove identified flags with a mandatory confirmation step as required by the PDD
+## 4. Add progress bars for LLM processing of emails [pending]
+### Dependencies: 13.1, 13.3
+### Description: Instrument the LLM processing step with progress bars to show how many emails (or chunks) have been processed by the language model.
 ### Details:
-Implement the actual flag removal functionality with a MANDATORY confirmation prompt as required by the PDD (security requirement). The implementation should: 1) Present a clear warning about the operation's impact, 2) Show a summary of what will be modified, 3) Require explicit confirmation (e.g., typing 'yes' or similar), 4) Abort if confirmation is not provided, 5) Include safeguards to prevent accidental removal of system or critical flags, 6) Implement the actual IMAP commands to remove the flags when confirmed. Ensure proper error handling and transaction safety where possible.
+1. Find the component that calls the LLM for each email or batch, e.g., `run_llm_on_emails(emails)`.
+2. Wrap the primary loop that issues LLM calls with a tqdm bar, e.g.:
+   - `for item in tqdm(email_items, desc=f"LLM processing ({account.name})", unit="items"):` where `items` may be emails, threads, or chunks.
+3. If the LLM is called asynchronously or in parallel, still track completions by updating the bar when a task finishes, e.g.:
+   - Initialize `pbar = create_progress_bar(total=len(email_items), desc=...)`.
+   - In each callback/future completion handler, call `pbar.update(1)`.
+4. Ensure the LLM progress bar is compatible with any retry logic and does not over-count retries (only update on successful or final outcome per item).
+5. Where multi-account processing loops exist, either:
+   - show one LLM bar per account (created inside the per-account function), or
+   - include account name in the `desc` so bars are distinguishable when multiple are shown.
 
-## 5. Implement detailed logging and integrate command into CLI [done]
-### Dependencies: 13.3, 13.4
-### Description: Add comprehensive logging of operations and integrate the new subcommand into the application's CLI structure
+## 5. Add progress bars for note generation and ensure correct behavior with multi-account processing [pending]
+### Dependencies: 13.1, 13.2, 13.3, 13.4
+### Description: Track progress for note generation based on LLM outputs and verify that all progress bars (fetching, parsing, LLM, notes) behave correctly when processing multiple accounts.
 ### Details:
-Complete the command by adding detailed logging and CLI integration. The implementation should: 1) Log all operations with appropriate detail levels (info for summaries, debug for individual operations), 2) Include timestamps, affected email IDs, and specific flags in logs, 3) Log both successful and failed operations, 4) Register the 'cleanup-flags' subcommand in the application's command structure with proper help text and option definitions, 5) Ensure the command follows the application's existing CLI patterns and conventions, 6) Add documentation for the new command in the application's help system and user documentation. Use the settings.py facade to access log file paths and other configuration values.
+1. Identify the function that converts LLM outputs into notes, e.g., `generate_notes_from_results(results)` or per-email note creation.
+2. Wrap the note generation loop with tqdm, e.g.:
+   - `for result in tqdm(llm_results, desc=f"Note generation ({account.name})", unit="notes"):`.
+3. If note generation is chained directly after LLM processing within a single loop, either:
+   - keep a single bar counting emails fully processed, or
+   - create a separate bar only if the note-phase is long enough to warrant visibility.
+4. Test the full pipeline with multiple accounts (including edge cases: zero emails, few emails, many emails) to ensure:
+   - Progress bars appear in a stable, non-jumbled order.
+   - Per-account bars reset correctly and do not leak state between accounts.
+   - Nested bars (accounts vs per-step) remain readable; adjust `desc`, `leave`, or `position` parameters if needed.
+5. Update any developer documentation or README to describe the new progress behavior, including how to enable/disable bars (e.g., via config) and how they behave in multi-account runs.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 13.1, 13.2, 13.3, 13.4, 13.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=13 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 13 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 13 - Add Progress Bars for Processing Steps [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

@@ -1,55 +1,55 @@
 # Task ID: 1
-# Title: Set up project configuration structure
-# Status: done
+# Title: Create Configuration Directory Structure
+# Status: pending
 # Dependencies: None
 # Priority: high
-# Description: Create a well-structured YAML configuration system that organizes all user-configurable parameters into logical groups according to the PDD.
+# Description: Set up the directory structure for global and account-specific configurations
 # Details:
-Implement a config.yaml file with sections for `imap:`, `paths:`, `openrouter:`, `processing:`, etc. Include parameters for credentials, paths, thresholds, IMAP flags, and LLM parameters (including temperature). Add comprehensive comments for each setting. Create a configuration loader module that validates required fields and provides sensible defaults where appropriate. Implement a settings.py facade that provides getter methods for all configuration values, ensuring all modules access configuration through this facade rather than directly from YAML. Ensure credentials are loaded from environment variables for security.
+Create the following directory structure: config/ (for global config.yaml), config/accounts/ (for account-specific YAML files), and ensure proper permissions. Create placeholder files for blacklist.yaml and whitelist.yaml. This task establishes the foundation for the configuration system.
 
 # Test Strategy:
-Verify that the configuration loads correctly with valid YAML, handles missing optional values with defaults, and raises appropriate errors for missing required values. Test that the settings.py facade correctly provides access to all configuration values.
+Verify directory structure exists and is writable. Create test configuration files to ensure proper access.
 
 # Subtasks:
-## 1. Define YAML configuration structure and sections [done]
+## 1. Create base configuration directory structure [pending]
 ### Dependencies: None
-### Description: Create the basic structure of the config.yaml file with all required sections and placeholder values as specified in the PDD
+### Description: Create the root configuration directory and the subdirectory for account-specific configurations.
 ### Details:
-Create a config.yaml file with the following sections as specified in the PDD: `imap:`, `paths:`, `openrouter:`, `processing:`. Include placeholder values and comprehensive comments explaining each section's purpose. The structure should be hierarchical with related settings grouped together. Include examples of valid values for each setting, such as `imap.processed_tag: 'AIProcessed'`, `paths.template_file: 'config/note_template.md.j2'`, `openrouter.retry_attempts: 3`, `openrouter.retry_delay_seconds: 5`, `processing.importance_threshold: 8`, `processing.spam_threshold: 5`, etc.
+1) In the project root, create a `config/` directory to hold all configuration files. 2) Inside `config/`, create a subdirectory `accounts/` for account-specific YAML files. 3) If applicable, add these directories to any project scaffolding or setup scripts (e.g., a Makefile target or project bootstrap script) so that they are created automatically on new environments.
 
-## 2. Implement configuration schema and validation rules [done]
+## 2. Create global configuration file placeholder [pending]
 ### Dependencies: 1.1
-### Description: Define a schema that specifies required fields, data types, and validation rules for all configuration parameters
+### Description: Add a placeholder global config.yaml file in the config directory with minimal valid structure.
 ### Details:
-Create a configuration schema that defines the expected data types, required vs. optional fields, and validation rules for each configuration parameter. Use a schema validation library (like Pydantic, Marshmallow, or jsonschema) to implement the validation logic. Define sensible default values for optional parameters. Ensure the schema aligns exactly with the structure defined in the PDD.
+1) Inside `config/`, create an empty but valid YAML file named `config.yaml`. 2) Add a minimal top-level structure, such as comments and example keys, to illustrate intended usage (e.g., `# Global configuration`, `# logging:`, `#   level: info`) without enforcing real values. 3) If using version control, include this file in the repository and consider adding guidance comments about where secrets should NOT be stored (e.g., point to environment variables or separate secrets handling).
 
-## 3. Create configuration loader module [done]
-### Dependencies: 1.2
-### Description: Implement a module that loads, parses, and validates the YAML configuration file
+## 3. Create account-specific configuration file placeholders [pending]
+### Dependencies: 1.1
+### Description: Set up example account-specific YAML files inside config/accounts/ to demonstrate per-account configuration.
 ### Details:
-Create a ConfigLoader class that handles loading the YAML file, parsing it into a Python object, and validating it against the schema. Implement error handling for missing files, syntax errors, and validation failures. The loader should return a validated configuration object that can be used throughout the application. Ensure the loader follows the exact structure specified in the PDD.
+1) Inside `config/accounts/`, create at least one example YAML file, such as `example-account.yaml`, containing a minimal valid structure (e.g., `# Account-specific configuration`, `# account_id: example`). 2) Optionally add comments showing expected keys (e.g., credentials references, feature toggles) without including real secrets. 3) Decide on and document the naming convention for account files (e.g., `<account-id>.yaml` or `<tenant-name>.yaml`) in comments at the top of the example file.
 
-## 4. Add environment variable overrides [done]
-### Dependencies: 1.3
-### Description: Implement functionality to override configuration values with environment variables
+## 4. Create blacklist and whitelist configuration placeholders [pending]
+### Dependencies: 1.1
+### Description: Add placeholder YAML files for blacklist and whitelist configuration and place them appropriately in the config hierarchy.
 ### Details:
-Extend the configuration loader to check for environment variables that can override values in the config file. Define a naming convention for environment variables (e.g., APP_API_KEY to override api.key). Document this feature in the config file comments. Ensure environment variables are properly type-converted before being applied. CRITICAL: Ensure credentials MUST be loaded from environment variables as a security requirement specified in the PDD.
+1) In the `config/` directory, create `blacklist.yaml` and `whitelist.yaml` files. 2) Ensure each file contains valid YAML syntax, even if only comments and empty lists (e.g., `blocked_items: []` in `blacklist.yaml` and `allowed_items: []` in `whitelist.yaml`). 3) Add comments explaining the intended semantics and expected data structures (e.g., list of IDs, patterns, or domains) so that future implementation can parse these files consistently.
 
-## 5. Create configuration documentation and example file [done]
-### Dependencies: 1.1, 1.2
-### Description: Generate comprehensive documentation and an example configuration file with comments
+## 5. Set and document appropriate filesystem permissions for configuration directories and files [pending]
+### Dependencies: 1.1, 1.2, 1.3, 1.4
+### Description: Define, apply, and document the required permissions for the config directory tree and its files.
 ### Details:
-Create a well-documented example configuration file (config.example.yaml) with detailed comments explaining each setting, its purpose, valid values, and defaults. Include instructions for users on how to create their own config.yaml file. Add a README section explaining the configuration system, environment variable overrides, and validation process. Ensure the documentation references the PDD as the authoritative technical specification.
+1) Decide on the target runtime user/group that should own the configuration (e.g., application service user). 2) Apply directory permissions so that only the owning user (and optionally group) can read/write the configuration (e.g., `chmod 750 config/ config/accounts/` and `chown <app-user>:<app-group> ...` as appropriate for your OS). 3) Apply file permissions to restrict write access and limit read access to the application and administrators (e.g., `chmod 640 config/*.yaml config/accounts/*.yaml`). 4) If using an infrastructure-as-code or deployment script, codify these permission settings in that script. 5) Add a short section to project documentation (e.g., README or ops docs) describing the directory structure, ownership, and permission requirements so that new environments are configured consistently.
 
-## 6. Create `settings.py` Configuration Facade [done]
-### Dependencies: 1.3, 1.4
-### Description: Implement a central facade module that provides getter methods for all configuration values
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 1.1, 1.2, 1.3, 1.4, 1.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
-Create a settings.py module that acts as a facade for accessing all configuration values. Implement getter methods like `settings.get_openrouter_api_url()`, `settings.get_openrouter_api_key()`, `settings.get_imap_processed_tag()`, etc. for all configuration parameters. Ensure all modules access configuration through this facade, not directly from YAML. Include proper error handling and default values. Document the facade pattern in the module docstring.
-
-## 7. Refactor existing codebase to use `settings.py` facade [done]
-### Dependencies: 1.6
-### Description: Update all code to access configuration through the settings facade rather than directly
-### Details:
-Identify all instances of direct configuration access in the codebase (e.g., `config['key']`) and replace them with calls to the settings.py facade methods (e.g., `settings.get_key()`). Ensure all modules import and use the settings module for configuration access. Test thoroughly to verify no direct configuration access remains in the codebase. Document the pattern in the developer guidelines.
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=1 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 1 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 1 - Create Configuration Directory Structure [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

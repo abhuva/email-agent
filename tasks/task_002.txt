@@ -1,43 +1,89 @@
 # Task ID: 2
-# Title: Implement CLI argument parsing
-# Status: done
+# Title: Implement Configuration Loader with Deep Merge Logic
+# Status: pending
 # Dependencies: 1
 # Priority: high
-# Description: Create a robust CLI interface with support for the required command flags and subcommands using the click library.
+# Description: Create the ConfigLoader class that handles loading and merging global and account-specific configurations
 # Details:
-Use click (not argparse) to implement CLI argument parsing as specified in the PDD. Support the following structure: `python main.py process` with flags `--uid <ID>` for targeting specific emails, `--force-reprocess` flag to overwrite existing notes, `--dry-run` flag for testing without side effects, and a separate 'cleanup-flags' subcommand (`python main.py cleanup-flags`). Include help text for each option and implement proper argument validation. For the cleanup-flags command, implement a mandatory confirmation prompt for safety as required by the PDD.
+Create src/config_loader.py with a ConfigLoader class that implements: 1) Loading global config.yaml, 2) Loading account-specific YAML files, 3) Deep merge logic (dictionaries merged, lists replaced, primitives overwritten), 4) Error handling for malformed YAML. The main function should be load_merged_config(account_name: str) -> dict.
 
 # Test Strategy:
-Test each flag combination to ensure proper parsing. Verify help text is displayed correctly. Test invalid arguments to ensure appropriate error messages. Verify the confirmation prompt works correctly for the cleanup-flags command.
+Write unit tests with various configuration scenarios: overriding primitives, merging nested dictionaries, replacing lists. Test error handling with malformed YAML files.
 
 # Subtasks:
-## 1. Set up basic CLI framework with click [done]
+## 1. Define ConfigLoader interface and file path handling [pending]
 ### Dependencies: None
-### Description: Initialize the CLI framework using click and create the basic command structure
+### Description: Create src/config_loader.py with the ConfigLoader class skeleton, constructor, and path resolution for global and account-specific config files.
 ### Details:
-Set up click as the CLI framework as required by the PDD. Create the main command group and set up the basic command structure with subcommands 'process' and 'cleanup-flags'. Include program name, description, and version information. Implement the basic error handling for invalid commands. Ensure the CLI structure follows exactly: `python main.py process` with flags and `python main.py cleanup-flags` as specified in the PDD.
+1) Create src/config_loader.py.
+2) Define a ConfigLoader class with an __init__(self, base_dir: Path | str, global_filename: str = "config.yaml", accounts_dirname: str = "accounts") that stores resolved pathlib.Path instances for the config root, global config path, and accounts directory.
+3) Add a method _get_global_config_path(self) -> Path that returns the global config file path and does basic existence checks (raise FileNotFoundError with a clear message if missing).
+4) Add a method _get_account_config_path(self, account_name: str) -> Path that resolves the account-specific YAML path (e.g., <base_dir>/<accounts_dirname>/<account_name>.yaml) and can raise FileNotFoundError if the file does not exist (or optionally return None if you want global-only configs to be allowed; choose one behavior and document it).
+5) Add the public method signature load_merged_config(self, account_name: str) -> dict with a docstring describing behavior; leave its implementation to later subtasks.
 
-## 2. Implement core flags and options for the process subcommand [done]
+## 2. Implement YAML loading with error handling [pending]
 ### Dependencies: 2.1
-### Description: Add the primary flags and options to the process subcommand
+### Description: Implement helper methods to load YAML files (global and account-specific) into Python dicts with robust error handling for malformed YAML.
 ### Details:
-Implement the following options for the 'process' subcommand: '--uid <ID>' for targeting specific emails with appropriate type validation, '--force-reprocess' flag to overwrite existing notes, and '--dry-run' flag for testing without side effects. Add detailed help text for each option explaining its purpose and usage. Implement basic argument validation for each option. Ensure the implementation follows the exact structure specified in the PDD.
+1) Import yaml (PyYAML) and use yaml.safe_load for reading configuration files to avoid executing arbitrary code.[1][3][7]
+2) Implement a private method _load_yaml_file(self, path: Path) -> dict:
+   - Open the file in text mode with UTF-8 encoding.
+   - Call yaml.safe_load(file_obj).
+   - If the returned value is None, normalize to an empty dict {}.
+   - If the returned value is not a dict (e.g., list or primitive), raise a ValueError explaining that the config root must be a mapping.
+   - Catch yaml.YAMLError and re-raise as a custom ConfigurationError or ValueError with a message including the file path and original exception text.
+3) Implement load_global_config(self) -> dict using _get_global_config_path and _load_yaml_file.
+4) Implement load_account_config(self, account_name: str) -> dict that uses _get_account_config_path and _load_yaml_file; if you chose to allow missing account config in subtask 1, handle FileNotFoundError here by returning {} instead of raising, and document this behavior.
+5) Add unit-test-friendly behavior: avoid printing; rely on raised exceptions for error signaling.
 
-## 3. Implement the cleanup-flags subcommand [done]
+## 3. Implement deep merge utility for configuration dictionaries [pending]
 ### Dependencies: 2.1
-### Description: Create the cleanup-flags subcommand with its specific options and behavior
+### Description: Create a pure function or static method that performs deep merge of two configuration dictionaries according to the specified rules.
 ### Details:
-Add the 'cleanup-flags' subcommand to the CLI parser. Define any specific options needed for this subcommand. Implement the command structure but leave the actual confirmation prompt implementation for the next subtask. Add appropriate help text explaining the purpose and potential impact of this command. Ensure the implementation follows the exact structure specified in the PDD: `python main.py cleanup-flags`.
+1) Define a function deep_merge(base: dict, override: dict) -> dict (either as a @staticmethod on ConfigLoader or a module-level helper) that returns a new merged dict without mutating the input arguments.
+2) Implement merge rules:
+   - When both values for a key are dicts, recursively deep merge them.
+   - When both values are lists, the override list fully replaces the base list (no concatenation).
+   - For all other types (including mismatched types), the override value replaces the base value.
+3) Implement the logic using isinstance checks and recursion; ensure you copy nested dicts/lists (e.g., via dict comprehensions and list slicing) to avoid mutation of arguments.
+4) Ensure that keys present only in base are preserved, keys present only in override are added, and overlapping keys follow the rules above.
+5) Add minimal inline tests or docstring examples to clarify expected behavior, especially for nested structures and list replacement.
 
-## 4. Implement confirmation prompt for cleanup-flags [done]
-### Dependencies: 2.3
-### Description: Add a mandatory confirmation prompt for the cleanup-flags command as required by the PDD
+## 4. Wire loading and deep merge in load_merged_config [pending]
+### Dependencies: 2.2, 2.3
+### Description: Use the YAML loading helpers and deep merge utility to implement the main load_merged_config(account_name) -> dict method.
 ### Details:
-Implement a clear and explicit confirmation prompt that warns the user about the effects of the cleanup-flags command. Use a yes/no prompt that requires explicit confirmation (e.g., 'yes' typed out fully) before proceeding. Handle user input validation and provide appropriate feedback. Ensure the command aborts if confirmation is not provided. This is a MANDATORY security requirement from the PDD.
+1) In ConfigLoader.load_merged_config(self, account_name: str) -> dict, call load_global_config() to get the base configuration dict.
+2) Call load_account_config(account_name) to get the account-specific configuration dict (which may be empty if missing accounts are allowed).
+3) Pass these to deep_merge, using the global config as base and the account config as override: merged = deep_merge(global_cfg, account_cfg).
+4) Return the merged dict as the final result.
+5) Ensure that any exceptions from loading or malformed YAML propagate clearly to callers; do not silently ignore YAML errors at this layer.
+6) Document in the method docstring that the function applies deep merge with dictionary-merge, list-replace, and primitive-overwrite semantics.
 
-## 5. Integrate argument parsing with main application flow [done]
-### Dependencies: 2.2, 2.4
-### Description: Connect the CLI parser to the main application logic
+## 5. Add validation, edge-case handling, and tests [pending]
+### Dependencies: 2.2, 2.3, 2.4
+### Description: Refine robustness of the ConfigLoader and implement tests for loading, deep merge semantics, and malformed YAML handling.
 ### Details:
-Create a function that parses the arguments using click and returns a structured object with the parsed values. Implement comprehensive error handling for all possible input errors with clear error messages. Add input validation to ensure all required arguments are provided and have valid values. Test the CLI with various combinations of arguments to ensure correct behavior. Document the available commands and options in the help text and in a README section. Ensure all code references the settings.py facade for configuration access.
+1) Add validation for the account_name parameter (e.g., disallow path traversal patterns like '../' and strip whitespace) and raise ValueError on invalid names.
+2) Decide and document the behavior for missing global config (likely fail fast with FileNotFoundError or a custom ConfigurationError) and for missing account configs (either allowed -> global-only; or required -> explicit error).
+3) Implement unit tests (e.g., using pytest) that cover:
+   - Successful loading of a simple global config only.
+   - Loading and merging of global + account configs with nested dictionaries, lists, and primitives to verify deep_merge rules.
+   - Behavior when account config is missing (depending on your chosen semantics).
+   - Handling of malformed YAML (e.g., syntax error) verifying that a clear exception is raised.
+   - Type validation at the root level (non-dict root raises error).
+4) Optionally add type hints for all public methods and run a type checker (mypy or similar) to ensure signatures and return types are consistent.
+5) Optionally expose a convenience function at module level, load_merged_config(account_name: str, base_dir: Path | str = DEFAULT_BASE_DIR) -> dict, that internally constructs ConfigLoader and delegates to its method, if this matches the project's expected public API.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 2.1, 2.2, 2.3, 2.4, 2.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=2 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 2 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 2 - Implement Configuration Loader with Deep Merge Logic [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

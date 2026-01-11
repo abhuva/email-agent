@@ -13,7 +13,12 @@
 4. Applies threshold-based classification
 5. Generates structured Obsidian notes using Jinja2 templates
 
-**Current Status:** V3 (Foundational Upgrade) complete and production-ready. V1 and V2 are historical versions.
+**Current Status:** 
+- **V3** (Foundational Upgrade) - ✅ Complete and production-ready
+- **V4** (Orchestrator) - 🚧 In Development - Multi-tenant platform with rules engine
+- **V1 and V2** - Historical versions
+
+**Working Branch:** `v4-orchestrator` (separate from V3 main branch)
 
 ---
 
@@ -213,6 +218,38 @@ email-agent/
 - Individual task files in `tasks/task_*.txt`
 - **Always commit tasks.json after status changes** (see `.cursor/rules/dev_workflow.mdc`)
 
+### Mandatory Task Completion Workflow
+**Every task has a mandatory final stage that MUST be completed before marking the task done:**
+
+1. **Validate Tests:**
+   - Run full test suite: `pytest -v`
+   - Ensure all tests pass (new and existing)
+   - Fix any failing tests before proceeding
+
+2. **Update Documentation:**
+   - Update/create module documentation in `docs/` directory
+   - Update `docs/MAIN_DOCS.md` if adding new documentation
+   - Reference relevant PDD sections
+   - Follow [documentation.mdc](.cursor/rules/documentation.mdc) guidelines
+
+3. **Review for Rule Learnings:**
+   - Check if new patterns emerged that should be captured in rules
+   - Review [self_improve.mdc](.cursor/rules/self_improve.mdc) for guidance
+   - Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged
+   - Update existing rules if better examples exist
+   - Tag rule updates with `[rule]` in commit message
+
+4. **Mark Task Done:**
+   - Update task status: `task-master set-status --id=<task_id> --status=done`
+   - Commit tasks.json: `git add tasks/tasks.json && git commit -m "chore(tasks): Mark task <id> complete"`
+
+5. **Commit All Changes:**
+   - Commit all code/docs/rule changes: `git add . && git commit -m "feat(module): Task <id> - <description> [docs]"`
+   - Include task ID in commit message
+   - Tag with `[docs]` for documentation, `[rule]` for rule updates
+
+**This workflow is MANDATORY and must not be skipped.** See [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc) for complete details.
+
 ### Testing
 - **334 tests total** (all passing)
 - Run: `pytest` or `pytest -v`
@@ -298,20 +335,26 @@ email-agent/
 ## Quick Reference for AI Agents
 
 ### When Starting Work:
-1. **Read:** `README-AI.md` (this file) and `pdd.md` (V3 PDD)
+1. **Read:** `README-AI.md` (this file) and `pdd_V4.md` (V4 PDD) or `pdd.md` (V3 PDD)
 2. **Check:** `tasks/tasks.json` or run `task-master next`
-3. **Review:** Relevant V3 module docs in `docs/v3-*.md`
+3. **Review:** Relevant module docs in `docs/` directory
 4. **Understand:** Current task context from `tasks/task_*.txt`
+5. **Note:** All tasks include a mandatory final stage - see [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc)
 
 ### When Making Changes:
 1. **Follow:** `.cursor/rules/dev_workflow.mdc` - commit tasks.json after status changes
 2. **Follow:** `.cursor/rules/git_commits.mdc` - commit after each subtask
-3. **Test:** Run `pytest` before committing
-4. **Document:** Update relevant docs if adding features
+3. **Follow:** `.cursor/rules/task_completion_workflow.mdc` - **MANDATORY** final stage for every task
+4. **Test:** Run `pytest` before committing
+5. **Document:** Update relevant docs if adding features
+6. **Review Rules:** Check for learnings that should be captured in rules
 
 ### Key Rules Files:
+- `.cursor/rules/task_completion_workflow.mdc` - **MANDATORY** task completion workflow (tests, docs, rules, commit)
 - `.cursor/rules/dev_workflow.mdc` - Development workflow (commit tasks.json!)
 - `.cursor/rules/git_commits.mdc` - Commit message guidelines
+- `.cursor/rules/documentation.mdc` - Documentation requirements
+- `.cursor/rules/self_improve.mdc` - Rule improvement guidelines
 - `.cursor/rules/taskmaster.mdc` - Task Master tool reference
 - `.cursor/rules/imap_fetching.mdc` - IMAP module guidelines
 
@@ -327,11 +370,15 @@ email-agent/
 
 ### Adding a New Feature:
 1. Create/update task in Task Master
-2. Write tests first (TDD)
-3. Implement feature
-4. Update documentation
-5. Run full test suite
-6. Commit with task ID in message
+2. Complete all subtasks
+3. **MANDATORY Final Stage:**
+   - Run full test suite: `pytest -v`
+   - Update documentation in `docs/` directory
+   - Review for rule learnings and update rules if needed
+   - Mark task done: `task-master set-status --id=<id> --status=done`
+   - Commit tasks.json
+   - Commit all changes with task ID in message
+4. See [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc) for complete workflow
 
 ### Debugging:
 - Enable debug: `python main.py --debug`

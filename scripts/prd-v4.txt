@@ -1,0 +1,293 @@
+# Product Requirements Document: Email Agent V4 "Orchestrator" Upgrade
+
+## Overview & Strategy
+
+V4, the "Orchestrator" upgrade, transforms the tool from a single-purpose script into a multi-tenant platform capable of managing multiple, distinct email accounts. It introduces a sophisticated rules engine for fine-tuning AI classification and enhances core intelligence by parsing rich HTML content, all while implementing critical safety and architectural guardrails.
+
+**Problem Statement:** The V3 tool is highly effective but architecturally limited to a single inbox and unified processing logic. To expand utility, it must handle isolated accounts (e.g., personal vs. work) with unique rules. Furthermore, reliance on plain-text bodies limits accuracy, and the lack of deterministic pre/post-processing rules limits user control.
+
+**Strategic Alignment:** Moves the tool from a simple script to a centralized "command center" for email intelligence. It establishes the foundation for scalability via multi-account support and reliability via strict state isolation.
+
+## Core Features
+
+### 1. Multi-Account Support
+- Process multiple email accounts in a single run
+- Each account has isolated state and configuration
+- Account-specific settings override global defaults
+- Support for `--account <name>` and `--all` commands
+
+### 2. Configuration System (Default + Override Model)
+- Base settings in global `config.yaml`
+- Account-specific settings in `config/accounts/*.yaml` files
+- Deep merge strategy: dictionaries merged, lists replaced, primitives overwritten
+- Runtime configuration validation
+
+### 3. Rules Engine
+- **Blacklist Rules:** Pre-processing rules that can drop or record emails without AI processing
+- **Whitelist Rules:** Post-LLM modifiers that boost scores and add tags
+- YAML-based rule configuration (`blacklist.yaml`, `whitelist.yaml`)
+- Support for sender, subject, and domain triggers
+
+### 4. HTML Content Parsing
+- Primary: Parse HTML email content to Markdown using `html2text`
+- Fallback: Automatically revert to plain text on parsing failure
+- Character limit enforcement (20,000 chars) to prevent token waste
+- Error logging and tagging for fallback cases
+
+### 5. Safety Interlock & Cost Estimation
+- Mandatory cost estimation before mass operations
+- User confirmation prompt with cost display
+- Configurable model cost in `config.yaml`
+- Prevents accidental "wallet drain" events
+
+### 6. Processing Pipeline
+Strict linear pipeline for every email:
+1. **Blacklist Check** → Drop, Record, or Pass
+2. **Content Parsing** → HTML to Markdown (with fallback)
+3. **LLM Processing** → Classification and scoring
+4. **Whitelist Modifiers** → Score boost and tag addition
+5. **Note Generation** → Create Obsidian notes
+
+## Technical Architecture
+
+### System Components
+
+**Master Orchestrator:**
+- Handles CLI arguments and account iteration
+- Performs safety interlock and cost calculation
+- Instantiates isolated AccountProcessor for each account
+
+**Account Processor:**
+- Self-contained instance per account
+- Manages IMAP connection lifecycle
+- Executes processing pipeline
+- Ensures zero state bleeding between accounts
+
+**Config Loader:**
+- Loads and merges global and account-specific configs
+- Validates configuration schema
+- Handles YAML parsing errors gracefully
+
+**Rules Engine:**
+- Blacklist matching and action execution
+- Whitelist modifier application
+- Rule evaluation logic
+
+**Content Parser:**
+- HTML to Markdown conversion
+- Fallback to plain text
+- Character limit enforcement
+
+### Data Models
+
+**EmailContext (Data Class):**
+- Tracks email state through pipeline
+- Contains: uid, sender, subject, raw_html, raw_text
+- State flags: parsed_body, is_html_fallback
+- Classification: llm_score, llm_tags
+- Rules: whitelist_boost, whitelist_tags, result_action
+
+**Configuration Schema:**
+- Global config: `config/config.yaml`
+- Account configs: `config/accounts/*.yaml`
+- Rules: `config/blacklist.yaml`, `config/whitelist.yaml`
+
+### API Contracts
+
+**Config Loader:**
+- `load_merged_config(account_name: str) -> dict`
+- Deep merge with list replacement strategy
+- Schema validation
+
+**Rules Engine:**
+- `check_blacklist(email_obj, rules) -> ActionEnum` (DROP, RECORD, PASS)
+- `apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list)`
+
+**Content Parser:**
+- `parse_html_content(html_body: str, plain_text_body: str) -> (parsed_content: str, is_fallback: bool)`
+- Character limit: 20,000 chars max
+
+## Development Roadmap
+
+### Phase 1: Configuration & Infrastructure (Foundation)
+1. **Config Engine Refactor**
+   - Create `src/config_loader.py` (new/refactor)
+   - Implement deep merge logic (dicts merged, lists replaced)
+   - Add configuration validation
+   - Create `config/accounts/` directory structure
+   - Write tests for merge logic
+
+2. **Master Orchestrator**
+   - Refactor `src/orchestrator.py` to create `MasterOrchestrator` class
+   - Implement CLI argument handling (`--all`, `--account`)
+   - Implement safety interlock with cost calculation
+   - Add user confirmation prompt
+   - Account iteration logic
+
+### Phase 2: The Logic Pipeline (The Engine)
+1. **Account Processor**
+   - Extract from old orchestrator to `src/account_processor.py`
+   - Implement isolated instance pattern
+   - Lifecycle: setup(), run(), teardown()
+   - IMAP connection management per account
+   - Pipeline orchestration
+
+2. **Rules Engine**
+   - Create `src/rules.py`
+   - Implement blacklist checking (DROP, RECORD, PASS)
+   - Implement whitelist modifiers (score boost, tag addition)
+   - Rule matching logic (sender, subject, domain)
+   - YAML rule loading
+
+3. **Content Parser**
+   - Create `src/content_parser.py`
+   - Integrate `html2text` library
+   - Implement HTML to Markdown conversion
+   - Fallback to plain text on error
+   - Character limit enforcement
+   - Error logging and tagging
+
+### Phase 3: CLI & Observability
+1. **CLI Updates**
+   - Create/update `src/cli_v4.py` (or update `cli_v3.py`)
+   - Implement `process --account <name>` command
+   - Implement `process --all` command
+   - Implement `show-config --account <name>` command
+   - Integration with Master Orchestrator
+
+2. **Logging & Observability**
+   - Override logging on startup
+   - Log account processing start/end
+   - Log configuration overrides
+   - Progress bars for processing steps
+   - Error logging for pipeline failures
+
+### Phase 4: Integration & Testing
+1. **Integration**
+   - Update `main.py` to use Master Orchestrator
+   - Wire up all components
+   - End-to-end testing
+
+2. **Testing**
+   - Unit tests for each component
+   - Integration tests for pipeline
+   - Test state isolation between accounts
+   - Test configuration merging
+   - Test rules engine
+   - Test content parser fallback
+
+## Logical Dependency Chain
+
+1. **Foundation First:**
+   - Config loader (needed by everything)
+   - Configuration schema and validation
+   - Account directory structure
+
+2. **Core Processing:**
+   - Content parser (needed by pipeline)
+   - Rules engine (needed by pipeline)
+   - Account processor (orchestrates pipeline)
+
+3. **Orchestration:**
+   - Master orchestrator (uses config loader and account processor)
+   - Safety interlock (uses config and IMAP search)
+
+4. **User Interface:**
+   - CLI updates (uses master orchestrator)
+   - Logging and observability (integrated throughout)
+
+5. **Integration:**
+   - Main entry point updates
+   - End-to-end testing
+
+## Technical Specifications
+
+### State Isolation Requirements
+- **Critical:** Each account must have isolated state
+- New `AccountProcessor` instance per account loop
+- No mutable state survives between account transitions
+- Configuration objects are account-specific
+
+### Configuration Merge Strategy
+- **Dictionaries:** Deep merged (override keys overwrite base keys)
+- **Lists:** Completely replaced (no appending)
+- **Primitives:** Direct overwrite
+
+### Rules Schema
+**Blacklist:**
+```yaml
+- trigger: "sender" # or "subject", "domain"
+  value: "no-reply@spam.com"
+  action: "drop" # or "record"
+```
+
+**Whitelist:**
+```yaml
+- trigger: "domain"
+  value: "important-client.com"
+  action: "boost"
+  score_boost: 20
+  add_tags: ["#vip", "#work"]
+```
+
+### Safety Requirements
+- Mandatory cost estimation before mass operations
+- User confirmation for operations affecting multiple emails
+- Configurable model cost in `config.yaml`
+- IMAP search count before email fetch (lightweight operation)
+
+### Error Handling
+- Graceful handling of malformed YAML rules
+- HTML parsing failures trigger automatic fallback
+- Invalid account configs skip account but continue processing
+- All errors logged with context
+
+## Risks and Mitigations
+
+### Risk 1: Invalid YAML in Override Files
+**Mitigation:** ConfigLoader wraps loading in try/catch. If one account fails, log ERROR, skip it, proceed to next account.
+
+### Risk 2: Wallet Drain from Large Email Counts
+**Mitigation:** Mandatory safety interlock with cost estimation. IMAP.search returns count before fetch_emails downloads bodies.
+
+### Risk 3: html2text Produces Massive Output
+**Mitigation:** Enforce strict character limit (20,000 chars) on content_parser output. Truncate if necessary before LLM.
+
+### Risk 4: State Bleeding Between Accounts
+**Mitigation:** Strict isolation - new AccountProcessor instance per account. No shared mutable state.
+
+### Risk 5: Configuration Merge Confusion
+**Mitigation:** Clear merge strategy (dicts merged, lists replaced). Log all overrides on startup for visibility.
+
+## Out of Scope (V4)
+- GUI (Graphical User Interface)
+- Advanced content-based triggers (Regex inside body)
+- Complex analytics (SQLite)
+- Real-time processing
+- Web interface
+
+## Future Work (V5+)
+- Dedicated SQLite Analytics Pipeline
+- Advanced "pre-LLM" content rules
+- Topic/Entity Modeling
+- Advanced content-based triggers
+- Real-time processing capabilities
+
+## Appendix
+
+### External Dependencies
+- `html2text` library for HTML to Markdown conversion
+- Existing V3 infrastructure (IMAP client, LLM client, note generator)
+
+### Migration from V3
+- V3 uses singleton `settings.py` facade
+- V4 requires instance-based configuration
+- V3 orchestrator becomes AccountProcessor
+- New MasterOrchestrator handles multi-account loop
+
+### Key Design Decisions
+- **State Isolation:** Critical for multi-tenant support
+- **Deep Merge:**** Allows flexible configuration overrides
+- **List Replacement:** Prevents confusion from merging lists
+- **Pipeline Architecture:** Clear separation of concerns
+- **Safety First:** Cost estimation prevents accidents

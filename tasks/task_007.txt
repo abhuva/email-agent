@@ -1,43 +1,84 @@
 # Task ID: 7
-# Title: Integrate templating engine
-# Status: done
-# Dependencies: 1
-# Priority: medium
-# Description: Set up a templating system for generating Markdown notes based on email content and classification results.
+# Title: Implement Rules Engine - Whitelist Rules
+# Status: pending
+# Dependencies: 6
+# Priority: high
+# Description: Create the whitelist component of the rules engine
 # Details:
-Integrate Jinja2 or a similar templating engine in src/note_generator.py. Create a template loader that reads template files from a configurable location (paths.template_file: 'config/note_template.md.j2'). Implement a template renderer that combines email data, classification results, and other metadata to generate the final Markdown output. Include proper error handling for template rendering failures. All configuration access must be through the settings.py facade.
+Extend src/rules.py to handle whitelist rules. Implement apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list) that applies score boosts and adds tags based on matching rules. Support the same trigger types as blacklist rules. Ensure proper validation of score_boost values and tags.
 
 # Test Strategy:
-Test template loading with valid and invalid templates. Verify rendering produces expected output with various input combinations. Test error handling with malformed templates.
+Test with various whitelist rules and verify score adjustments and tag additions. Test edge cases like extremely high score boosts and duplicate tags.
 
 # Subtasks:
-## 1. Install and configure templating engine [done]
+## 1. Analyze existing rules engine and blacklist implementation [pending]
 ### Dependencies: None
-### Description: Set up Jinja2 or a similar templating engine in the project environment
+### Description: Review the current rules engine structure in src/rules.py (and any related modules/tests) to understand how blacklist rules are represented, validated, and applied. Document the rule schema, supported trigger types, and the expected return format (score, tags list) to ensure whitelist behavior is consistent.
 ### Details:
-Add Jinja2 to project dependencies. Create a configuration module in src/note_generator.py that defines template-related settings such as template directory paths, file extensions, and caching options. Implement a basic initialization function that creates and configures the templating environment with appropriate settings for the application context. Use the settings.py facade to access the template file path (settings.get_template_file(), which should be 'config/note_template.md.j2' according to the PDD).
+• Open src/rules.py and locate the existing blacklist handling function(s) and any shared helpers (e.g., apply_blacklist, trigger evaluators, validation utilities).
+• Identify how rules are structured (Python dicts, classes, or configs), what fields a rule contains (e.g., trigger_type, pattern, score_impact, tags), and how trigger types are dispatched.
+• Confirm the contract for rule application functions: input parameters (email_obj, rules, current_score) and output format (new_score, tags_list) as used elsewhere in the codebase.
+• Search for tests or usages of blacklist rules to see real examples of rules and expected behavior; note how errors and invalid rules are currently handled.
+• Summarize findings (schema, trigger types, helper functions, validation patterns) in comments or a short internal doc to use as reference when implementing whitelist logic.
 
-## 2. Implement template loader [done]
+## 2. Define whitelist rule schema, validation, and score_boost/tag constraints [pending]
 ### Dependencies: 7.1
-### Description: Create a template loader that reads template files from a configurable location
+### Description: Specify and implement the data schema and validation rules for whitelist entries, ensuring that score_boost and tags fields are well-defined, type-checked, and consistent with or complementary to existing blacklist rules.
 ### Details:
-Develop a TemplateLoader class that handles locating and loading template files from the configured directory. Implement methods to list available templates, validate template existence, and load template content. Add support for template inheritance and includes. Ensure the loader handles file system errors gracefully with appropriate exception handling. Use the settings.py facade to access the template file path (settings.get_template_file()).
+• Based on the blacklist schema, define the whitelist rule structure (e.g., {"trigger_type": str, "pattern": str, "score_boost": int|float, "tags": [str], ...}).
+• Decide and document acceptable ranges/types for score_boost (e.g., numeric only, min/max bounds if appropriate) and ensure it represents a positive adjustment (or at least non-negative) distinct from blacklist penalties.
+• Define constraints for tags: must be a list/iterable of non-empty strings; optionally normalize (e.g., lowercasing, trimming whitespace) if that is consistent with existing tagging logic.
+• Implement a whitelist-specific validation function or extend existing rule validation utilities to check: required fields present, correct types, allowed trigger_type values (matching blacklist-supported triggers), and valid score_boost/tags.
+• Ensure validation errors are handled in a consistent way with the rest of the rules engine (e.g., raising a specific exception type or skipping invalid rules with logging).
 
-## 3. Create base templates for email-to-markdown conversion [done]
-### Dependencies: 7.2
-### Description: Design and implement the base Markdown templates for different types of email content
+## 3. Implement trigger evaluation and matching for whitelist rules [pending]
+### Dependencies: 7.1, 7.2
+### Description: Implement or reuse trigger evaluation logic for whitelist rules so they support the same trigger types as blacklist rules, ensuring that each rule can correctly determine whether it matches a given email_obj.
 ### Details:
-Create a set of base templates for common email-to-markdown conversion scenarios. Include templates for different email classifications (e.g., newsletter, personal, transactional). Design templates with placeholders for email metadata (sender, date, subject), content sections, attachments, and classification results. Structure templates to generate well-formatted Markdown with proper headings, lists, and other formatting elements. Ensure templates align with the PDD specifications.
+• From the analysis in subtask 1, list all supported trigger types for blacklist (e.g., sender, subject_contains, header_matches, body_regex, domain, etc.).
+• Identify any existing shared trigger evaluation helpers; if they are generic, confirm they can be reused directly for whitelisting. If they are blacklist-specific, refactor them into neutral, reusable functions without changing external behavior.
+• Implement trigger evaluation for each supported trigger_type, ensuring that the same semantics used for blacklist (e.g., case sensitivity, regex flags, partial vs exact match) are preserved.
+• Write a single entry point (e.g., match_whitelist_rule(email_obj, rule) -> bool) or similar abstraction that apply_whitelist can call to determine if an individual whitelist rule matches.
+• Add inline documentation/comments describing each trigger type’s behavior and any assumptions (e.g., what parts of email_obj are required, how missing attributes are handled).
 
-## 4. Implement template renderer [done]
+## 4. Implement apply_whitelist(email_obj, rules, current_score) [pending]
 ### Dependencies: 7.2, 7.3
-### Description: Develop a renderer that combines email data and classification results with templates
+### Description: Add the apply_whitelist function in src/rules.py that iterates over whitelist rules, applies score boosts, and accumulates tags when rules match, then returns the updated score and tag list while enforcing validation.
 ### Details:
-Create a TemplateRenderer class that takes email data, classification results, and other metadata and renders it using the appropriate template. Implement context preparation functions that transform raw email data into a format suitable for template rendering. Add helper functions for common formatting tasks (date formatting, URL handling, etc.). Include methods to select the most appropriate template based on email classification or content type. Use the settings.py facade for any configuration values needed.
+• Define the function signature apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list) as specified.
+• At the start of the function, validate the rules collection: run each rule through the whitelist validation logic; decide whether to raise on invalid rules or skip them with logging, mirroring blacklist behavior.
+• Initialize new_score = current_score and tags_list as an empty list (or existing tags if the engine expects that pattern; verify from blacklist implementation).
+• For each valid whitelist rule:
+  – Use the trigger matching abstraction from subtask 3 to check if the rule matches email_obj.
+  – If matched, apply the rule’s score_boost to new_score (e.g., new_score += rule["score_boost"]).
+  – Merge rule tags into tags_list, ensuring type correctness and optionally avoiding duplicates if that matches existing tag behavior.
+• Decide on and document the rule application strategy (e.g., apply all matching rules vs stop after first match) to mirror blacklist logic or project requirements; implement accordingly.
+• Ensure the function returns (new_score, tags_list) with types and structure consistent with other rule application functions in the module.
 
-## 5. Add error handling and logging for template rendering [done]
+## 5. Integrate whitelist rules into engine workflow and add tests [pending]
 ### Dependencies: 7.4
-### Description: Implement comprehensive error handling for template rendering failures
+### Description: Wire apply_whitelist into the existing rules engine flow (wherever whitelist behavior is expected) and create unit tests to verify correct handling of score_boost, tags, trigger types, and validation edge cases.
 ### Details:
-Enhance the template rendering system with robust error handling. Implement try-except blocks around template rendering operations to catch and handle template syntax errors, missing variables, and rendering failures. Create fallback templates for use when primary templates fail. Add detailed logging of rendering errors with context information to aid debugging. Implement a mechanism to notify users of rendering issues while still providing usable output when possible. Use the settings.py facade to access log file paths and other configuration values.
+• Identify the components or pipeline stages that should call apply_whitelist (e.g., main scoring function, email classification pipeline). Integrate the function in the appropriate order relative to blacklist application (e.g., apply_whitelist before/after blacklist according to project logic).
+• Ensure configuration/loading logic for rules distinguishes and correctly passes whitelist rules into apply_whitelist.
+• Implement unit tests covering:
+  – Single matching whitelist rule (score increased, tags added correctly).
+  – Multiple matching rules and their cumulative effects on score and tags.
+  – Non-matching rules (no score or tag changes).
+  – Validation failures (invalid score_boost values, malformed tags, unsupported trigger_type) and expected behavior (exception or skip with logging).
+  – Behavior consistency across all supported trigger types (each trigger type has at least one passing and failing test case).
+• If an automated test suite exists, run it and adjust implementation to ensure no regressions in blacklist or other rule engine behavior.
+• Add or update inline documentation/docstrings to describe how whitelist rules should be configured and how apply_whitelist interacts with the overall scoring process.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 7.1, 7.2, 7.3, 7.4, 7.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=7 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 7 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 7 - Implement Rules Engine - Whitelist Rules [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

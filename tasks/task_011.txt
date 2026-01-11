@@ -1,43 +1,78 @@
 # Task ID: 11
-# Title: Implement dry-run functionality
-# Status: done
-# Dependencies: 2, 3, 6, 7
+# Title: Update CLI for Multi-Account Support
+# Status: pending
+# Dependencies: 10
 # Priority: medium
-# Description: Create a non-destructive testing mode that outputs results without writing files or setting flags.
+# Description: Enhance the CLI to support account-specific commands
 # Details:
-Implement the --dry-run flag functionality that processes emails and generates output but doesn't write files or set IMAP flags. Output detailed processing information to the console, including classification scores, decision logic results, and the generated note content. Format console output for readability with clear section headers and color coding if possible.
+Update the CLI module to support new commands: 'process --account <name>', 'process --all', and 'show-config --account <name>'. Integrate with the MasterOrchestrator for execution. Ensure proper argument validation and help text.
 
 # Test Strategy:
-Run with --dry-run flag and verify no files are written and no IMAP flags are set. Check that console output includes all relevant processing information. Test with various email types to ensure comprehensive output.
+Test each command with various arguments including edge cases like invalid account names. Verify proper integration with the MasterOrchestrator.
 
 # Subtasks:
-## 1. Add command-line argument parsing for --dry-run flag [done]
+## 1. Extend CLI argument parsing to support new multi-account flags [pending]
 ### Dependencies: None
-### Description: Implement the ability to detect and process the --dry-run flag from command-line arguments
+### Description: Add and wire up the new CLI options `process --account <name>`, `process --all`, and `show-config --account <name>` in the existing CLI module.
 ### Details:
-Modify the click-based argument parsing logic to recognize the --dry-run flag. Create a global or context variable to track dry-run mode. Update help documentation to describe the new flag. Ensure the dry-run state is accessible throughout the application execution flow. Implement this as part of the 'process' subcommand as specified in the PDD.
+Identify where CLI commands and flags are currently defined (e.g., argparse/Click/subcommand registry) and extend the `process` and `show-config` commands to accept the new flags.
+- For `process`, add mutually exclusive options `--account <name>` and `--all` alongside any existing options.
+- For `show-config`, add the `--account <name>` option.
+- Ensure the parsed arguments structure (e.g., options object) includes fields for `accountName`, `allAccounts`, etc., that can be consumed downstream.
+- Update any command routing or dispatch switch statements so that invocations including these options reach the appropriate handler functions without changing behavior of existing commands.
 
-## 2. Create conditional logic to bypass file writing operations [done]
+## 2. Implement argument validation rules for account-related options [pending]
 ### Dependencies: 11.1
-### Description: Modify file writing operations to be conditional based on dry-run mode
+### Description: Define and enforce validation rules for the new account-related flags to ensure correct and unambiguous CLI usage.
 ### Details:
-Identify all locations in the codebase where files are written. Wrap these operations in conditional checks that verify if dry-run mode is active. If in dry-run mode, skip the actual file writing but maintain all the preparation logic. Log what would have been written and where. Use the settings.py facade to access any configuration values needed.
+Implement validation logic that runs immediately after parsing and before invoking business logic.
+- Enforce that `process` must receive exactly one of: `--account <name>` or `--all`, and fail with a clear error message if neither or both are provided.
+- For `show-config`, require `--account <name>` if that is mandatory, or define precedence with existing options if not.
+- Validate that `<name>` is non-empty and adheres to any existing account naming rules (e.g., allowed characters, length); centralize these checks in a helper function for reuse.
+- Ensure validation errors exit with a non-zero status code and print concise, user-friendly messages that indicate the invalid combination and how to fix it.
+- Add unit tests (or extend existing ones) to cover valid and invalid combinations of the new flags.
 
-## 3. Implement conditional IMAP flag setting [done]
-### Dependencies: 11.1
-### Description: Modify IMAP flag setting operations to be conditional based on dry-run mode
+## 3. Integrate account-aware commands with MasterOrchestrator [pending]
+### Dependencies: 11.1, 11.2
+### Description: Connect the new CLI command variants to the MasterOrchestrator so that account-specific and all-account processing is executed correctly.
 ### Details:
-Locate all code that sets IMAP flags on emails. Add conditional logic to bypass the actual flag setting when in dry-run mode. Ensure the application still processes the logic of which flags would be set, but doesn't perform the actual IMAP operations to modify the flags. Use the settings.py facade to access any configuration values needed, including the processed tag name (settings.get_imap_processed_tag()).
+Update the command handlers to call the MasterOrchestrator with the appropriate parameters derived from the parsed and validated arguments.
+- For `process --account <name>`, call a MasterOrchestrator method that processes a single account (e.g., `orchestrator.processAccount(accountName)`), adding such a method if it does not exist yet.
+- For `process --all`, call a method that loops through all known accounts (e.g., `orchestrator.processAllAccounts()`), implemented either directly in MasterOrchestrator or as a helper that enumerates available accounts and invokes the per-account logic.
+- For `show-config --account <name>`, invoke a MasterOrchestrator (or related service) method to fetch and display that account’s configuration.
+- Ensure that orchestration errors are surfaced to the CLI with proper exit codes and messages while not leaking internal stack traces in normal error output.
+- Add tests (or integration-style checks) to verify that the correct MasterOrchestrator methods are invoked for each flag combination.
 
-## 4. Develop enhanced console output formatting [done]
-### Dependencies: 11.1
-### Description: Create structured, readable console output for dry-run results
+## 4. Update and refine CLI help text and usage documentation [pending]
+### Dependencies: 11.1, 11.2, 11.3
+### Description: Improve the CLI help output and related in-tool documentation to clearly describe the new multi-account options and their usage patterns.
 ### Details:
-Implement a formatting system for console output that includes section headers, indentation, and optional color coding (using a library like chalk for Node.js or colorama for Python). Create helper functions for formatting different types of output (headers, details, success/warning messages). Design a consistent visual hierarchy for the output information. Ensure the formatting is clear and helpful for understanding what would happen in a real run.
+Modify the help/usage strings associated with the `process` and `show-config` commands.
+- For `process`, document the purpose of `--account <name>` and `--all`, including that they are mutually exclusive and at least one is required, with concrete examples.
+- For `show-config`, document how `--account <name>` works and what information is shown.
+- Ensure the global `--help` output and any command-specific `--help` reflect the new options and validation rules.
+- If there is separate README or CLI reference documentation in the repo, update it to include example invocations and explain common workflows (single account vs all accounts).
 
-## 5. Implement detailed processing information output [done]
+## 5. Add comprehensive tests and perform regression verification [pending]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4
-### Description: Output comprehensive processing details during dry-run mode
+### Description: Create or extend automated tests to cover new behaviors and verify that existing CLI functionality remains unaffected.
 ### Details:
-Modify the email processing logic to output detailed information when in dry-run mode, including: classification scores with explanation of thresholds, decision logic results showing why certain actions were taken, generated note content in a preview format, file paths where content would have been written, and IMAP flags that would have been set. Use the formatting system from subtask 4 to ensure readability. Include summary statistics at the end of processing. Use the settings.py facade to access any configuration values needed for the output.
+Implement test cases for the new multi-account commands using the project’s existing testing framework.
+- Add tests for `process --account <name>` and `process --all`, ensuring correct argument parsing, validation, orchestration calls, and exit codes.
+- Add tests for `show-config --account <name>`, verifying correct parsing and that the configuration for the specified account is retrieved and displayed.
+- Include negative tests for invalid flag combinations and missing required options, asserting the exact error messages and non-zero exit codes.
+- Run the full test suite (and any available CLI integration tests) to confirm no regressions in existing commands.
+- Adjust or add mocks/stubs for MasterOrchestrator as necessary to isolate CLI behavior in the tests.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 11.1, 11.2, 11.3, 11.4, 11.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=11 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 11 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 11 - Update CLI for Multi-Account Support [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

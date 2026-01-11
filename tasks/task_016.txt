@@ -1,196 +1,55 @@
 # Task ID: 16
-# Title: Comprehensive Code Cleanup and Refactoring for V3 Modules
+# Title: Create Unit Tests for Core Components
 # Status: pending
-# Dependencies: 18
+# Dependencies: 8, 10
 # Priority: medium
-# Description: Systematically remove unused code, deprecated functions, and legacy V1/V2 code while improving overall code organization and ensuring consistent patterns across V3 modules.
+# Description: Develop comprehensive unit tests for all major components
 # Details:
-This task involves a thorough cleanup of the codebase with the following specific actions:
-
-1. Identify and remove all unused code by analyzing import statements and function calls
-2. Remove all deprecated functions that have been superseded by newer implementations
-3. Eliminate all legacy V1/V2 code that is no longer required for the current system
-4. Clean up import statements by removing unused imports and organizing them according to project conventions
-5. Remove or document all commented-out code (if documentation is needed, move comments to appropriate documentation files)
-6. Identify duplicate functionality across modules and consolidate into shared utilities
-7. Reorganize code structure to improve readability and maintainability
-8. Ensure all V3 modules follow consistent naming conventions, error handling patterns, and architectural approaches
-9. Update any documentation that references removed code
-10. Maintain a log of all removed code sections in case reference is needed later
-
-Before making changes, create a feature branch from the main development branch. Commit changes in logical, discrete units to facilitate code review. Consider using automated tools like linters, dead code analyzers, and import organizers where applicable.
+Create unit tests for all core components: ConfigLoader, Rules Engine, Content Parser, AccountProcessor, and MasterOrchestrator. Use mocking to isolate components and test specific behaviors. Aim for high test coverage of critical functionality.
 
 # Test Strategy:
-Testing should verify that functionality remains intact while ensuring code quality improvements. Follow these steps:
-
-1. Run the full test suite before beginning refactoring to establish a baseline
-2. After each significant change, run relevant unit and integration tests to verify no functionality was broken
-3. After all changes are complete, run the full test suite again to ensure overall system integrity
-4. Perform static code analysis using tools like ESLint, SonarQube, or similar to verify improved code quality metrics
-5. Conduct manual testing of key user flows that might be affected by the refactoring
-6. Verify that all CI/CD pipelines complete successfully
-7. Have another developer perform a thorough code review focusing on:
-   - Confirming no necessary code was accidentally removed
-   - Validating that all references are properly updated
-   - Ensuring no orphaned code remains
-   - Checking that V3 modules now follow consistent patterns
-8. Document before/after metrics such as lines of code, cyclomatic complexity, and test coverage to demonstrate improvements
-9. Deploy to a staging environment and verify application behavior matches production
+Run tests with coverage reporting. Verify all critical code paths are tested, including error handling and edge cases.
 
 # Subtasks:
-## 1. Set up code analysis tools and establish refactoring guidelines [pending]
+## 1. Set up unit test project structure and testing utilities [pending]
 ### Dependencies: None
-### Description: Configure and set up automated tools for code analysis, establish refactoring guidelines, and create a feature branch for the cleanup work.
+### Description: Create or validate the test project/module setup and shared utilities needed to unit test the core components with mocks and high coverage.
 ### Details:
-1. Create a feature branch named 'v3-code-cleanup' from the main development branch.
-2. Set up and configure linters (e.g., ESLint, Pylint) with appropriate rules for detecting unused code.
-3. Install and configure dead code analyzers (e.g., Vulture for Python, ts-prune for TypeScript).
-4. Set up import organizers (e.g., isort for Python, import-sort for JavaScript/TypeScript).
-5. Create a document outlining refactoring guidelines including naming conventions, error handling patterns, and architectural approaches for V3 modules.
-6. Establish a logging system to track all code removals for future reference.
-7. Test the analysis tools on a small section of code to ensure they work as expected.
-8. Create a template for commit messages to ensure consistent documentation of changes.
+1) Ensure the testing framework (e.g., Jest, JUnit, NUnit, pytest, etc.) is configured and runnable via the project’s build/CI pipeline. 2) Create a clear folder/package structure that mirrors the production code for ConfigLoader, RulesEngine, ContentParser, AccountProcessor, and MasterOrchestrator (e.g., tests/config/, tests/rules/, etc.). 3) Introduce common test utilities: factories/builders for common domain objects, test data generators, helper assertions, and reusable setup/teardown logic. 4) Configure and document a mocking framework appropriate to the language (e.g., Mockito, unittest.mock, Moq, sinon), including conventions on when to use mocks vs stubs vs fakes to isolate dependencies.[3][4] 5) Enable and verify code coverage reporting, and define target coverage thresholds for critical paths of the core components.[2][3]
 
-## 2. Analyze and document code dependencies across V3 modules [pending]
+## 2. Implement unit tests for ConfigLoader [pending]
 ### Dependencies: 16.1
-### Description: Perform a comprehensive analysis of dependencies between modules to identify unused code and understand the impact of removing components.
+### Description: Write isolated unit tests for ConfigLoader covering loading, parsing, validation, and error handling logic using mocks for external resources.
 ### Details:
-1. Create a dependency graph of all V3 modules (settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, backfill).
-2. Document function calls between modules to understand which functions are actually used.
-3. Identify entry points for each module and trace execution paths.
-4. Mark functions and code blocks that appear to be unused based on static analysis.
-5. Document all deprecated functions that have been superseded by newer implementations.
-6. Identify legacy V1/V2 code sections that remain in the codebase.
-7. Create a spreadsheet or document that lists all code sections marked for potential removal.
-8. Validate findings with team members who have historical knowledge of the codebase.
+1) Identify all public methods and key behaviors of ConfigLoader: loading from files/ENV/remote sources, parsing configuration formats, default value handling, and validation rules. 2) For each behavior, design small, focused tests that each verify a single outcome (e.g., successful load of valid config, missing key fallback, invalid format error).[1][2][3] 3) Use mocks/stubs for any file system, environment, network, or secret store access so tests do not depend on real infrastructure.[3][4] 4) Cover positive and negative scenarios, including malformed configs, missing mandatory fields, unsupported versions, and boundary values.[2][3] 5) Assert that ConfigLoader surfaces appropriate exceptions or error objects and that log/diagnostic hooks are invoked where applicable. 6) Check coverage and add tests for untested branches in conditionals and error paths until target coverage for ConfigLoader is reached.[2][3]
 
-## 3. Create comprehensive test suite for V3 modules before refactoring [pending]
-### Dependencies: 16.2
-### Description: Develop unit tests for all V3 modules to ensure functionality is preserved during the cleanup process.
+## 3. Implement unit tests for RulesEngine and ContentParser [pending]
+### Dependencies: 16.1, 16.2
+### Description: Develop unit tests for the business logic components RulesEngine and ContentParser, focusing on rule evaluation, parsing correctness, and edge cases with isolated dependencies.
 ### Details:
-1. Create unit tests for each V3 module: settings, CLI, IMAP client, LLM client, decision logic, note generator, orchestrator, error handling, logging, cleanup-flags, and backfill.
-2. Ensure test coverage for all critical paths and functions that will remain after cleanup.
-3. Implement integration tests using the --dry-run flag to verify system behavior without making external calls.
-4. Create end-to-end tests with mocked IMAP and LLM services.
-5. Document test coverage and identify any gaps.
-6. Ensure tests pass on the current codebase before any refactoring begins.
-7. Set up CI/CD pipeline to run tests automatically on commits.
-8. Create baseline performance metrics to compare against after refactoring.
+1) For RulesEngine: enumerate rule types, conditions, and outcomes; create parameterized tests where possible to run the same logic against multiple input rule sets and data payloads.[3] 2) Mock external services, repositories, and any time/random sources to keep tests deterministic and isolated.[2][3][4] 3) Write tests covering: correct rule matching, precedence/ordering, default/fallback rules, rule conflicts, and error handling when rules are malformed or incomplete. 4) For ContentParser: identify supported input formats and transformations; test nominal cases, malformed input, encoding issues, and boundary sizes. 5) Use concise, descriptive test names to document behavior (e.g., test_applies_highest_priority_matching_rule, test_parser_raises_error_on_invalid_json).[3][4] 6) Ensure both components have high coverage for branching logic and typical/edge scenarios; refactor or extend tests where coverage tools indicate gaps, prioritizing business‑critical paths.[2][3]
 
-## 4. Clean up import statements and remove unused imports [pending]
-### Dependencies: 16.3
-### Description: Systematically review and clean up import statements across all V3 modules.
+## 4. Implement unit tests for AccountProcessor [pending]
+### Dependencies: 16.1, 16.2, 16.3
+### Description: Create unit tests for AccountProcessor focusing on account lifecycle flows, calculations, and integration points, using mocks to simulate dependencies.
 ### Details:
-1. Run import organizers on each file to automatically sort and group imports according to project conventions.
-2. Manually review each file to identify and remove unused imports that automated tools might miss.
-3. Standardize import patterns across all modules (e.g., absolute vs. relative imports).
-4. Update import paths if any files will be moved during reorganization.
-5. Verify that all imports resolve correctly after changes.
-6. Run the test suite to ensure no functionality was broken.
-7. Document any significant changes or patterns discovered.
-8. Commit changes with clear messages describing the cleanup performed on each module.
+1) Map the main responsibilities of AccountProcessor: creation/update flows, validation, state transitions, and financial or quota calculations. 2) For each flow, design tests that verify a single responsibility per test (e.g., test_creates_account_with_defaults, test_rejects_account_with_invalid_email, test_updates_balance_on_transaction).[1][2] 3) Mock dependencies such as repositories, messaging/queues, payment gateways, and other services so that tests run purely in memory without external systems.[3][4] 4) Cover both success and failure paths: invalid inputs, failed dependency calls, and rollback/compensation behavior if defined.[2][3] 5) Use builders/factories from the shared test utilities to create realistic but synthetic account objects and related data. 6) Review coverage to ensure all critical business rules and edge cases for AccountProcessor are exercised, adding tests for uncovered branches and error handling.[2][3]
 
-## 5. Remove deprecated functions and replace with modern implementations [pending]
-### Dependencies: 16.3, 16.4
-### Description: Identify and remove deprecated functions, replacing calls to them with their modern equivalents.
+## 5. Implement unit tests for MasterOrchestrator and finalize coverage [pending]
+### Dependencies: 16.1, 16.2, 16.3, 16.4
+### Description: Write unit tests for MasterOrchestrator that verify orchestration logic and interactions with core components using mocks, and then tune the suite to meet coverage and quality goals.
 ### Details:
-1. Using the documentation from subtask 2, identify all deprecated functions.
-2. For each deprecated function, identify its modern replacement.
-3. Update all calls to deprecated functions to use the modern implementations.
-4. Remove the deprecated function implementations.
-5. Update any documentation or comments that reference the deprecated functions.
-6. Run the test suite to ensure functionality is preserved.
-7. Document all replacements made for future reference.
-8. Commit changes with detailed descriptions of what was replaced and why.
+1) Identify the orchestration scenarios handled by MasterOrchestrator: execution pipelines, sequencing of ConfigLoader, RulesEngine, ContentParser, and AccountProcessor, and error/timeout handling. 2) Replace all real component dependencies with mocks/spies to verify that the orchestrator calls them in the correct order with the correct arguments and handles their returned results and failures appropriately.[3][4] 3) Write scenario-based tests for success pipelines, partial failures, retries (if any), and short‑circuit behavior when prerequisites fail. 4) Assert side effects such as emitted events, status updates, or aggregate results produced by MasterOrchestrator, while keeping each test limited to one main behavior.[1][3] 5) Run coverage analysis for the entire core component set; add or refine tests to cover remaining critical branches or flaky areas, focusing on quality rather than only percentage.[2][6] 6) Document key test scenarios and conventions in a brief testing README to aid future maintenance and reviews.[2]
 
-## 6. Eliminate legacy V1/V2 code from V3 modules [pending]
-### Dependencies: 16.3, 16.5
-### Description: Remove all legacy V1/V2 code that is no longer required for the current system.
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 16.1, 16.2, 16.3, 16.4, 16.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
-1. Using the documentation from subtask 2, identify all legacy V1/V2 code sections.
-2. Verify that each identified section is truly not needed for V3 functionality.
-3. Remove the legacy code sections one module at a time.
-4. Update any V3 code that might have referenced the removed code.
-5. Run the test suite after each module cleanup to ensure functionality is preserved.
-6. Document all removed code sections in the removal log.
-7. Update any documentation that references the removed code.
-8. Commit changes with clear descriptions of what was removed from each module.
-
-## 7. Remove or document commented-out code [pending]
-### Dependencies: 16.6
-### Description: Review all commented-out code and either remove it or move important comments to appropriate documentation.
-### Details:
-1. Scan all files for commented-out code blocks.
-2. For each commented-out code block, determine if it contains valuable information.
-3. If the commented code is obsolete or redundant, remove it completely.
-4. If the commented code contains valuable information or explanations, extract that information to appropriate documentation files.
-5. Create or update documentation files as needed to preserve important context.
-6. Run the test suite to ensure no functionality was affected.
-7. Document all significant decisions about commented code in the removal log.
-8. Commit changes with descriptions of what was removed or moved to documentation.
-
-## 8. Identify and consolidate duplicate functionality [pending]
-### Dependencies: 16.5, 16.6, 16.7
-### Description: Find duplicate or similar functionality across modules and consolidate into shared utilities.
-### Details:
-1. Analyze the codebase to identify functions with similar purposes or implementations.
-2. Create shared utility modules for common functionality.
-3. Refactor duplicate code to use the shared utilities.
-4. Ensure proper error handling and consistent patterns in the shared utilities.
-5. Update import statements to reference the new shared utilities.
-6. Run the test suite to verify that functionality is preserved.
-7. Document the consolidated utilities and their intended use cases.
-8. Commit changes with explanations of what was consolidated and why.
-
-## 9. Reorganize code structure for improved maintainability [pending]
-### Dependencies: 16.8
-### Description: Restructure code organization to improve readability and maintainability while ensuring logical grouping of related functionality.
-### Details:
-1. Review the current file and directory structure of V3 modules.
-2. Design an improved structure that groups related functionality logically.
-3. Move files and code sections according to the new structure.
-4. Update import paths and references to reflect the new structure.
-5. Ensure consistent file naming and module organization.
-6. Run the test suite to verify that functionality is preserved.
-7. Update any documentation that references file paths or module structure.
-8. Commit changes with detailed explanations of the restructuring decisions.
-
-## 10. Standardize error handling and logging across V3 modules [pending]
-### Dependencies: 16.9
-### Description: Implement consistent error handling patterns and logging approaches across all V3 modules.
-### Details:
-1. Review current error handling and logging practices across V3 modules.
-2. Define standardized error handling patterns based on the refactoring guidelines.
-3. Update all modules to follow the standardized error handling patterns.
-4. Implement consistent logging levels and formats across all modules.
-5. Ensure appropriate error messages and logging for all error scenarios.
-6. Run the test suite with focus on error scenarios to verify correct behavior.
-7. Document the standardized error handling and logging patterns.
-8. Commit changes with explanations of the standardization implemented.
-
-## 11. Conduct comprehensive testing of refactored codebase [pending]
-### Dependencies: 16.10
-### Description: Perform thorough testing of the refactored codebase, including unit tests, integration tests, and end-to-end tests.
-### Details:
-1. Run the complete unit test suite for all V3 modules.
-2. Conduct integration tests using the --dry-run flag to verify system behavior.
-3. Perform live end-to-end tests with real IMAP and LLM services in a test environment.
-4. Test edge cases and error scenarios to ensure proper handling.
-5. Conduct performance tests and compare against baseline metrics.
-6. Fix any issues discovered during testing.
-7. Document test results and any remaining concerns.
-8. Update test documentation to reflect the current state of the codebase.
-
-## 12. Update documentation and finalize code cleanup [pending]
-### Dependencies: 16.11
-### Description: Update all documentation to reflect the cleaned-up codebase and prepare for merging the changes back to the main branch.
-### Details:
-1. Update README files and developer documentation to reflect the new code structure.
-2. Ensure all API documentation is current and accurate.
-3. Update any user-facing documentation that might reference removed code or changed functionality.
-4. Finalize the removal log with all code sections that were removed.
-5. Create a summary report of the cleanup process, including metrics on code reduction and improvements.
-6. Conduct a final code review with team members.
-7. Prepare a pull request with a detailed description of all changes made.
-8. After approval, merge the feature branch back to the main development branch.
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=16 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 16 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 16 - Create Unit Tests for Core Components [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

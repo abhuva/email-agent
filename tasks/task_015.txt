@@ -1,43 +1,55 @@
 # Task ID: 15
-# Title: Implement backfill functionality for historical emails
-# Status: done
-# Dependencies: 14
+# Title: Implement Configuration Display Command
+# Status: pending
+# Dependencies: 11, 14
 # Priority: low
-# Description: Create a mechanism to process all historical emails with the new classification system.
+# Description: Add functionality to display merged configuration for debugging
 # Details:
-Implement a backfill function that processes all emails in the target mailbox, regardless of their current flag status. Include options to limit the backfill by date range or folder. Add a progress indicator for long-running backfill operations. Implement throttling to prevent API rate limiting issues. Include detailed logging of the backfill process with summary statistics.
+Implement the 'show-config --account <name>' command to display the merged configuration for an account. Format the output for readability, highlighting which values are overridden from the global config. Include options for different output formats (YAML, JSON).
 
 # Test Strategy:
-Test backfill on a small subset of emails before full execution. Verify all emails are processed correctly. Check that progress indication works for long-running operations. Verify throttling prevents API rate limiting issues.
+Test the command with various account configurations. Verify correct display of merged configuration and clear indication of overridden values.
 
 # Subtasks:
-## 1. Design backfill function core with date range and folder filtering [done]
+## 1. Define CLI interface and options for `show-config` command [pending]
 ### Dependencies: None
-### Description: Create the core backfill function that can process historical emails with configurable filters
+### Description: Add the `show-config --account <name>` command to the CLI, including options for output formats and any future-proof flags.
 ### Details:
-Implement a function that accepts parameters for date range (startDate, endDate) and folder path. The function should query the email API to retrieve all emails matching these criteria. Include parameter validation and default values (all time, all folders). Structure the function to support batch processing of emails and ensure it correctly applies the new classification system to each email. Return a data structure that can be used for progress tracking and logging. Use the settings.py facade to access any configuration values needed.
+1) Extend the existing CLI/command parser to register a new `show-config` command (or subcommand, depending on current CLI design) that accepts a required `--account <name>` argument. 2) Add optional flags for output format, e.g. `--format yaml` and `--format json`, with a sensible default (likely YAML). 3) If the CLI has a shared options system, reuse existing pattern for enumeration/validation of option values. 4) Ensure help/usage text clearly documents the command’s purpose ('display merged configuration for debugging'), required arguments, and available formats. 5) Wire the command handler to a new function signature (e.g. `run_show_config(accountName: string, format: OutputFormat)`), leaving the implementation stubbed for now.
 
-## 2. Implement progress tracking mechanism [done]
+## 2. Implement configuration merge logic for global and account scopes [pending]
 ### Dependencies: 15.1
-### Description: Create a system to track and display progress during backfill operations
+### Description: Create a reusable function that computes the merged configuration for a given account by overlaying account-specific config on top of global defaults.
 ### Details:
-Build a progress tracking class that maintains counts of total emails to process, emails processed, success/failure counts, and percentage complete. Implement methods to update this progress as emails are processed. Create both console output for command-line usage and a UI component for displaying progress in the application interface. The progress tracker should support both determinate (when total count is known) and indeterminate modes (when total count is unknown). Use the settings.py facade to access any configuration values needed.
+1) Identify where global configuration and per-account configuration are currently loaded/stored (e.g. config service, files, or in-memory structs). 2) Implement a function such as `getMergedConfig(accountName: string) -> MergedConfig` that: a) retrieves global config; b) retrieves config for the given account; c) overlays account-specific values onto the global config using a well-defined precedence rule (account overrides global); d) handles missing account or global configs gracefully with clear error behavior. 3) Ensure the merge is recursive for nested structures (maps/objects), i.e. only overridden fields are replaced and other global values are preserved. 4) Decide how to handle lists/arrays (replace entirely vs. merge items) and document this behavior. 5) Add unit tests covering cases: no account config, full override account config, partial overrides, and invalid/non-existing account names.
 
-## 3. Add throttling mechanism to prevent API rate limiting [done]
-### Dependencies: 15.1
-### Description: Implement controls to limit the rate of API calls during backfill operations
+## 3. Design data structure to track overridden vs inherited values [pending]
+### Dependencies: 15.2
+### Description: Extend the merged configuration representation to annotate which values are overridden from global config versus inherited, enabling highlighting in output.
 ### Details:
-Create a throttling mechanism that limits API calls to a configurable rate (e.g., X calls per minute). Implement using either a token bucket algorithm or simple time-based throttling. Add retry logic with exponential backoff for handling rate limit errors from the API. Make the throttling parameters configurable based on the API's documented limits. Ensure the throttling mechanism properly handles batches of requests and maintains a consistent processing rate. Use the settings.py facade to access throttling configuration values (settings.get_openrouter_retry_attempts() and settings.get_openrouter_retry_delay_seconds()).
+1) Define an internal data model for the merged config that can carry metadata per field, e.g. a wrapped type like `{ value, source }` or a parallel structure (e.g. a tree of flags) indicating `source: 'global' | 'account'`. 2) Adapt `getMergedConfig` (or add a variant like `getAnnotatedMergedConfig`) to produce this annotated structure during the merge instead of a plain config object. 3) Ensure the annotation logic is recursive, with clear rules for nested objects and collections (e.g. each key or item gets its own `source`). 4) Consider performance and memory implications; if needed, keep annotations only until rendering (do not persist them). 5) Add tests that assert correct source tagging for simple and nested fields, including edge cases where account config explicitly sets a value equal to the global value (decide whether that is still considered an override and document the rule).
 
-## 4. Implement comprehensive logging system [done]
-### Dependencies: 15.1, 15.2
-### Description: Create detailed logging for the backfill process with summary statistics
+## 4. Implement formatted output and highlighting of overrides [pending]
+### Dependencies: 15.3
+### Description: Create the rendering layer for the annotated merged configuration, supporting human-readable YAML/JSON output and visually highlighting overridden values.
 ### Details:
-Implement a logging system that records: start/end times, configuration parameters used, progress updates at regular intervals, any errors encountered with full stack traces, and summary statistics upon completion. Create different log levels (debug, info, warning, error) and ensure appropriate information is logged at each level. Generate a summary report at the end of the backfill showing total emails processed, success rate, error counts by type, and processing time. Store logs in a structured format that can be easily analyzed. Use the settings.py facade to access log file paths and other configuration values.
+1) Implement a formatter module with functions such as `renderMergedConfigYaml(annotatedConfig)` and `renderMergedConfigJson(annotatedConfig)`. 2) For **YAML**: a) serialize the config with stable key ordering for readability; b) apply highlighting of overridden values, e.g. via inline comments (`# overridden from global`), color codes/ANSI styles if your CLI supports them, or a prefix marker convention; c) ensure the resulting YAML is still valid if copied, i.e. comments and ANSI codes do not break structure. 3) For **JSON**: a) keep output valid JSON; b) embed override information either as: i) additional `__source` fields if acceptable; or ii) an optional `--with-sources` flag that prints a secondary structure, or iii) omit inline highlighting and rely on a separate note (choose the pattern consistent with existing tooling and document it). 4) Provide a clear, consistent legend in the CLI output header (e.g. a short explanation of how overrides are indicated). 5) Write focused tests (or golden-file snapshots) for both YAML and JSON outputs to ensure deterministic formatting and correct rendering of override markers.
 
-## 5. Create user interface for backfill configuration and execution [done]
-### Dependencies: 15.1, 15.2, 15.3, 15.4
-### Description: Develop a UI to allow users to configure and initiate backfill operations
+## 5. Wire command handler, error handling, and tests for `show-config` [pending]
+### Dependencies: 15.4
+### Description: Connect the CLI command to the merge and formatting logic, handle error cases, and add end-to-end tests for `show-config --account`.
 ### Details:
-Build a user interface that allows configuration of all backfill parameters: date range selection with calendar controls, folder selection with a folder browser, throttling settings, and logging options. Include validation to prevent invalid configurations. Display the progress indicator during operation and show the summary report upon completion. Add the ability to cancel an in-progress backfill operation. Ensure the UI remains responsive during long-running backfill operations by using background processing. Use the settings.py facade to access any configuration values needed for the UI.
+1) Implement the `show-config` command handler to: a) parse `--account` and `--format`; b) call the annotated merge function for the given account; c) select the correct formatter based on `--format`; d) print the result to stdout. 2) Add robust error handling: a) unknown account name (clear error message and non-zero exit code); b) config loading/IO errors; c) invalid format option; d) unexpected internal errors with a generic but informative message. 3) If applicable, add a `--verbose` or `--debug` flag that prints diagnostic details (e.g. which config files were loaded) without changing the core output format. 4) Implement integration or CLI tests that invoke the binary/command (or the top-level handler) for scenarios: valid account (YAML), valid account (JSON), non-existent account, partial account config, and overrides present. 5) Update any developer-facing documentation or README sections describing available CLI commands, including usage examples for `show-config --account <name> --format yaml|json` and explanation of how overrides are indicated.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 15.1, 15.2, 15.3, 15.4, 15.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=15 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 15 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 15 - Implement Configuration Display Command [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

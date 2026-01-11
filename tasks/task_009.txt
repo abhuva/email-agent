@@ -1,43 +1,55 @@
 # Task ID: 9
-# Title: Implement local logging of processed emails
-# Status: done
-# Dependencies: 1
-# Priority: medium
-# Description: Create a local log of processed emails to track processing history and enable debugging.
+# Title: Implement Safety Interlock with Cost Estimation
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Create the safety mechanism to prevent accidental high-cost operations
 # Details:
-Implement TWO separate logging systems as specified in the PDD: 1) Unstructured operational logs → agent.log (from paths.log_file) and 2) Structured analytics → analytics.jsonl (from paths.analytics_file) with fields: uid, timestamp, status, scores. Both must be written for every processed email. Include functions to query the log for specific emails. Ensure log entries are created regardless of processing success or failure.
+Implement a safety interlock system that: 1) Uses IMAP.search to count emails before fetching, 2) Calculates estimated cost based on email count and model cost from config, 3) Displays cost to user, 4) Requires explicit confirmation before proceeding. Add this to the AccountProcessor before email fetching.
 
 # Test Strategy:
-Verify log entries are created for successfully processed emails. Check that log entries include all required fields. Test log querying functionality. Verify both logging systems work correctly.
+Test with various email counts and model costs. Verify correct cost calculation and that processing stops without confirmation.
 
 # Subtasks:
-## 1. Define log data structure and storage format [done]
+## 1. Add pre-fetch email counting using IMAP.search in AccountProcessor [pending]
 ### Dependencies: None
-### Description: Design the data structure for email logs and determine the storage format for both logging systems
+### Description: Introduce a preliminary IMAP.search step in AccountProcessor to count candidate emails before any fetching occurs.
 ### Details:
-Create data models for both logging systems as specified in the PDD: 1) Unstructured operational logs (agent.log) and 2) Structured analytics (analytics.jsonl). For the structured analytics, define fields including uid, timestamp, status, and scores. Create utility functions to serialize and deserialize log entries. Include documentation on the chosen formats and rationale. Use the settings.py facade to access log file paths (settings.get_log_file() and settings.get_analytics_file()).
+Identify the code path in AccountProcessor where email fetching currently begins (e.g., the method that first issues IMAP.fetch or equivalent). Before any fetch calls, insert a new step that uses IMAP.search with the same search criteria used for fetching to retrieve only the list of matching message IDs. From this list, compute the email count (length of IDs array). Ensure that this search result is not immediately fetched, and that the count and message ID list are stored in a suitable structure (e.g., a local variable or a small value object) that can be passed to subsequent steps in the processing flow.
 
-## 2. Implement log file management [done]
+## 2. Implement cost estimation function based on email count and model config [pending]
 ### Dependencies: 9.1
-### Description: Create functions to manage log files including creation, rotation, and configuration of storage location
+### Description: Create a reusable helper that estimates operation cost from the email count and model pricing configuration.
 ### Details:
-Develop a LogManager class that handles file operations for both logging systems. Implement functions to create new log files, append to existing ones, and rotate logs when they reach a certain size. Add configuration options for log file locations (using settings.get_log_file() and settings.get_analytics_file()), maximum file size, and retention policy. Include error handling for file system operations. Ensure thread-safety for concurrent logging operations.
+Add a dedicated function (e.g., estimateCost(emailCount, modelConfig)) in an appropriate module or within AccountProcessor. This function should: 1) accept the email count from the IMAP.search step and 2) read model cost parameters from the existing configuration (e.g., per-1K-tokens or per-email cost, plus any fixed overhead). Define a clear formula for mapping email count to estimated cost (for example, assume an average tokens-per-email value from config or a hardcoded constant, then multiply by the per-token price). Return a structured result containing at least the numeric cost (e.g., as a float in the account’s currency) and any auxiliary information needed for UI display (e.g., breakdown components or formatted string). Ensure that no network calls are made here; this should be a pure calculation using already available config values.
 
-## 3. Create core logging functionality [done]
-### Dependencies: 9.1, 9.2
-### Description: Implement the main logging functions to record email processing events in both logging systems
+## 3. Display estimated cost and prompt user for confirmation [pending]
+### Dependencies: 9.2
+### Description: Integrate a user-facing confirmation step that shows the estimated cost and clearly asks for explicit approval before proceeding.
 ### Details:
-Develop a Logger class with methods to log email processing events to both logging systems. Include functions for logging successful processing, failures, and warnings. Ensure each structured analytics log entry contains all required fields (uid, timestamp, status, scores). Implement different log levels (INFO, ERROR, DEBUG) for the operational logs. Add context information to help with debugging. Make sure logs are created for both successful and failed processing. Both logging systems must be written for every processed email as specified in the PDD.
+In the flow after computing the cost estimate, inject a UI or interaction step that presents: 1) the number of emails to be processed, 2) the estimated cost calculated by the helper, and 3) a clear warning that this is a potentially high-cost operation. Implement a confirmation mechanism appropriate to the environment (e.g., a modal dialog, CLI prompt, or web form) with explicit options such as "Confirm" and "Cancel". Ensure the code path awaits or handles the user’s response and that no email fetching begins until a positive confirmation is received. Structure this so that the confirmation step returns a boolean (confirmed / not confirmed) to the calling logic.
 
-## 4. Implement log query functionality [done]
-### Dependencies: 9.1, 9.3
-### Description: Create functions to search and retrieve specific log entries based on various criteria
-### Details:
-Develop query functions to search logs by email UID, subject, date range, or classification result. Implement filtering and sorting capabilities for log retrieval. Create pagination support for large log sets. Add functions to export query results. Ensure query performance is optimized for potentially large log files. Include examples of common query patterns in documentation. Focus primarily on the structured analytics logs for query functionality.
-
-## 5. Integrate logging system with email processor [done]
+## 4. Wire safety interlock logic into AccountProcessor control flow [pending]
 ### Dependencies: 9.3
-### Description: Connect the logging system with the existing email processing workflow
+### Description: Treat the pre-count, cost estimation, and confirmation as a safety interlock that must pass before email fetching can execute.
 ### Details:
-Modify the email processing code to call appropriate logging functions at key points in the workflow. Add log entries at the start and end of processing, and when classification decisions are made. Ensure errors and exceptions are properly logged with relevant context. Add configuration options to control logging verbosity. Test the integrated system with various email processing scenarios to verify all events are properly logged to both logging systems. Update documentation to explain how to use and interpret the logs. Use the settings.py facade to access all configuration values.
+Refactor AccountProcessor so that the main flow becomes: (a) run IMAP.search and obtain email count; (b) compute estimated cost via the cost estimation helper; (c) call the confirmation UI to obtain explicit user consent; (d) only if consent is granted, proceed to the existing email fetching logic using the previously obtained message IDs. If the user cancels, short-circuit the process gracefully: log that the operation was aborted by the safety interlock, and return an appropriate status to the caller without fetching or processing any emails. Ensure that the existing fetching logic does not run from any other code path that bypasses this interlock; if necessary, centralize fetch initiation behind a single method that enforces the interlock checks.
+
+## 5. Add configuration, thresholds, and tests for the safety interlock [pending]
+### Dependencies: 9.4
+### Description: Finalize the feature with configuration options, thresholds for what counts as high-cost, and automated tests covering the interlock behavior.
+### Details:
+Extend configuration to include relevant safety interlock settings, such as: average tokens per email (if used), per-model pricing data, a threshold above which the interlock is enforced, and any flags to enable/disable the interlock for development. Implement logic so that if the estimated cost is below a low-risk threshold, the system can optionally skip the confirmation step, while still allowing forced confirmation for all operations if configured. Write automated tests that cover: (1) operations below the threshold proceed without confirmation (if allowed by config), (2) operations above the threshold show the cost and require confirmation, (3) canceling at the confirmation step prevents any IMAP.fetch calls, and (4) confirming leads to correct fetching of the expected message IDs. Include tests for edge cases like zero matching emails, misconfigured pricing, and large email counts.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 9.1, 9.2, 9.3, 9.4, 9.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=9 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 9 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 9 - Implement Safety Interlock with Cost Estimation [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 

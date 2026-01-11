@@ -1,43 +1,77 @@
 # Task ID: 3
-# Title: Create IMAP connection and email retrieval module
-# Status: done
-# Dependencies: 1
+# Title: Implement Configuration Schema Validation
+# Status: pending
+# Dependencies: 2
 # Priority: high
-# Description: Develop a module to handle IMAP server connection and email retrieval with support for UID-based targeting.
+# Description: Add validation to ensure configurations meet required schema
 # Details:
-Implement an IMAP client module (src/imap_client.py) that connects to the server using credentials from the settings.py facade. Create functions to retrieve emails by UID, fetch all unprocessed emails, and handle IMAP flags. Include error handling for connection issues and authentication failures. Implement a function to check if an email has already been processed based on IMAP flags. All configuration access must be through the settings.py facade, not directly from YAML.
+Extend the ConfigLoader to validate configuration against a schema. Define the schema for required fields, types, and constraints. Implement validation that runs after configuration loading but before returning the merged config. Handle validation errors gracefully, logging issues but allowing processing to continue when possible.
 
 # Test Strategy:
-Test connection with valid and invalid credentials. Verify email retrieval by UID works correctly. Test flag checking functionality with processed and unprocessed emails.
+Create test cases with valid and invalid configurations. Verify validation catches missing required fields, incorrect types, and invalid values.
 
 # Subtasks:
-## 1. Implement IMAP connection setup with settings facade [done]
+## 1. Define configuration schema representation and location [pending]
 ### Dependencies: None
-### Description: Create a module that establishes a connection to an IMAP server using credentials from settings.py facade
+### Description: Decide how the configuration schema will be represented (e.g., JSON Schema, custom type/constraint model) and where it will live in the codebase so that required fields, types, and constraints are explicitly defined and easy to maintain.
 ### Details:
-Create an ImapClient class in src/imap_client.py that loads server details (host, port, username, password) from the settings.py facade, not directly from config.yaml. Implement a connect() method that establishes a secure connection to the IMAP server using the imaplib library. Include proper error handling for connection failures, authentication issues, and configuration errors. The connection should be reusable and support timeout configurations.
+1) Choose a schema representation appropriate for the current configuration format (e.g., if configs are JSON/YAML, consider using a JSON Schema–like structure or a lightweight custom schema model).
+2) Design a schema data structure that can express: required fields, allowed types, default values (if any), allowed value ranges/enums, and cross-field constraints if needed.
+3) Decide on schema ownership and loading strategy: hard-coded in code (e.g., a constant), loaded from a separate schema file, or composed from multiple module-level schemas.
+4) Implement the schema definition for the existing configuration surface (all currently supported config keys) using the chosen representation.
+5) Add basic unit tests that verify the schema object/schema file contains expected keys and constraints and can be loaded/instantiated without errors.
 
-## 2. Develop email retrieval by UID functionality [done]
+## 2. Implement core schema validation engine [pending]
 ### Dependencies: 3.1
-### Description: Create functions to fetch specific emails by their unique identifiers (UIDs)
+### Description: Create a reusable validation module that can take a loaded config object and the schema definition and return structured validation results (success, warnings, and errors).
 ### Details:
-Add a get_email_by_uid(uid) method to the ImapClient class that retrieves a specific email using its UID. The method should return the email in a structured format (headers, body parts, attachments). Implement proper error handling for cases where the UID doesn't exist or when fetch operations fail. Include support for different email formats (plain text, HTML, multipart). Use the settings.py facade for any configuration values needed.
+1) Introduce a dedicated validator component (e.g., ConfigSchemaValidator) that accepts (schema, config) and returns a result object containing: `isValid`, `errors[]`, `warnings[]`, and possibly normalized config data.
+2) Implement per-field validation: existence of required fields, type checks, default value filling (if supported), and basic constraints (min/max, enum, regex, etc.) according to the schema model.
+3) Implement schema-level validation hooks for cross-field rules if the schema representation supports them (e.g., callbacks or expression-based rules evaluated on the entire config object).
+4) Make validation errors and warnings structured (e.g., each item includes path/key, error code, human-readable message, and raw value) so callers can log and act on them.
+5) Add unit tests for the validator module that cover: missing required fields, wrong types, invalid constraint values, valid configs, and mixed warnings/errors.
 
-## 3. Implement batch email retrieval for unprocessed messages [done]
-### Dependencies: 3.1
-### Description: Create functionality to fetch all unprocessed emails from the IMAP server
+## 3. Integrate schema validation into ConfigLoader workflow [pending]
+### Dependencies: 3.2
+### Description: Extend the existing ConfigLoader to invoke the schema validation engine after loading and merging configuration sources but before returning the final configuration object.
 ### Details:
-Add a get_unprocessed_emails() method to the ImapClient class that searches for and retrieves all emails that haven't been processed yet (based on absence of specific flags from settings.get_imap_processed_tag()). The method should return a list of email objects with their UIDs. Implement pagination or batching for servers with many emails to prevent memory issues. Include search criteria customization options. Use the settings.py facade for all configuration values.
+1) Identify the point in ConfigLoader where all configuration sources have been loaded and merged into a single in-memory config object.
+2) Inject or construct the ConfigSchemaValidator and pass the merged config plus the schema defined in subtask 1.
+3) Update the ConfigLoader public API to propagate validation results appropriately, e.g., by returning a tuple (config, validationResult) or by exposing a separate method to retrieve validation diagnostics.
+4) Ensure that the validation is always executed in the normal code path (unless explicitly disabled by configuration/flags, if desired).
+5) Add integration tests that load realistic configs through ConfigLoader and assert that validation is invoked and that results match expectations.
 
-## 4. Develop IMAP flag management functionality [done]
-### Dependencies: 3.1
-### Description: Create methods to check, set, and clear IMAP flags on email messages
+## 4. Handle validation errors and warnings with graceful degradation [pending]
+### Dependencies: 3.3
+### Description: Define and implement policies for how ConfigLoader behaves on validation failures, including logging behavior, when to abort vs. continue, and how to surface issues to callers without crashing unnecessarily.
 ### Details:
-Add methods to the ImapClient class for flag management: set_flag(uid, flag), clear_flag(uid, flag), and has_flag(uid, flag). These methods should handle standard IMAP flags (\Seen, \Answered, \Flagged, \Deleted, \Draft) as well as custom flags. Implement proper error handling for flag operations and support batch operations for multiple UIDs. Use the settings.py facade to access the processed tag name (settings.get_imap_processed_tag()).
+1) Design severity levels and behavior: decide which validation issues are fatal (abort loading and throw/return an error) and which are non-fatal (log and continue), possibly driven by error codes or configuration flags (e.g., `strictValidation` mode).
+2) Implement logging for all validation issues using the project’s logging framework, including configuration key path, severity, and message; ensure logs are easily searchable.
+3) Implement control flow in ConfigLoader to:
+   - Abort and fail fast when fatal validation errors occur (e.g., missing critical required fields) and return a clear error to the caller.
+   - Allow processing to continue when only non-critical issues are found, while still returning/logging the validationResult for visibility.
+4) Consider adding hooks/callbacks so higher-level components can react to validation failures (e.g., show warnings in UI, metrics, or alerts).
+5) Extend integration tests to cover different error-handling scenarios (fatal errors, non-fatal warnings, strict vs. lenient behavior) and assert both logs and return values.
 
-## 5. Implement processed email tracking mechanism [done]
-### Dependencies: 3.2, 3.4
-### Description: Create functionality to track which emails have already been processed
+## 5. Document and test configuration schema validation end-to-end [pending]
+### Dependencies: 3.3, 3.4
+### Description: Add documentation and comprehensive tests that explain how schema validation works, how to extend the schema when adding new configuration options, and verify the entire flow from loading to validation and error handling.
 ### Details:
-Implement a is_processed(uid) method that checks if an email has been processed based on IMAP flags (using the processed tag from settings.get_imap_processed_tag(), which should be 'AIProcessed' according to the PDD). Add a mark_as_processed(uid) method that sets the appropriate flag. Create a helper function get_next_unprocessed_email() that returns the next email that needs processing. Include options to customize which flags indicate processed status. All configuration values must be accessed through the settings.py facade.
+1) Write developer documentation (e.g., in README or internal docs) describing: the schema format, how to add/modify config keys in the schema, how validation is triggered in ConfigLoader, and how to interpret validation errors/warnings.
+2) Document configuration options that influence validation behavior (e.g., strict mode, toggles to disable validation, log verbosity) if any were introduced.
+3) Add end-to-end tests that simulate real-world configuration files (valid, partially valid, and invalid) and assert on: final returned config, validationResult contents, and logged messages.
+4) If applicable, add regression tests for any previously known misconfigurations to ensure they are now caught by validation.
+5) Ensure CI runs the new tests and that failing validation behaviors are clearly visible in test output so future schema changes are safe and intentional.
+
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+### Dependencies: 3.1, 3.2, 3.3, 3.4, 3.5
+### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Details:
+1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
+2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
+3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
+4) Mark task done in Task Master: task-master set-status --id=3 --status=done
+5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 3 complete"
+6) Commit all changes: git add . && git commit -m "feat(module): Task 3 - Implement Configuration Schema Validation [docs]"
+This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
 
