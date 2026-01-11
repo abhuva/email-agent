@@ -51,6 +51,9 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[CI Integration](ci-integration.md)** — CI/CD configuration and test automation (Task 18.12) ✅
 - **[Test Isolation Fix](test-isolation-fix.md)** — Settings singleton reset fixture for test isolation ✅
 
+### V4 Configuration (In Development)
+- **[V4 Configuration System](v4-configuration.md)** — Multi-tenant configuration with account-specific overrides (Task 1) 🔄
+
 ## Analysis & Reports
 - **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄
 - **[Code Cleanup Assessment 2026](code-cleanup-assessment-2026.md)** — Code quality assessment (Task 16.1) ✅
