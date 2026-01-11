@@ -100,6 +100,17 @@ This is the top-level guide for all docs, implementation details, and project st
   - ✅ Task 19.4: Automated E2E test suite implementation
   - ✅ Task 19.5: Test execution and iteration guide
 
+### V4 User Documentation (Task 20) 🚧
+- **[V4 Documentation Guide](v4-documentation-guide.md)** — Documentation structure, style guide, and guidelines (Task 20.1) ✅
+- **[V4 Installation & Setup](v4-installation-setup.md)** — Installation, setup, and initial configuration guide (Task 20.2) 🚧
+- **[V4 Quick Start](v4-quick-start.md)** — Minimal setup guide to get V4 running quickly (Task 20.2) 🚧
+- **[V4 Configuration Reference](v4-configuration-reference.md)** — Complete configuration reference with all options and examples (Task 20.3) 🚧
+- **[V4 Rule Syntax Guide](v4-rule-syntax-guide.md)** — Complete rule syntax reference for blacklist and whitelist rules (Task 20.3) 🚧
+- **[V4 CLI Usage](v4-cli-usage.md)** — Command-line interface reference and usage guide (Task 20.3) 🚧
+- **[V4 Migration Guide](v4-migration-guide.md)** — Step-by-step guide for migrating from V3 to V4 (Task 20.4) 🚧
+- **[V4 Multi-Account Best Practices](v4-multi-account-best-practices.md)** — Best practices for multi-account deployments (Task 20.4) 🚧
+- **[V4 Troubleshooting](v4-troubleshooting.md)** — Comprehensive troubleshooting guide for common V4 issues (Task 20.5) 🚧
+
 ## Analysis & Reports
 - **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄
 - **[Code Cleanup Assessment 2026](code-cleanup-assessment-2026.md)** — Code quality assessment (Task 16.1) ✅
