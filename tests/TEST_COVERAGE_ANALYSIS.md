@@ -36,17 +36,25 @@
 ## Test Infrastructure Status
 
 ### Existing Fixtures (conftest.py)
+- `reset_settings_singleton` - **Autouse fixture** that resets Settings singleton between tests (ensures test isolation)
 - `valid_config_path` - V2 config format
 - `invalid_config_path` - Invalid config
 - `valid_env_file` - Environment variables
 - `invalid_env_file` - Invalid env file
+- V3 config fixtures (with proper structure) - ✅ Implemented
+- Mock IMAP server fixtures - ✅ Implemented
+- Mock LLM API fixtures - ✅ Implemented
+- Test email data fixtures - ✅ Implemented
+- Dry-run test helpers - ✅ Implemented
 
-### Needed Enhancements
-- V3 config fixtures (with proper structure)
-- Mock IMAP server fixtures
-- Mock LLM API fixtures
-- Test email data fixtures
-- Dry-run test helpers
+### Test Isolation
+The `reset_settings_singleton` fixture automatically runs before and after each test to:
+- Reset the Settings singleton instance
+- Clear any cached configuration state
+- Ensure tests don't leak state to each other
+- Provide consistent test results regardless of execution order
+
+This fixture uses `autouse=True`, so it runs automatically for all tests without requiring explicit fixture parameters.
 
 ## Test Coverage Goals
 

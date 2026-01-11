@@ -2,11 +2,17 @@
 Test fixtures and helpers for V3 email agent tests.
 
 This module provides comprehensive test infrastructure including:
+- Test isolation fixtures (Settings singleton reset)
 - V3 configuration fixtures
 - Mock IMAP server fixtures
 - Mock LLM API fixtures
 - Test email data fixtures
 - Dry-run test helpers
+
+Test Isolation:
+    The `reset_settings_singleton` fixture automatically resets the Settings
+    singleton before and after each test to prevent state leakage between tests.
+    This ensures proper test isolation and consistent test results.
 """
 import pytest
 import imaplib
@@ -17,6 +23,31 @@ from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+
+# ============================================================================
+# Test Isolation Fixtures (must be first)
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def reset_settings_singleton():
+    """
+    Automatically reset Settings singleton between tests to prevent state leakage.
+    
+    This fixture runs before and after every test to ensure test isolation.
+    """
+    from src.settings import Settings
+    
+    # Reset before test
+    if Settings._instance is not None:
+        Settings._instance._config = None
+    Settings._instance = None
+    
+    yield
+    
+    # Reset after test
+    if Settings._instance is not None:
+        Settings._instance._config = None
+    Settings._instance = None
 
 # ============================================================================
 # V3 Configuration Fixtures
