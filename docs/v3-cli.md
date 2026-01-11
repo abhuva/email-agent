@@ -1,53 +1,74 @@
-# V3 CLI Module
+# CLI Module
 
-**Status:** ✅ Complete (Task 2)  
+**Status:** ✅ Complete (Task 2, Task 11)  
 **Module:** `src/cli_v3.py`  
 **Tests:** `tests/test_cli_v3.py`
 
 ## Overview
 
-The V3 CLI module implements a command-line interface using the `click` library as specified in PDD Section 6. It replaces the argparse-based CLI with a more flexible, subcommand-based structure.
+The CLI module implements a command-line interface using the `click` library as specified in PDD Section 6. It supports both V3 (single-account) and V4 (multi-account) processing modes. The V3 mode uses the original Pipeline class, while V4 mode uses the MasterOrchestrator for multi-account processing.
 
 ## CLI Structure
 
 ### Main Commands
 
 ```bash
-python main.py process [OPTIONS]        # Process emails
+python main.py process [OPTIONS]        # Process emails (V3 or V4 mode)
 python main.py cleanup-flags [OPTIONS]  # Clean up IMAP flags
 python main.py backfill [OPTIONS]       # Process historical emails (backfill)
+python main.py show-config [OPTIONS]    # Display merged configuration (V4 mode)
 ```
 
 ### Process Command
 
-The `process` command is the main entry point for email processing:
+The `process` command is the main entry point for email processing. It supports both V3 (single-account) and V4 (multi-account) modes:
 
 ```bash
-python main.py process [--uid <ID>] [--force-reprocess] [--dry-run]
+# V3 Mode (single account, default behavior)
+python main.py process [--uid <ID>] [--force-reprocess] [--dry-run] [--max-emails <N>] [--debug-prompt]
+
+# V4 Mode (multi-account)
+python main.py process --account <name> [--dry-run]
+python main.py process --all [--dry-run]
 ```
 
-**Options:**
+**V3 Mode Options:**
 - `--uid <ID>`: Process a specific email by UID
 - `--force-reprocess`: Reprocess emails that have already been processed (ignores processed tags)
 - `--dry-run`: Preview processing without making changes (no file writes, no IMAP flag changes)
+- `--max-emails <N>`: Maximum number of emails to process
+- `--debug-prompt`: Write the formatted classification prompt to a debug file
+
+**V4 Mode Options:**
+- `--account <name>`: Process a specific account by name (mutually exclusive with --all)
+- `--all`: Process all available accounts (mutually exclusive with --account)
+- `--dry-run`: Preview processing without making changes
 
 **Examples:**
 ```bash
-# Process all unprocessed emails
+# V3 Mode: Process all unprocessed emails
 python main.py process
 
-# Process a specific email by UID
+# V3 Mode: Process a specific email by UID
 python main.py process --uid 12345
 
-# Force reprocess an email (even if already processed)
+# V3 Mode: Force reprocess an email
 python main.py process --uid 12345 --force-reprocess
 
-# Preview what would happen (dry run)
+# V3 Mode: Preview what would happen (dry run)
 python main.py process --dry-run
 
-# Process specific email in dry-run mode
-python main.py process --uid 12345 --dry-run
+# V4 Mode: Process 'work' account
+python main.py process --account work
+
+# V4 Mode: Process all accounts
+python main.py process --all
+
+# V4 Mode: Preview processing for 'work' account
+python main.py process --account work --dry-run
 ```
+
+**Note:** When `--account` or `--all` is specified, the command uses V4 MasterOrchestrator for multi-account processing. Otherwise, it uses V3 Pipeline for single-account processing.
 
 ### Cleanup Flags Command
 
@@ -118,6 +139,38 @@ python main.py backfill --dry-run --max-emails 10
 - Comprehensive logging and summary statistics
 
 **See Also:** [V3 Backfill Documentation](v3-backfill.md) for complete details.
+
+### Show-Config Command (V4)
+
+The `show-config` command displays the merged configuration for a specific account:
+
+```bash
+python main.py show-config --account <name> [--format yaml|json]
+```
+
+**Options:**
+- `--account <name>`: **Required.** Account name to show configuration for
+- `--format <format>`: Output format - `yaml` (default) or `json`
+
+**Examples:**
+```bash
+# Show configuration for 'work' account (YAML format)
+python main.py show-config --account work
+
+# Show configuration for 'work' account (JSON format)
+python main.py show-config --account work --format json
+
+# Show configuration for 'personal' account
+python main.py show-config --account personal
+```
+
+**Features:**
+- Displays merged configuration (global config + account-specific overrides)
+- Useful for debugging configuration issues
+- Supports both YAML and JSON output formats
+- Validates account name format
+
+**Note:** This command requires V4 multi-account configuration structure with `config/accounts/` directory.
 
 ## Configuration Options
 

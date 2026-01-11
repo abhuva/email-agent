@@ -1,6 +1,6 @@
 # Task ID: 11
 # Title: Update CLI for Multi-Account Support
-# Status: pending
+# Status: done
 # Dependencies: 10
 # Priority: medium
 # Description: Enhance the CLI to support account-specific commands
@@ -11,7 +11,7 @@ Update the CLI module to support new commands: 'process --account <name>', 'proc
 Test each command with various arguments including edge cases like invalid account names. Verify proper integration with the MasterOrchestrator.
 
 # Subtasks:
-## 1. Extend CLI argument parsing to support new multi-account flags [pending]
+## 1. Extend CLI argument parsing to support new multi-account flags [done]
 ### Dependencies: None
 ### Description: Add and wire up the new CLI options `process --account <name>`, `process --all`, and `show-config --account <name>` in the existing CLI module.
 ### Details:
@@ -21,7 +21,7 @@ Identify where CLI commands and flags are currently defined (e.g., argparse/Clic
 - Ensure the parsed arguments structure (e.g., options object) includes fields for `accountName`, `allAccounts`, etc., that can be consumed downstream.
 - Update any command routing or dispatch switch statements so that invocations including these options reach the appropriate handler functions without changing behavior of existing commands.
 
-## 2. Implement argument validation rules for account-related options [pending]
+## 2. Implement argument validation rules for account-related options [done]
 ### Dependencies: 11.1
 ### Description: Define and enforce validation rules for the new account-related flags to ensure correct and unambiguous CLI usage.
 ### Details:
@@ -32,7 +32,7 @@ Implement validation logic that runs immediately after parsing and before invoki
 - Ensure validation errors exit with a non-zero status code and print concise, user-friendly messages that indicate the invalid combination and how to fix it.
 - Add unit tests (or extend existing ones) to cover valid and invalid combinations of the new flags.
 
-## 3. Integrate account-aware commands with MasterOrchestrator [pending]
+## 3. Integrate account-aware commands with MasterOrchestrator [done]
 ### Dependencies: 11.1, 11.2
 ### Description: Connect the new CLI command variants to the MasterOrchestrator so that account-specific and all-account processing is executed correctly.
 ### Details:
@@ -43,7 +43,7 @@ Update the command handlers to call the MasterOrchestrator with the appropriate 
 - Ensure that orchestration errors are surfaced to the CLI with proper exit codes and messages while not leaking internal stack traces in normal error output.
 - Add tests (or integration-style checks) to verify that the correct MasterOrchestrator methods are invoked for each flag combination.
 
-## 4. Update and refine CLI help text and usage documentation [pending]
+## 4. Update and refine CLI help text and usage documentation [done]
 ### Dependencies: 11.1, 11.2, 11.3
 ### Description: Improve the CLI help output and related in-tool documentation to clearly describe the new multi-account options and their usage patterns.
 ### Details:
@@ -53,7 +53,7 @@ Modify the help/usage strings associated with the `process` and `show-config` co
 - Ensure the global `--help` output and any command-specific `--help` reflect the new options and validation rules.
 - If there is separate README or CLI reference documentation in the repo, update it to include example invocations and explain common workflows (single account vs all accounts).
 
-## 5. Add comprehensive tests and perform regression verification [pending]
+## 5. Add comprehensive tests and perform regression verification [done]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4
 ### Description: Create or extend automated tests to cover new behaviors and verify that existing CLI functionality remains unaffected.
 ### Details:
@@ -64,7 +64,7 @@ Implement test cases for the new multi-account commands using the project’s ex
 - Run the full test suite (and any available CLI integration tests) to confirm no regressions in existing commands.
 - Adjust or add mocks/stubs for MasterOrchestrator as necessary to isolate CLI behavior in the tests.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4, 11.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:

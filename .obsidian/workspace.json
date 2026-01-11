@@ -240,6 +240,8 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "MagicMock/settings.get_analytics_file()/1352646711952",
+    "MagicMock/settings.get_analytics_file()",
     "docs/v4-orchestrator.md",
     "prd-v4.md",
     "pdd_V4.md",
@@ -256,7 +258,6 @@
     "docs/v4-content-parser.md",
     "LIVE_TEST_SETUP.md",
     "src/__pycache__/content_parser.cpython-313.pyc",
-    "tests/__pycache__/test_content_parser.cpython-313-pytest-8.3.5.pyc",
     "old pdd+prd/prd.md",
     "docs/v4-main-integration-design.md",
     "docs/v4-models.md",

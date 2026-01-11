@@ -54,9 +54,10 @@ class CleanupFlagsOptions:
 @click.pass_context
 def cli(ctx: click.Context, config: Path, env: Path):
     """
-    Email-Agent V3: Headless IMAP AI Triage CLI
+    Email-Agent: Headless IMAP AI Triage CLI
     
     Process emails using AI classification and generate Obsidian notes.
+    Supports both V3 (single-account) and V4 (multi-account) processing modes.
     """
     # Ensure context object exists
     ctx.ensure_object(dict)
@@ -130,22 +131,64 @@ def _ensure_config_initialized(ctx: click.Context) -> None:
     default=False,
     help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
 )
+@click.option(
+    '--account',
+    type=str,
+    help='Process a specific account by name (V4 multi-account mode). Mutually exclusive with --all.'
+)
+@click.option(
+    '--all',
+    'all_accounts',
+    is_flag=True,
+    default=False,
+    help='Process all available accounts (V4 multi-account mode). Mutually exclusive with --account.'
+)
 @click.pass_context
-def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_run: bool, max_emails: Optional[int], debug_prompt: bool):
+def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_run: bool, max_emails: Optional[int], debug_prompt: bool, account: Optional[str], all_accounts: bool):
     """
     Main command for bulk or single email processing.
     
     Processes emails using AI classification and generates Obsidian notes.
     By default, processes unprocessed emails according to the configured IMAP query.
     
+    V4 Multi-Account Mode:
+        Use --account <name> to process a specific account, or --all to process all accounts.
+        These options are mutually exclusive and enable V4 multi-account processing.
+    
     Examples:
-        python main.py process                    # Process unprocessed emails
-        python main.py process --uid 12345       # Process specific email
-        python main.py process --force-reprocess # Reprocess all emails
+        python main.py process                    # Process unprocessed emails (V3 mode)
+        python main.py process --uid 12345       # Process specific email (V3 mode)
+        python main.py process --force-reprocess # Reprocess all emails (V3 mode)
         python main.py process --dry-run         # Test without side effects
         python main.py process --max-emails 5    # Process only 5 emails
         python main.py process --uid 400 --debug-prompt  # Write prompt to debug file
+        python main.py process --account work    # Process 'work' account (V4 mode)
+        python main.py process --all             # Process all accounts (V4 mode)
+        python main.py process --account work --dry-run  # Preview processing for 'work' account
     """
+    # Validate account-related arguments (subtask 11.2)
+    # Check if account is explicitly provided (not None, even if empty string)
+    account_provided = account is not None
+    
+    if account_provided and all_accounts:
+        click.echo("Error: --account and --all are mutually exclusive. Use only one.", err=True)
+        sys.exit(1)
+    
+    # Validate account name if provided (even if empty, to catch empty strings)
+    if account_provided:
+        try:
+            account = _validate_account_name(account)
+        except click.BadParameter as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+    
+    # If account or all_accounts is specified, use V4 MasterOrchestrator
+    if account_provided or all_accounts:
+        # V4 multi-account processing path
+        _process_v4_accounts(ctx, account, all_accounts, dry_run)
+        return
+    
+    # V3 single-account processing path (existing behavior)
     # Initialize config (lazy loading)
     _ensure_config_initialized(ctx)
     
@@ -594,6 +637,208 @@ def get_cleanup_options(ctx: click.Context) -> CleanupFlagsOptions:
     if 'cleanup_options' not in ctx.obj:
         raise RuntimeError("get_cleanup_options() must be called within cleanup-flags command context")
     return ctx.obj['cleanup_options']
+
+
+def _validate_account_name(account_name: str) -> str:
+    """
+    Validate account name format and return normalized name.
+    
+    Args:
+        account_name: Account name to validate
+        
+    Returns:
+        Normalized account name (stripped)
+        
+    Raises:
+        click.BadParameter: If account name is invalid
+    """
+    if not account_name:
+        raise click.BadParameter("Account name cannot be empty")
+    
+    account_name = account_name.strip()
+    
+    if not account_name:
+        raise click.BadParameter("Account name cannot be empty or whitespace only")
+    
+    # Validate length (reasonable limit)
+    if len(account_name) > 100:
+        raise click.BadParameter("Account name is too long (max 100 characters)")
+    
+    # Validate characters (alphanumeric, dash, underscore)
+    if not all(c.isalnum() or c in ('-', '_') for c in account_name):
+        raise click.BadParameter(
+            "Account name contains invalid characters. "
+            "Only alphanumeric characters, dashes, and underscores are allowed."
+        )
+    
+    return account_name
+
+
+def _process_v4_accounts(
+    ctx: click.Context,
+    account: Optional[str],
+    all_accounts: bool,
+    dry_run: bool
+) -> None:
+    """
+    Process accounts using V4 MasterOrchestrator.
+    
+    This function handles multi-account processing by:
+    1. Building argv for MasterOrchestrator
+    2. Creating and running MasterOrchestrator
+    3. Displaying results
+    
+    Args:
+        ctx: Click context object
+        account: Account name to process (already validated, None if processing all)
+        all_accounts: Whether to process all accounts
+        dry_run: Whether to run in dry-run mode
+    """
+    import logging
+    from pathlib import Path
+    from src.orchestrator import MasterOrchestrator
+    
+    # Build argv for MasterOrchestrator
+    argv = []
+    if account:
+        argv.extend(['--account', account])
+    elif all_accounts:
+        argv.append('--all-accounts')
+    
+    if dry_run:
+        argv.append('--dry-run')
+    
+    # Get config directory from context
+    config_dir = ctx.obj.get('config_path', 'config/config.yaml')
+    # Extract directory from config path
+    if config_dir.endswith('.yaml') or config_dir.endswith('.yml'):
+        config_base_dir = str(Path(config_dir).parent)
+    else:
+        config_base_dir = config_dir
+    
+    # Override if config_dir is different from default
+    if config_base_dir != 'config':
+        argv.extend(['--config-dir', config_base_dir])
+    
+    # Initialize logging
+    logger = logging.getLogger('email_agent')
+    if not logger.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+    
+    try:
+        # Create MasterOrchestrator
+        orchestrator = MasterOrchestrator(
+            config_base_dir=config_base_dir,
+            logger=logger
+        )
+        
+        # Run orchestration
+        result = orchestrator.run(argv)
+        
+        # Display results
+        click.echo("\n" + "=" * 70)
+        click.echo("Processing Summary")
+        click.echo("=" * 70)
+        click.echo(f"Total accounts: {result.total_accounts}")
+        click.echo(f"  ✓ Successful: {result.successful_accounts}")
+        click.echo(f"  ✗ Failed: {result.failed_accounts}")
+        click.echo(f"Total time: {result.total_time:.2f}s")
+        
+        if result.failed_accounts > 0:
+            click.echo("\nFailed accounts:")
+            for account_id, (success, error) in result.account_results.items():
+                if not success:
+                    click.echo(f"  - {account_id}: {error}", err=True)
+            click.echo("=" * 70)
+            sys.exit(1)
+        else:
+            click.echo("=" * 70)
+            
+    except Exception as e:
+        click.echo(f"Error during multi-account processing: {e}", err=True)
+        logger.error(f"MasterOrchestrator execution failed: {e}", exc_info=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.option(
+    '--account',
+    type=str,
+    required=True,
+    help='Account name to show configuration for (required)'
+)
+@click.option(
+    '--format',
+    type=click.Choice(['yaml', 'json'], case_sensitive=False),
+    default='yaml',
+    help='Output format (default: yaml)'
+)
+@click.pass_context
+def show_config(ctx: click.Context, account: str, format: str):
+    """
+    Display merged configuration for a specific account.
+    
+    Shows the merged configuration (global config + account-specific overrides)
+    for the specified account. Useful for debugging configuration issues.
+    
+    Examples:
+        python main.py show-config --account work
+        python main.py show-config --account work --format json
+        python main.py show-config --account personal --format yaml
+    """
+    import yaml
+    import json
+    from pathlib import Path
+    from src.config_loader import ConfigLoader, ConfigurationError
+    
+    # Validate account name
+    try:
+        account = _validate_account_name(account)
+    except click.BadParameter as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    
+    # Get config directory from context
+    config_dir = ctx.obj.get('config_path', 'config/config.yaml')
+    # Extract directory from config path
+    if config_dir.endswith('.yaml') or config_dir.endswith('.yml'):
+        config_base_dir = str(Path(config_dir).parent)
+    else:
+        config_base_dir = config_dir
+    
+    try:
+        # Load merged configuration
+        loader = ConfigLoader(
+            base_dir=config_base_dir,
+            enable_validation=True
+        )
+        
+        config = loader.load_merged_config(account)
+        
+        # Format output
+        if format.lower() == 'json':
+            output = json.dumps(config, indent=2, default=str)
+        else:  # yaml
+            output = yaml.dump(config, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        
+        # Display configuration
+        click.echo(f"\nConfiguration for account: {account}")
+        click.echo("=" * 70)
+        click.echo(output)
+        click.echo("=" * 70)
+        
+    except FileNotFoundError as e:
+        click.echo(f"Error: Configuration file not found: {e}", err=True)
+        sys.exit(1)
+    except ConfigurationError as e:
+        click.echo(f"Error: Configuration error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: Unexpected error loading configuration: {e}", err=True)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

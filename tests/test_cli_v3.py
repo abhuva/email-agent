@@ -100,9 +100,10 @@ def test_cli_help(runner):
     """Test that CLI help is displayed correctly."""
     result = runner.invoke(cli, ['--help'])
     assert result.exit_code == 0
-    assert 'Email-Agent V3' in result.output
+    assert 'Email-Agent' in result.output
     assert 'process' in result.output
     assert 'cleanup-flags' in result.output
+    assert 'show-config' in result.output
 
 
 def test_cli_version(runner):
@@ -395,3 +396,270 @@ def test_cleanup_flags_options_dataclass():
     )
     assert options.config_path == 'config.yaml'
     assert options.env_path == '.env'
+
+
+# ============================================================================
+# V4 Multi-Account CLI Tests (Task 11)
+# ============================================================================
+
+@pytest.fixture
+def temp_v4_config(tmp_path):
+    """Create a temporary V4 config structure for testing."""
+    test_dir = tmp_path / "test_config"
+    test_dir.mkdir()
+    (test_dir / "config").mkdir()
+    (test_dir / "config" / "accounts").mkdir()
+    (test_dir / "logs").mkdir()
+    
+    # Create global config
+    global_config = test_dir / "config" / "config.yaml"
+    global_config_data = {
+        'imap': {
+            'server': 'global.imap.com',
+            'port': 143,
+            'username': 'global@example.com',
+            'password_env': 'TEST_IMAP_PASSWORD',
+            'query': 'UNSEEN',
+            'processed_tag': 'AIProcessed'
+        },
+        'paths': {
+            'obsidian_vault': str(test_dir),
+            'log_file': str(test_dir / "logs" / "test.log")
+        }
+    }
+    with open(global_config, 'w') as f:
+        yaml.dump(global_config_data, f)
+    
+    # Create account config
+    account_config = test_dir / "config" / "accounts" / "work.yaml"
+    account_config_data = {
+        'imap': {
+            'server': 'work.imap.com',
+            'username': 'work@example.com'
+        }
+    }
+    with open(account_config, 'w') as f:
+        yaml.dump(account_config_data, f)
+    
+    yield str(test_dir / "config" / "config.yaml")
+
+
+@patch('src.orchestrator.MasterOrchestrator')
+def test_process_command_with_account_flag(mock_orchestrator_class, runner, temp_v4_config, test_env_vars):
+    """Test process command with --account flag (V4 mode)."""
+    mock_orchestrator = MagicMock()
+    mock_result = MagicMock()
+    mock_result.total_accounts = 1
+    mock_result.successful_accounts = 1
+    mock_result.failed_accounts = 0
+    mock_result.total_time = 1.5
+    mock_result.account_results = {'work': (True, None)}
+    mock_orchestrator.run.return_value = mock_result
+    mock_orchestrator_class.return_value = mock_orchestrator
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', 'work'
+    ])
+    
+    assert result.exit_code == 0
+    assert 'Processing Summary' in result.output
+    assert 'Total accounts: 1' in result.output
+    assert 'Successful: 1' in result.output
+    mock_orchestrator_class.assert_called_once()
+    mock_orchestrator.run.assert_called_once()
+    # Check that --account was passed
+    call_args = mock_orchestrator.run.call_args[0][0]
+    assert '--account' in call_args
+    assert 'work' in call_args
+
+
+@patch('src.orchestrator.MasterOrchestrator')
+def test_process_command_with_all_flag(mock_orchestrator_class, runner, temp_v4_config, test_env_vars):
+    """Test process command with --all flag (V4 mode)."""
+    mock_orchestrator = MagicMock()
+    mock_result = MagicMock()
+    mock_result.total_accounts = 2
+    mock_result.successful_accounts = 2
+    mock_result.failed_accounts = 0
+    mock_result.total_time = 2.0
+    mock_result.account_results = {'work': (True, None), 'personal': (True, None)}
+    mock_orchestrator.run.return_value = mock_result
+    mock_orchestrator_class.return_value = mock_orchestrator
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--all'
+    ])
+    
+    assert result.exit_code == 0
+    assert 'Processing Summary' in result.output
+    mock_orchestrator_class.assert_called_once()
+    mock_orchestrator.run.assert_called_once()
+    # Check that --all-accounts was passed
+    call_args = mock_orchestrator.run.call_args[0][0]
+    assert '--all-accounts' in call_args
+
+
+def test_process_command_account_and_all_mutually_exclusive(runner, temp_v4_config):
+    """Test that --account and --all are mutually exclusive."""
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', 'work', '--all'
+    ])
+    
+    assert result.exit_code == 1
+    assert 'mutually exclusive' in result.output.lower()
+
+
+def test_process_command_invalid_account_name(runner, temp_v4_config):
+    """Test process command with invalid account name."""
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', ''
+    ])
+    
+    assert result.exit_code == 1
+    assert 'cannot be empty' in result.output.lower()
+
+
+def test_process_command_account_name_too_long(runner, temp_v4_config):
+    """Test process command with account name that's too long."""
+    long_name = 'a' * 101
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', long_name
+    ])
+    
+    assert result.exit_code == 1
+    assert 'too long' in result.output.lower()
+
+
+def test_process_command_account_name_invalid_characters(runner, temp_v4_config):
+    """Test process command with account name containing invalid characters."""
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', 'work@account'
+    ])
+    
+    assert result.exit_code == 1
+    assert 'invalid characters' in result.output.lower()
+
+
+@patch('src.orchestrator.MasterOrchestrator')
+def test_process_command_account_with_dry_run(mock_orchestrator_class, runner, temp_v4_config, test_env_vars):
+    """Test process command with --account and --dry-run flags."""
+    mock_orchestrator = MagicMock()
+    mock_result = MagicMock()
+    mock_result.total_accounts = 1
+    mock_result.successful_accounts = 1
+    mock_result.failed_accounts = 0
+    mock_result.total_time = 1.0
+    mock_result.account_results = {'work': (True, None)}
+    mock_orchestrator.run.return_value = mock_result
+    mock_orchestrator_class.return_value = mock_orchestrator
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'process', '--account', 'work', '--dry-run'
+    ])
+    
+    assert result.exit_code == 0
+    mock_orchestrator.run.assert_called_once()
+    # Check that --dry-run was passed
+    call_args = mock_orchestrator.run.call_args[0][0]
+    assert '--dry-run' in call_args
+
+
+@patch('src.config_loader.ConfigLoader')
+def test_show_config_command_yaml(mock_loader_class, runner, temp_v4_config):
+    """Test show-config command with YAML output format."""
+    mock_loader = MagicMock()
+    mock_config = {
+        'imap': {
+            'server': 'work.imap.com',
+            'username': 'work@example.com'
+        }
+    }
+    mock_loader.load_merged_config.return_value = mock_config
+    mock_loader_class.return_value = mock_loader
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config', '--account', 'work'
+    ])
+    
+    assert result.exit_code == 0
+    assert 'Configuration for account: work' in result.output
+    assert 'work.imap.com' in result.output
+    mock_loader.load_merged_config.assert_called_once_with('work')
+
+
+@patch('src.config_loader.ConfigLoader')
+def test_show_config_command_json(mock_loader_class, runner, temp_v4_config):
+    """Test show-config command with JSON output format."""
+    mock_loader = MagicMock()
+    mock_config = {
+        'imap': {
+            'server': 'work.imap.com',
+            'username': 'work@example.com'
+        }
+    }
+    mock_loader.load_merged_config.return_value = mock_config
+    mock_loader_class.return_value = mock_loader
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config', '--account', 'work', '--format', 'json'
+    ])
+    
+    assert result.exit_code == 0
+    assert 'Configuration for account: work' in result.output
+    assert 'work.imap.com' in result.output
+    assert '"server"' in result.output  # JSON format indicator
+
+
+def test_show_config_command_missing_account(runner, temp_v4_config):
+    """Test show-config command without --account flag."""
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config'
+    ])
+    
+    assert result.exit_code != 0
+    assert 'required' in result.output.lower() or 'missing' in result.output.lower()
+
+
+@patch('src.config_loader.ConfigLoader')
+def test_show_config_command_invalid_account(mock_loader_class, runner, temp_v4_config):
+    """Test show-config command with invalid account name."""
+    mock_loader = MagicMock()
+    from src.config_loader import ConfigurationError
+    mock_loader.load_merged_config.side_effect = ConfigurationError("Account not found")
+    mock_loader_class.return_value = mock_loader
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config', '--account', 'nonexistent'
+    ])
+    
+    assert result.exit_code == 1
+    assert 'error' in result.output.lower() or 'not found' in result.output.lower()
+
+
+def test_show_config_command_help(runner):
+    """Test that show-config command help is displayed correctly."""
+    result = runner.invoke(cli, ['show-config', '--help'])
+    assert result.exit_code == 0
+    assert '--account' in result.output
+    assert '--format' in result.output
+    assert 'yaml' in result.output.lower() or 'json' in result.output.lower()
+
+
+def test_process_command_help_includes_account_options(runner):
+    """Test that process command help includes new account options."""
+    result = runner.invoke(cli, ['process', '--help'])
+    assert result.exit_code == 0
+    assert '--account' in result.output
+    assert '--all' in result.output
+    assert 'multi-account' in result.output.lower() or 'V4' in result.output
