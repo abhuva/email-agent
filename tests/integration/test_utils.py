@@ -83,6 +83,14 @@ def create_test_global_config(
             'obsidian_vault': '/test/vault',
             'log_file': 'logs/test.log'
         },
+        'openrouter': {
+            'api_key_env': 'OPENROUTER_API_KEY',
+            'api_url': 'https://openrouter.ai/api/v1'
+        },
+        'summarization': {
+            'model': 'test-summarization-model',
+            'enabled': False
+        },
         'processing': {
             'importance_threshold': 7,
             'spam_threshold': 5,

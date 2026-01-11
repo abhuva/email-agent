@@ -1281,7 +1281,7 @@
           "id": 2,
           "title": "Implement ConfigLoader ↔ AccountProcessor integration tests",
           "description": "Create integration tests that verify ConfigLoader correctly provides configuration and account data to AccountProcessor and that the processor behaves as expected for different configuration scenarios.",
-          "status": "in-progress",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1291,7 +1291,7 @@
           "id": 3,
           "title": "Implement Rules Engine ↔ processing pipeline integration tests",
           "description": "Create integration tests that verify the Rules Engine is invoked by the processing pipeline and that rule evaluations correctly influence pipeline behavior and outputs.",
-          "status": "pending",
+          "status": "in-progress",
           "dependencies": [
             1,
             2
