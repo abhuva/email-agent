@@ -1,6 +1,6 @@
 # Task ID: 6
 # Title: Implement Rules Engine - Blacklist Rules
-# Status: pending
+# Status: done
 # Dependencies: 4
 # Priority: high
 # Description: Create the blacklist component of the rules engine
@@ -11,37 +11,37 @@ Create src/rules.py with functions to load and process blacklist rules. Implemen
 Create test cases with various blacklist rules and email scenarios. Verify correct actions are returned for different trigger types and values.
 
 # Subtasks:
-## 1. Define blacklist rule data structures and ActionEnum integration [pending]
+## 1. Define blacklist rule data structures and ActionEnum integration [done]
 ### Dependencies: None
 ### Description: Introduce core types for blacklist rules and ensure compatibility with the existing ActionEnum used by the rules engine.
 ### Details:
 1) Inspect the existing codebase to locate the ActionEnum definition (or create it if this task includes that), confirming the available actions include DROP, RECORD, and PASS. 2) In src/rules.py, define a clear internal representation for blacklist rules, e.g., a dataclass or typed dict such as `BlacklistRule` with fields like `trigger_type` ("sender" | "subject" | "domain"), `pattern` (string or compiled regex), and `action` (ActionEnum). 3) Decide whether wildcard/regex support is required based on the PRD; if yes, add fields to store the raw pattern and a compiled matcher. 4) Add type hints for all new structures and functions (using `typing` and possibly `dataclasses`) to guide later implementation and testing. 5) Document the expected rule schema in comments or docstrings so later subtasks can reference it (e.g., example rule objects and which fields are mandatory).
 
-## 2. Implement rule loading and validation with error handling [pending]
+## 2. Implement rule loading and validation with error handling [done]
 ### Dependencies: 6.1
 ### Description: Create functions in src/rules.py to load blacklist rules from the configured source and validate them, raising or logging appropriate errors for malformed rules.
 ### Details:
 1) Based on the PRD, determine the source/format for blacklist rules (e.g., JSON file, YAML, DB rows, or in-memory config) and define a `load_blacklist_rules(source_config) -> list[BlacklistRule]` function that reads and parses them into the data structure defined in Subtask 1. 2) Implement a dedicated validation function like `validate_blacklist_rule(raw_rule) -> BlacklistRule` that checks required fields (trigger type, pattern, action), validates trigger type against supported values (sender, subject, domain), and maps action strings to ActionEnum, failing fast on unknown actions. 3) Add robust error handling: for malformed rules, either skip them and log a structured warning or raise a custom exception (e.g., `InvalidRuleError`) according to project conventions; ensure errors clearly indicate which rule failed and why. 4) If regex or wildcard patterns are used, compile them in this step and catch compilation errors, treating them as malformed rules. 5) Add unit tests or at least stub tests for valid, partially valid, and malformed rule inputs to confirm correct behavior and error handling.
 
-## 3. Implement rule matching helpers for sender, subject, and domain triggers [pending]
+## 3. Implement rule matching helpers for sender, subject, and domain triggers [done]
 ### Dependencies: 6.1, 6.2
 ### Description: Create reusable helper functions that check whether a given email_obj matches a single blacklist rule for each supported trigger type.
 ### Details:
 1) Define a small interface for `email_obj` expectations in docstrings or types (e.g., it must expose `sender`, `subject`, and `domain` properties or fields), aligning with how emails are represented elsewhere in the project. 2) Implement helper functions such as `match_sender_rule(email_obj, rule) -> bool`, `match_subject_rule(email_obj, rule) -> bool`, and `match_domain_rule(email_obj, rule) -> bool` (or a generic `rule_matches_email(email_obj, rule) -> bool` that internally dispatches based on `rule.trigger_type`). 3) For each trigger type, implement the matching logic according to the PRD: e.g., exact match, case-insensitive match, substring/contains, wildcard, or regex as specified. 4) Ensure matching functions gracefully handle missing or empty fields on `email_obj` (e.g., no subject) without raising unexpected exceptions, returning False instead and letting higher layers decide on default behavior. 5) Add targeted tests for each helper to cover positive matches, negative matches, case sensitivity rules, and edge cases like empty strings or None values.
 
-## 4. Implement check_blacklist(email_obj, rules) -> ActionEnum [pending]
+## 4. Implement check_blacklist(email_obj, rules) -> ActionEnum [done]
 ### Dependencies: 6.2, 6.3
 ### Description: Create the main blacklist evaluation function that iterates over rules, applies matching logic, and returns the appropriate ActionEnum value.
 ### Details:
 1) In src/rules.py, implement `check_blacklist(email_obj, rules: list[BlacklistRule]) -> ActionEnum`. 2) For each rule in `rules`, use the helper matching functions from Subtask 3 to determine if the rule applies to the given email_obj. 3) Define and implement the evaluation strategy per the PRD: e.g., first-match-wins, priority based on rule order, or rule-specific precedence (such as DROP overriding RECORD, which overrides PASS). If the PRD defines explicit priority rules, encode them clearly in the logic; otherwise adopt a consistent, documented strategy. 4) Ensure that any unexpected issues (e.g., a rule missing a required field) are handled defensively—either by catching exceptions from malformed rules and logging them or by skipping those rules, without causing the entire evaluation to fail. 5) If no blacklist rules match, return the default ActionEnum (likely PASS) as specified in the PRD; document this default behavior in the function’s docstring and tests.
 
-## 5. Integrate, test, and document the blacklist rules component [pending]
+## 5. Integrate, test, and document the blacklist rules component [done]
 ### Dependencies: 6.4
 ### Description: Wire the blacklist component into the existing rules engine flow, add comprehensive tests, and document usage and error cases.
 ### Details:
 1) Integrate `load_blacklist_rules` and `check_blacklist` into the broader rules engine or email processing pipeline, ensuring they are called at the correct stage in message handling (e.g., pre-processing before other rules, as specified in the PRD). 2) Create unit tests and, if applicable, integration tests that cover end-to-end scenarios: emails that should be DROPed, RECORDED, or PASSED through, including combinations of sender, subject, and domain rules, and cases where multiple rules match with different actions. 3) Add tests for malformed rules at load time and confirm that the system behavior matches the expected error-handling strategy (e.g., skipped with logs vs. raising). 4) Document the blacklist rules behavior in code comments or project documentation: expected rule schema, supported trigger types, matching semantics (exact/contains/regex), precedence rules, and default action when no match occurs. 5) If any configuration flags or environment variables are used to control blacklist behavior (e.g., enabling/disabling blacklist, rule file paths), ensure they are documented and validated, and add tests for configuration-driven behavior where possible.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 6.1, 6.2, 6.3, 6.4, 6.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:
