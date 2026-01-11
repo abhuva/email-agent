@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Implement Configuration Loader with Deep Merge Logic
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Create the ConfigLoader class that handles loading and merging global and account-specific configurations
@@ -75,7 +75,7 @@ Write unit tests with various configuration scenarios: overriding primitives, me
 4) Optionally add type hints for all public methods and run a type checker (mypy or similar) to ensure signatures and return types are consistent.
 5) Optionally expose a convenience function at module level, load_merged_config(account_name: str, base_dir: Path | str = DEFAULT_BASE_DIR) -> dict, that internally constructs ConfigLoader and delegates to its method, if this matches the project's expected public API.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 2.1, 2.2, 2.3, 2.4, 2.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:

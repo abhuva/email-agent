@@ -10,16 +10,25 @@ configuration files. It implements deep merge logic where:
 This is the V4 configuration loader that supports multi-tenant configurations
 as specified in pdd_V4.md Section 3.1.
 
+The loader automatically validates merged configurations against a schema
+to ensure they meet required structure and constraints.
+
 Usage:
     >>> from src.config_loader import ConfigLoader
     >>> loader = ConfigLoader('config')
     >>> config = loader.load_merged_config('work')
     >>> print(config['imap']['server'])
+    >>> # Get validation results
+    >>> validation_result = loader.get_last_validation_result()
+    >>> if not validation_result.is_valid:
+    >>>     print(f"Validation errors: {validation_result.errors}")
 """
 import yaml
 import logging
 from pathlib import Path
 from typing import Dict, Optional
+
+from src.config_validator import ConfigSchemaValidator, ValidationResult
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +62,8 @@ class ConfigLoader:
         self,
         base_dir: Path | str = "config",
         global_filename: str = "config.yaml",
-        accounts_dirname: str = "accounts"
+        accounts_dirname: str = "accounts",
+        enable_validation: bool = True
     ) -> None:
         """
         Initialize the ConfigLoader with paths to configuration files.
@@ -62,17 +72,27 @@ class ConfigLoader:
             base_dir: Base directory containing config files
             global_filename: Name of the global config file
             accounts_dirname: Name of the accounts subdirectory
+            enable_validation: Whether to enable schema validation (default: True)
         """
         # Resolve paths to absolute Path objects
         self.base_dir = Path(base_dir).resolve()
         self.global_filename = global_filename
         self.accounts_dirname = accounts_dirname
+        self.enable_validation = enable_validation
         
         # Store resolved paths
         self._global_config_path: Optional[Path] = None
         self._accounts_dir: Optional[Path] = None
         
-        logger.debug(f"ConfigLoader initialized with base_dir={self.base_dir}")
+        # Initialize validator if validation is enabled
+        self._validator: Optional[ConfigSchemaValidator] = None
+        if self.enable_validation:
+            self._validator = ConfigSchemaValidator()
+        
+        # Store last validation result
+        self._last_validation_result: Optional[ValidationResult] = None
+        
+        logger.debug(f"ConfigLoader initialized with base_dir={self.base_dir}, validation={enable_validation}")
     
     @staticmethod
     def _validate_account_name(account_name: str) -> str:
@@ -316,7 +336,7 @@ class ConfigLoader:
         
         return result
     
-    def load_merged_config(self, account_name: str) -> Dict:
+    def load_merged_config(self, account_name: str, validate: Optional[bool] = None) -> Dict:
         """
         Load and merge global and account-specific configurations.
         
@@ -327,23 +347,29 @@ class ConfigLoader:
            - Dictionaries: Deep merged (keys in override overwrite keys in base)
            - Lists: Completely replaced (lists in override replace lists in base)
            - Primitives: Overwritten (values in override replace values in base)
-        4. Returns the merged configuration dictionary
+        4. Validates the merged configuration against the schema (if enabled)
+        5. Returns the merged configuration dictionary
         
         Args:
             account_name: Name of the account to load configuration for
+            validate: Override validation setting for this call (None = use instance default)
             
         Returns:
-            Merged configuration dictionary
+            Merged configuration dictionary (may be normalized with defaults applied)
             
         Raises:
             ValueError: If the account name is invalid
             FileNotFoundError: If global config is missing
-            ConfigurationError: If configuration loading or merging fails
+            ConfigurationError: If configuration loading, merging, or validation fails
             
         Note:
             Missing account config files are allowed and will result in global-only
             configuration being returned. Global config is required and will raise
             FileNotFoundError if missing.
+            
+            Validation is performed after merging. If validation fails with fatal errors,
+            a ConfigurationError is raised. Validation results can be retrieved using
+            get_last_validation_result().
         """
         # Validate account name (will raise ValueError if invalid)
         account_name = self._validate_account_name(account_name)
@@ -356,12 +382,75 @@ class ConfigLoader:
         # Deep merge: global as base, account as override
         merged_config = self.deep_merge(global_config, account_config)
         
+        # Validate merged configuration if validation is enabled
+        should_validate = validate if validate is not None else self.enable_validation
+        if should_validate and self._validator is not None:
+            validation_result = self._validator.validate(merged_config)
+            self._last_validation_result = validation_result
+            
+            # Log validation issues
+            if validation_result.has_errors():
+                error_messages = [str(issue) for issue in validation_result.errors]
+                logger.error(
+                    f"Configuration validation failed for account '{account_name}':\n"
+                    + "\n".join(f"  - {msg}" for msg in error_messages)
+                )
+                # Raise ConfigurationError for fatal validation errors
+                raise ConfigurationError(
+                    f"Configuration validation failed for account '{account_name}': "
+                    f"{len(validation_result.errors)} error(s) found. "
+                    f"Use get_last_validation_result() for details."
+                )
+            elif validation_result.has_warnings():
+                warning_messages = [str(issue) for issue in validation_result.warnings]
+                logger.warning(
+                    f"Configuration validation warnings for account '{account_name}':\n"
+                    + "\n".join(f"  - {msg}" for msg in warning_messages)
+                )
+            
+            # Use normalized config if available (has defaults applied)
+            if validation_result.normalized_config is not None:
+                merged_config = validation_result.normalized_config
+        
         logger.info(
             f"Loaded merged configuration for account '{account_name}' "
             f"({len(account_config)} account-specific overrides)"
         )
         
         return merged_config
+    
+    def get_last_validation_result(self) -> Optional[ValidationResult]:
+        """
+        Get the validation result from the last load_merged_config call.
+        
+        Returns:
+            ValidationResult from the last validation, or None if validation
+            hasn't been performed or is disabled
+        """
+        return self._last_validation_result
+    
+    def validate_config(self, config: Dict) -> ValidationResult:
+        """
+        Validate a configuration dictionary against the schema.
+        
+        This method can be used to validate a configuration dictionary without
+        loading it from files. Useful for testing or validating user-provided configs.
+        
+        Args:
+            config: Configuration dictionary to validate
+            
+        Returns:
+            ValidationResult containing validation status, errors, and warnings
+            
+        Raises:
+            RuntimeError: If validation is disabled for this ConfigLoader instance
+        """
+        if not self.enable_validation or self._validator is None:
+            raise RuntimeError("Validation is disabled for this ConfigLoader instance")
+        
+        result = self._validator.validate(config)
+        self._last_validation_result = result
+        return result
 
 
 # Module-level convenience function
@@ -370,7 +459,8 @@ DEFAULT_BASE_DIR = Path("config")
 
 def load_merged_config(
     account_name: str,
-    base_dir: Path | str = DEFAULT_BASE_DIR
+    base_dir: Path | str = DEFAULT_BASE_DIR,
+    enable_validation: bool = True
 ) -> Dict:
     """
     Convenience function to load merged configuration for an account.
@@ -381,6 +471,7 @@ def load_merged_config(
     Args:
         account_name: Name of the account to load configuration for
         base_dir: Base directory containing config files (default: 'config')
+        enable_validation: Whether to enable schema validation (default: True)
         
     Returns:
         Merged configuration dictionary
@@ -388,12 +479,12 @@ def load_merged_config(
     Raises:
         ValueError: If the account name is invalid
         FileNotFoundError: If global config is missing
-        ConfigurationError: If configuration loading or merging fails
+        ConfigurationError: If configuration loading, merging, or validation fails
         
     Example:
         >>> from src.config_loader import load_merged_config
         >>> config = load_merged_config('work')
         >>> print(config['imap']['server'])
     """
-    loader = ConfigLoader(base_dir=base_dir)
+    loader = ConfigLoader(base_dir=base_dir, enable_validation=enable_validation)
     return loader.load_merged_config(account_name)

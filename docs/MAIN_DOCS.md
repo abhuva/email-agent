@@ -52,9 +52,10 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[Test Isolation Fix](test-isolation-fix.md)** — Settings singleton reset fixture for test isolation ✅
 
 ### V4 Configuration (In Development)
-- **[V4 Configuration System](v4-configuration.md)** — Multi-tenant configuration with account-specific overrides (Tasks 1-2) 🔄
+- **[V4 Configuration System](v4-configuration.md)** — Multi-tenant configuration with account-specific overrides (Tasks 1-3) 🔄
   - ✅ Task 1: Configuration directory structure
   - ✅ Task 2: Configuration loader with deep merge logic
+  - ✅ Task 3: Configuration schema validation
 
 ## Analysis & Reports
 - **[Documentation Audit 2026](documentation-audit-2026.md)** — Comprehensive documentation audit and consolidation (Task 17) 🔄

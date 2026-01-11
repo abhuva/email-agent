@@ -1,7 +1,7 @@
 # V4 Configuration System
 
 **Status:** In Development  
-**Task:** Task 1 - Create Configuration Directory Structure  
+**Tasks:** Task 1 (Complete), Task 2 (Complete), Task 3 (Complete)  
 **PDD Reference:** [pdd_V4.md](../pdd_V4.md) Section 3.1
 
 ---
@@ -356,8 +356,14 @@ class ConfigLoader:
     def load_account_config(self, account_name: str) -> Dict:
         """Load account-specific configuration (returns {} if missing)."""
     
-    def load_merged_config(self, account_name: str) -> Dict:
-        """Load and merge global + account configurations."""
+    def load_merged_config(self, account_name: str, validate: Optional[bool] = None) -> Dict:
+        """Load and merge global + account configurations (with optional validation)."""
+    
+    def get_last_validation_result(self) -> Optional[ValidationResult]:
+        """Get validation result from last load_merged_config call."""
+    
+    def validate_config(self, config: Dict) -> ValidationResult:
+        """Validate a configuration dictionary against the schema."""
     
     @staticmethod
     def deep_merge(base: Dict, override: Dict) -> Dict:
@@ -374,6 +380,139 @@ def load_merged_config(
     """Convenience function to load merged configuration."""
 ```
 
+## Schema Validation
+
+V4 includes automatic schema validation to ensure configurations meet required structure and constraints. Validation is performed automatically when loading merged configurations.
+
+### Validation Features
+
+- **Automatic Validation:** Configurations are validated after merging (global + account-specific)
+- **Required Fields:** Validates that all required fields are present
+- **Type Checking:** Ensures field types match expected types (str, int, float, list, etc.)
+- **Constraint Validation:** Validates constraints such as:
+  - Min/max values for numeric fields (e.g., port: 1-65535, temperature: 0.0-2.0)
+  - Min/max length for strings and lists
+  - Enum values (if specified)
+  - Item types for lists
+- **Default Values:** Automatically applies default values for optional fields
+- **Error Reporting:** Provides detailed error messages with field paths and error codes
+
+### Validation Behavior
+
+**Fatal Errors (ConfigurationError raised):**
+- Missing required sections (e.g., `imap`, `paths`, `openrouter`)
+- Missing required fields (e.g., `imap.server`, `imap.username`)
+- Invalid field types (e.g., port must be int, not string)
+- Values outside allowed ranges (e.g., port > 65535, temperature > 2.0)
+- Invalid list item types
+
+**Warnings (logged, processing continues):**
+- Non-critical validation issues (if any are defined)
+
+### Disabling Validation
+
+Validation can be disabled when creating a ConfigLoader instance:
+
+```python
+from src.config_loader import ConfigLoader
+
+# Disable validation
+loader = ConfigLoader('config', enable_validation=False)
+config = loader.load_merged_config('work')
+```
+
+Or for a single call:
+
+```python
+loader = ConfigLoader('config', enable_validation=True)
+# Disable validation for this call only
+config = loader.load_merged_config('work', validate=False)
+```
+
+### Accessing Validation Results
+
+After loading a configuration, you can access the validation results:
+
+```python
+from src.config_loader import ConfigLoader
+
+loader = ConfigLoader('config')
+try:
+    config = loader.load_merged_config('work')
+except ConfigurationError as e:
+    # Get detailed validation errors
+    validation_result = loader.get_last_validation_result()
+    if validation_result:
+        for error in validation_result.errors:
+            print(f"{error.path}: {error.message}")
+```
+
+### Schema Definition
+
+The configuration schema is defined in `src/config_schema.py`. The schema defines:
+
+- **Required sections:** `imap`, `paths`, `openrouter`, `classification`, `summarization`, `processing`
+- **Required fields:** Within each section (e.g., `imap.server`, `imap.username`)
+- **Field types:** Expected types for each field
+- **Default values:** Default values for optional fields
+- **Constraints:** Min/max values, length constraints, etc.
+
+### Extending the Schema
+
+To add new configuration options:
+
+1. **Update the schema** in `src/config_schema.py`:
+   ```python
+   'new_section': {
+       'required': True,  # or False
+       'fields': {
+           'new_field': {
+               'type': str,  # or int, float, list, etc.
+               'required': True,  # or False
+               'default': 'default_value',  # optional
+               'constraints': {
+                   'min_length': 1,  # optional constraints
+                   # ... other constraints
+               }
+           }
+       }
+   }
+   ```
+
+2. **Update tests** in `tests/test_config_schema.py` to include the new section/field
+
+3. **Update documentation** (this file) to document the new option
+
+### Validation Error Codes
+
+Common validation error codes:
+
+- `MISSING_REQUIRED_SECTION`: Required section is missing
+- `MISSING_REQUIRED_FIELD`: Required field is missing
+- `INVALID_TYPE`: Field type doesn't match expected type
+- `INVALID_SECTION_TYPE`: Section is not a dictionary
+- `VALUE_BELOW_MIN`: Numeric value is below minimum
+- `VALUE_ABOVE_MAX`: Numeric value is above maximum
+- `LENGTH_BELOW_MIN`: String/list length is below minimum
+- `LENGTH_ABOVE_MAX`: String/list length is above maximum
+- `INVALID_ITEM_TYPE`: List item type doesn't match expected type
+
+### Example Validation Errors
+
+```python
+# Missing required field
+ERROR[MISSING_REQUIRED_FIELD] imap.server: Required field 'server' is missing
+
+# Invalid type
+ERROR[INVALID_TYPE] imap.port: Expected type int, got str (value: 'not-a-number')
+
+# Value out of range
+ERROR[VALUE_ABOVE_MAX] imap.port: Value 70000 is above maximum 65535
+
+# Missing required section
+ERROR[MISSING_REQUIRED_SECTION] openrouter: Required section 'openrouter' is missing
+```
+
 ## Implementation Status
 
 - ✅ **Task 1.1:** Base configuration directory structure created
@@ -382,6 +521,7 @@ def load_merged_config(
 - ✅ **Task 1.4:** Blacklist and whitelist configuration placeholders created
 - ✅ **Task 1.5:** Filesystem permissions documented
 - ✅ **Task 2:** Configuration loader with deep merge logic (complete)
+- ✅ **Task 3:** Configuration schema validation (complete)
 
 ## Related Documentation
 

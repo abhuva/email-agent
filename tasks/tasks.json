@@ -160,7 +160,7 @@
       "id": 3,
       "title": "Implement Configuration Schema Validation",
       "description": "Add validation to ensure configurations meet required schema",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2
       ],
@@ -172,7 +172,7 @@
           "id": 1,
           "title": "Define configuration schema representation and location",
           "description": "Decide how the configuration schema will be represented (e.g., JSON Schema, custom type/constraint model) and where it will live in the codebase so that required fields, types, and constraints are explicitly defined and easy to maintain.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Choose a schema representation appropriate for the current configuration format (e.g., if configs are JSON/YAML, consider using a JSON Schema–like structure or a lightweight custom schema model).\n2) Design a schema data structure that can express: required fields, allowed types, default values (if any), allowed value ranges/enums, and cross-field constraints if needed.\n3) Decide on schema ownership and loading strategy: hard-coded in code (e.g., a constant), loaded from a separate schema file, or composed from multiple module-level schemas.\n4) Implement the schema definition for the existing configuration surface (all currently supported config keys) using the chosen representation.\n5) Add basic unit tests that verify the schema object/schema file contains expected keys and constraints and can be loaded/instantiated without errors."
         },
@@ -180,7 +180,7 @@
           "id": 2,
           "title": "Implement core schema validation engine",
           "description": "Create a reusable validation module that can take a loaded config object and the schema definition and return structured validation results (success, warnings, and errors).",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -190,7 +190,7 @@
           "id": 3,
           "title": "Integrate schema validation into ConfigLoader workflow",
           "description": "Extend the existing ConfigLoader to invoke the schema validation engine after loading and merging configuration sources but before returning the final configuration object.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -200,7 +200,7 @@
           "id": 4,
           "title": "Handle validation errors and warnings with graceful degradation",
           "description": "Define and implement policies for how ConfigLoader behaves on validation failures, including logging behavior, when to abort vs. continue, and how to surface issues to callers without crashing unnecessarily.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -210,7 +210,7 @@
           "id": 5,
           "title": "Document and test configuration schema validation end-to-end",
           "description": "Add documentation and comprehensive tests that explain how schema validation works, how to extend the schema when adding new configuration options, and verify the entire flow from loading to validation and error handling.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4
@@ -221,7 +221,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

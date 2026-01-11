@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 
 from src.config_loader import ConfigLoader, ConfigurationError, load_merged_config
+from src.config_validator import ValidationResult
 
 
 @pytest.fixture
@@ -481,3 +482,158 @@ class TestConvenienceFunction:
             assert result == global_config_data
         finally:
             os.chdir(old_cwd)
+
+
+class TestConfigValidationIntegration:
+    """Integration tests for schema validation in ConfigLoader."""
+    
+    def test_load_merged_config_validates_config(self, temp_config_dir):
+        """Test that load_merged_config validates the merged config."""
+        # Create a complete valid config
+        valid_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'username': 'user@example.com',
+                'port': 143
+            },
+            'paths': {
+                'obsidian_vault': '/vault'
+            },
+            'openrouter': {
+                'api_key_env': 'OPENROUTER_API_KEY'
+            },
+            'classification': {
+                'model': 'test-model'
+            },
+            'summarization': {
+                'model': 'test-model'
+            },
+            'processing': {}
+        }
+        
+        config_file = temp_config_dir / "config.yaml"
+        with open(config_file, 'w') as f:
+            yaml.dump(valid_config, f)
+        
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        
+        # Load a valid config
+        config = loader.load_merged_config("nonexistent")
+        
+        # Check that validation was performed
+        validation_result = loader.get_last_validation_result()
+        assert validation_result is not None
+        assert validation_result.is_valid is True
+    
+    def test_load_merged_config_with_invalid_config_raises_error(
+        self, temp_config_dir, global_config_file
+    ):
+        """Test that invalid config raises ConfigurationError."""
+        # Create an invalid config (missing required fields)
+        invalid_config = {
+            'imap': {
+                'port': 143
+                # Missing required 'server' and 'username'
+            }
+        }
+        
+        config_file = temp_config_dir / "config.yaml"
+        with open(config_file, 'w') as f:
+            yaml.dump(invalid_config, f)
+        
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        
+        with pytest.raises(ConfigurationError, match="validation failed"):
+            loader.load_merged_config("nonexistent")
+        
+        # Check validation result
+        validation_result = loader.get_last_validation_result()
+        assert validation_result is not None
+        assert validation_result.has_errors()
+    
+    def test_load_merged_config_with_validation_disabled(
+        self, temp_config_dir, global_config_file
+    ):
+        """Test that validation can be disabled."""
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=False)
+        
+        config = loader.load_merged_config("nonexistent")
+        
+        # Validation should not have been performed
+        validation_result = loader.get_last_validation_result()
+        assert validation_result is None
+    
+    def test_load_merged_config_validate_parameter_override(
+        self, temp_config_dir, global_config_file
+    ):
+        """Test that validate parameter can override instance setting."""
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        
+        # Disable validation for this call
+        config = loader.load_merged_config("nonexistent", validate=False)
+        
+        # Validation should not have been performed
+        validation_result = loader.get_last_validation_result()
+        assert validation_result is None
+    
+    def test_validate_config_method(self, temp_config_dir):
+        """Test the validate_config method."""
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        
+        # Create a test config
+        test_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'username': 'user@example.com'
+            },
+            'paths': {'obsidian_vault': '/vault'},
+            'openrouter': {},
+            'classification': {'model': 'test-model'},
+            'summarization': {'model': 'test-model'},
+            'processing': {}
+        }
+        
+        result = loader.validate_config(test_config)
+        assert isinstance(result, ValidationResult)
+        assert result.is_valid is True
+    
+    def test_validate_config_method_raises_when_disabled(self, temp_config_dir):
+        """Test that validate_config raises when validation is disabled."""
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=False)
+        
+        with pytest.raises(RuntimeError, match="Validation is disabled"):
+            loader.validate_config({})
+    
+    def test_get_last_validation_result_returns_none_initially(self, temp_config_dir):
+        """Test that get_last_validation_result returns None initially."""
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        
+        result = loader.get_last_validation_result()
+        assert result is None
+    
+    def test_validation_applies_defaults(self, temp_config_dir):
+        """Test that validation applies default values to missing optional fields."""
+        # Create a minimal valid config
+        minimal_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'username': 'user@example.com'
+                # Missing optional fields like 'port', 'query', etc.
+            },
+            'paths': {'obsidian_vault': '/vault'},
+            'openrouter': {},
+            'classification': {'model': 'test-model'},
+            'summarization': {'model': 'test-model'},
+            'processing': {}
+        }
+        
+        config_file = temp_config_dir / "config.yaml"
+        with open(config_file, 'w') as f:
+            yaml.dump(minimal_config, f)
+        
+        loader = ConfigLoader(str(temp_config_dir), enable_validation=True)
+        config = loader.load_merged_config("nonexistent")
+        
+        # Check that defaults were applied
+        assert config['imap']['port'] == 143  # Default value
+        assert config['imap']['query'] == 'ALL'  # Default value
