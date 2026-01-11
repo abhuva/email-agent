@@ -1,6 +1,6 @@
 # Task ID: 15
 # Title: Implement Configuration Display Command
-# Status: pending
+# Status: done
 # Dependencies: 11, 14
 # Priority: low
 # Description: Add functionality to display merged configuration for debugging
@@ -11,37 +11,37 @@ Implement the 'show-config --account <name>' command to display the merged confi
 Test the command with various account configurations. Verify correct display of merged configuration and clear indication of overridden values.
 
 # Subtasks:
-## 1. Define CLI interface and options for `show-config` command [pending]
+## 1. Define CLI interface and options for `show-config` command [done]
 ### Dependencies: None
 ### Description: Add the `show-config --account <name>` command to the CLI, including options for output formats and any future-proof flags.
 ### Details:
 1) Extend the existing CLI/command parser to register a new `show-config` command (or subcommand, depending on current CLI design) that accepts a required `--account <name>` argument. 2) Add optional flags for output format, e.g. `--format yaml` and `--format json`, with a sensible default (likely YAML). 3) If the CLI has a shared options system, reuse existing pattern for enumeration/validation of option values. 4) Ensure help/usage text clearly documents the command’s purpose ('display merged configuration for debugging'), required arguments, and available formats. 5) Wire the command handler to a new function signature (e.g. `run_show_config(accountName: string, format: OutputFormat)`), leaving the implementation stubbed for now.
 
-## 2. Implement configuration merge logic for global and account scopes [pending]
+## 2. Implement configuration merge logic for global and account scopes [done]
 ### Dependencies: 15.1
 ### Description: Create a reusable function that computes the merged configuration for a given account by overlaying account-specific config on top of global defaults.
 ### Details:
 1) Identify where global configuration and per-account configuration are currently loaded/stored (e.g. config service, files, or in-memory structs). 2) Implement a function such as `getMergedConfig(accountName: string) -> MergedConfig` that: a) retrieves global config; b) retrieves config for the given account; c) overlays account-specific values onto the global config using a well-defined precedence rule (account overrides global); d) handles missing account or global configs gracefully with clear error behavior. 3) Ensure the merge is recursive for nested structures (maps/objects), i.e. only overridden fields are replaced and other global values are preserved. 4) Decide how to handle lists/arrays (replace entirely vs. merge items) and document this behavior. 5) Add unit tests covering cases: no account config, full override account config, partial overrides, and invalid/non-existing account names.
 
-## 3. Design data structure to track overridden vs inherited values [pending]
+## 3. Design data structure to track overridden vs inherited values [done]
 ### Dependencies: 15.2
 ### Description: Extend the merged configuration representation to annotate which values are overridden from global config versus inherited, enabling highlighting in output.
 ### Details:
 1) Define an internal data model for the merged config that can carry metadata per field, e.g. a wrapped type like `{ value, source }` or a parallel structure (e.g. a tree of flags) indicating `source: 'global' | 'account'`. 2) Adapt `getMergedConfig` (or add a variant like `getAnnotatedMergedConfig`) to produce this annotated structure during the merge instead of a plain config object. 3) Ensure the annotation logic is recursive, with clear rules for nested objects and collections (e.g. each key or item gets its own `source`). 4) Consider performance and memory implications; if needed, keep annotations only until rendering (do not persist them). 5) Add tests that assert correct source tagging for simple and nested fields, including edge cases where account config explicitly sets a value equal to the global value (decide whether that is still considered an override and document the rule).
 
-## 4. Implement formatted output and highlighting of overrides [pending]
+## 4. Implement formatted output and highlighting of overrides [done]
 ### Dependencies: 15.3
 ### Description: Create the rendering layer for the annotated merged configuration, supporting human-readable YAML/JSON output and visually highlighting overridden values.
 ### Details:
 1) Implement a formatter module with functions such as `renderMergedConfigYaml(annotatedConfig)` and `renderMergedConfigJson(annotatedConfig)`. 2) For **YAML**: a) serialize the config with stable key ordering for readability; b) apply highlighting of overridden values, e.g. via inline comments (`# overridden from global`), color codes/ANSI styles if your CLI supports them, or a prefix marker convention; c) ensure the resulting YAML is still valid if copied, i.e. comments and ANSI codes do not break structure. 3) For **JSON**: a) keep output valid JSON; b) embed override information either as: i) additional `__source` fields if acceptable; or ii) an optional `--with-sources` flag that prints a secondary structure, or iii) omit inline highlighting and rely on a separate note (choose the pattern consistent with existing tooling and document it). 4) Provide a clear, consistent legend in the CLI output header (e.g. a short explanation of how overrides are indicated). 5) Write focused tests (or golden-file snapshots) for both YAML and JSON outputs to ensure deterministic formatting and correct rendering of override markers.
 
-## 5. Wire command handler, error handling, and tests for `show-config` [pending]
+## 5. Wire command handler, error handling, and tests for `show-config` [done]
 ### Dependencies: 15.4
 ### Description: Connect the CLI command to the merge and formatting logic, handle error cases, and add end-to-end tests for `show-config --account`.
 ### Details:
 1) Implement the `show-config` command handler to: a) parse `--account` and `--format`; b) call the annotated merge function for the given account; c) select the correct formatter based on `--format`; d) print the result to stdout. 2) Add robust error handling: a) unknown account name (clear error message and non-zero exit code); b) config loading/IO errors; c) invalid format option; d) unexpected internal errors with a generic but informative message. 3) If applicable, add a `--verbose` or `--debug` flag that prints diagnostic details (e.g. which config files were loaded) without changing the core output format. 4) Implement integration or CLI tests that invoke the binary/command (or the top-level handler) for scenarios: valid account (YAML), valid account (JSON), non-existent account, partial account config, and overrides present. 5) Update any developer-facing documentation or README sections describing available CLI commands, including usage examples for `show-config --account <name> --format yaml|json` and explanation of how overrides are indicated.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [pending]
+## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
 ### Dependencies: 15.1, 15.2, 15.3, 15.4, 15.5
 ### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
 ### Details:

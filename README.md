@@ -40,7 +40,7 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **Safety Interlock**: Cost estimation and user confirmation before high-cost operations
 - **EmailContext Data Model**: Structured data class for tracking email state through the pipeline
 
-**V4 Progress (Tasks 1-9 Complete):**
+**V4 Progress (Tasks 1-9, 19 Complete):**
 - ✅ Task 1: Configuration directory structure
 - ✅ Task 2: Configuration loader with deep merge logic
 - ✅ Task 3: Configuration schema validation
@@ -50,6 +50,7 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - ✅ Task 7: Rules engine - Whitelist rules
 - ✅ Task 8: Account Processor class
 - ✅ Task 9: Safety interlock with cost estimation
+- ✅ Task 19: End-to-end testing with real email accounts
 
 ### Historical Versions
 - **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
@@ -290,6 +291,7 @@ Generate summary → Exit
 - **[V4 Content Parser](docs/v4-content-parser.md)** — HTML to Markdown conversion with fallback (Task 5) ✅
 - **[V4 Rules Engine](docs/v4-rules-engine.md)** — Blacklist and whitelist rules for email filtering (Tasks 6-7) ✅
 - **[V4 Account Processor](docs/v4-account-processor.md)** — Isolated per-account email processing pipeline (Tasks 8-9) ✅
+- **[V4 End-to-End Testing](docs/v4-e2e-test-setup.md)** — E2E test setup, environment, scenarios, and execution guide (Task 19) ✅
 
 ### General Documentation
 - **[Main Documentation Map](docs/MAIN_DOCS.md)** — Centralized documentation index
@@ -380,6 +382,8 @@ This will show:
 
 ## Testing
 
+### Unit and Integration Tests
+
 Run the test suite:
 
 ```bash
@@ -408,6 +412,25 @@ Test IMAP flags functionality:
 
 ```bash
 python scripts/test_imap_flags.py
+```
+
+### V4 End-to-End Testing
+
+V4 includes comprehensive end-to-end tests that validate the complete email processing pipeline using real email accounts:
+
+- **Test Account Setup**: See `docs/v4-e2e-test-setup.md` for setting up test email accounts
+- **Test Environment**: See `docs/v4-e2e-test-environment.md` for test environment configuration
+- **Test Scenarios**: See `docs/v4-e2e-test-scenarios.md` for comprehensive test scenarios
+- **Execution Guide**: See `docs/v4-e2e-test-execution.md` for running and analyzing E2E tests
+
+Run V4 E2E tests:
+
+```bash
+# Run all V4 E2E tests (requires test account credentials)
+pytest tests/test_e2e_v4_pipeline.py -v -m e2e_v4
+
+# Skip E2E tests if credentials not available
+pytest tests/test_e2e_v4_pipeline.py -v -m "not e2e_v4"
 ```
 
 ---

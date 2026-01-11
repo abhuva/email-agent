@@ -575,13 +575,20 @@ def test_process_command_account_with_dry_run(mock_orchestrator_class, runner, t
 def test_show_config_command_yaml(mock_loader_class, runner, temp_v4_config):
     """Test show-config command with YAML output format."""
     mock_loader = MagicMock()
-    mock_config = {
+    global_config = {
+        'imap': {
+            'server': 'global.imap.com',
+            'port': 993
+        }
+    }
+    account_config = {
         'imap': {
             'server': 'work.imap.com',
             'username': 'work@example.com'
         }
     }
-    mock_loader.load_merged_config.return_value = mock_config
+    mock_loader.load_global_config.return_value = global_config
+    mock_loader.load_account_config.return_value = account_config
     mock_loader_class.return_value = mock_loader
     
     result = runner.invoke(cli, [
@@ -592,20 +599,28 @@ def test_show_config_command_yaml(mock_loader_class, runner, temp_v4_config):
     assert result.exit_code == 0
     assert 'Configuration for account: work' in result.output
     assert 'work.imap.com' in result.output
-    mock_loader.load_merged_config.assert_called_once_with('work')
+    mock_loader.load_global_config.assert_called_once()
+    mock_loader.load_account_config.assert_called_once_with('work')
 
 
 @patch('src.config_loader.ConfigLoader')
 def test_show_config_command_json(mock_loader_class, runner, temp_v4_config):
     """Test show-config command with JSON output format."""
     mock_loader = MagicMock()
-    mock_config = {
+    global_config = {
+        'imap': {
+            'server': 'global.imap.com',
+            'port': 993
+        }
+    }
+    account_config = {
         'imap': {
             'server': 'work.imap.com',
             'username': 'work@example.com'
         }
     }
-    mock_loader.load_merged_config.return_value = mock_config
+    mock_loader.load_global_config.return_value = global_config
+    mock_loader.load_account_config.return_value = account_config
     mock_loader_class.return_value = mock_loader
     
     result = runner.invoke(cli, [
@@ -635,7 +650,8 @@ def test_show_config_command_invalid_account(mock_loader_class, runner, temp_v4_
     """Test show-config command with invalid account name."""
     mock_loader = MagicMock()
     from src.config_loader import ConfigurationError
-    mock_loader.load_merged_config.side_effect = ConfigurationError("Account not found")
+    mock_loader.load_global_config.return_value = {}
+    mock_loader.load_account_config.side_effect = ConfigurationError("Account not found")
     mock_loader_class.return_value = mock_loader
     
     result = runner.invoke(cli, [
@@ -654,6 +670,60 @@ def test_show_config_command_help(runner):
     assert '--account' in result.output
     assert '--format' in result.output
     assert 'yaml' in result.output.lower() or 'json' in result.output.lower()
+
+
+@patch('src.config_loader.ConfigLoader')
+def test_show_config_command_override_highlighting(mock_loader_class, runner, temp_v4_config):
+    """Test that show-config highlights overridden values."""
+    mock_loader = MagicMock()
+    global_config = {
+        'imap': {
+            'server': 'global.imap.com',
+            'port': 993,
+            'ssl': True
+        }
+    }
+    account_config = {
+        'imap': {
+            'server': 'work.imap.com'  # Override server
+        }
+    }
+    mock_loader.load_global_config.return_value = global_config
+    mock_loader.load_account_config.return_value = account_config
+    mock_loader_class.return_value = mock_loader
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config', '--account', 'work'
+    ])
+    
+    assert result.exit_code == 0
+    assert 'Configuration for account: work' in result.output
+    assert 'work.imap.com' in result.output
+    # Should have override comment for overridden values
+    assert 'overridden from global' in result.output
+    # Should have legend explaining overrides
+    assert 'overridden from global' in result.output.lower() or 'account-specific' in result.output.lower()
+
+
+@patch('src.config_loader.ConfigLoader')
+def test_show_config_command_no_highlight(mock_loader_class, runner, temp_v4_config):
+    """Test show-config with --no-highlight flag."""
+    mock_loader = MagicMock()
+    global_config = {'imap': {'server': 'global.com'}}
+    account_config = {'imap': {'server': 'work.com'}}
+    mock_loader.load_global_config.return_value = global_config
+    mock_loader.load_account_config.return_value = account_config
+    mock_loader_class.return_value = mock_loader
+    
+    result = runner.invoke(cli, [
+        '--config', temp_v4_config,
+        'show-config', '--account', 'work', '--no-highlight'
+    ])
+    
+    assert result.exit_code == 0
+    # Should not have override comments when --no-highlight is used
+    assert 'overridden from global' not in result.output
 
 
 def test_process_command_help_includes_account_options(runner):

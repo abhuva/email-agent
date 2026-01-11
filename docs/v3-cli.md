@@ -1,6 +1,6 @@
 # CLI Module
 
-**Status:** ✅ Complete (Task 2, Task 11)  
+**Status:** ✅ Complete (Task 2, Task 11, Task 15)  
 **Module:** `src/cli_v3.py`  
 **Tests:** `tests/test_cli_v3.py`
 
@@ -142,23 +142,31 @@ python main.py backfill --dry-run --max-emails 10
 
 ### Show-Config Command (V4)
 
-The `show-config` command displays the merged configuration for a specific account:
+The `show-config` command displays the merged configuration for a specific account with highlighting of overridden values:
 
 ```bash
-python main.py show-config --account <name> [--format yaml|json]
+python main.py show-config --account <name> [--format yaml|json] [--with-sources] [--no-highlight]
 ```
 
 **Options:**
 - `--account <name>`: **Required.** Account name to show configuration for
 - `--format <format>`: Output format - `yaml` (default) or `json`
+- `--with-sources`: Include `__source` fields in JSON output (only applies to JSON format)
+- `--no-highlight`: Disable highlighting of overridden values (show plain config)
 
 **Examples:**
 ```bash
-# Show configuration for 'work' account (YAML format)
+# Show configuration for 'work' account (YAML format with override highlighting)
 python main.py show-config --account work
 
 # Show configuration for 'work' account (JSON format)
 python main.py show-config --account work --format json
+
+# Show configuration with source fields in JSON
+python main.py show-config --account work --format json --with-sources
+
+# Show plain configuration without override highlighting
+python main.py show-config --account work --no-highlight
 
 # Show configuration for 'personal' account
 python main.py show-config --account personal
@@ -166,9 +174,44 @@ python main.py show-config --account personal
 
 **Features:**
 - Displays merged configuration (global config + account-specific overrides)
-- Useful for debugging configuration issues
+- **Override Highlighting:** Values overridden from account-specific config are marked
+  - **YAML format:** Inline comments like `# overridden from global`
+  - **JSON format:** Optional `__source` fields or header comment listing overridden keys
+- Useful for debugging configuration issues and understanding which values come from where
 - Supports both YAML and JSON output formats
 - Validates account name format
+
+**Override Highlighting:**
+
+In YAML format, overridden values are marked with inline comments:
+```yaml
+imap:
+  server: work.imap.com  # overridden from global
+  port: 993  # inherited from global
+```
+
+In JSON format, use `--with-sources` to include source information:
+```json
+{
+  "imap": {
+    "server": "work.imap.com",
+    "server__source": "account",
+    "port": 993,
+    "port__source": "global"
+  }
+}
+```
+
+Or without `--with-sources`, a header comment lists overridden keys:
+```json
+// Overridden values: imap.server, paths.notes_dir
+{
+  "imap": {
+    "server": "work.imap.com",
+    "port": 993
+  }
+}
+```
 
 **Note:** This command requires V4 multi-account configuration structure with `config/accounts/` directory.
 

@@ -776,23 +776,48 @@ def _process_v4_accounts(
     default='yaml',
     help='Output format (default: yaml)'
 )
+@click.option(
+    '--with-sources',
+    is_flag=True,
+    default=False,
+    help='Include source fields in JSON output (only applies to JSON format)'
+)
+@click.option(
+    '--no-highlight',
+    is_flag=True,
+    default=False,
+    help='Disable highlighting of overridden values (show plain config)'
+)
 @click.pass_context
-def show_config(ctx: click.Context, account: str, format: str):
+def show_config(
+    ctx: click.Context,
+    account: str,
+    format: str,
+    with_sources: bool,
+    no_highlight: bool
+):
     """
     Display merged configuration for a specific account.
     
     Shows the merged configuration (global config + account-specific overrides)
-    for the specified account. Useful for debugging configuration issues.
+    for the specified account. Overridden values are highlighted to show which
+    values come from account-specific config vs global defaults.
+    
+    In YAML format, overridden values are marked with inline comments:
+        server: account.com  # overridden from global
+    
+    In JSON format, use --with-sources to include __source fields, or check
+    the header comment for a list of overridden keys.
     
     Examples:
         python main.py show-config --account work
         python main.py show-config --account work --format json
-        python main.py show-config --account personal --format yaml
+        python main.py show-config --account work --format json --with-sources
+        python main.py show-config --account personal --no-highlight
     """
-    import yaml
-    import json
     from pathlib import Path
     from src.config_loader import ConfigLoader, ConfigurationError
+    from src.config_display import AnnotatedConfigMerger, ConfigFormatter
     
     # Validate account name
     try:
@@ -810,22 +835,44 @@ def show_config(ctx: click.Context, account: str, format: str):
         config_base_dir = config_dir
     
     try:
-        # Load merged configuration
+        # Load configurations separately (global and account)
         loader = ConfigLoader(
             base_dir=config_base_dir,
             enable_validation=True
         )
         
-        config = loader.load_merged_config(account)
+        # Load global config
+        global_config = loader.load_global_config()
+        
+        # Load account config (returns {} if missing)
+        account_config = loader.load_account_config(account)
+        
+        # Create annotated merged config if highlighting is enabled
+        if not no_highlight:
+            merger = AnnotatedConfigMerger()
+            annotated_config = merger.merge_with_annotations(global_config, account_config)
+        else:
+            # Just use plain merged config
+            annotated_config = loader.load_merged_config(account)
         
         # Format output
+        formatter = ConfigFormatter()
         if format.lower() == 'json':
-            output = json.dumps(config, indent=2, default=str)
+            output = formatter.format_json(
+                annotated_config,
+                show_sources=not no_highlight,
+                include_source_fields=with_sources
+            )
         else:  # yaml
-            output = yaml.dump(config, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            output = formatter.format_yaml(
+                annotated_config,
+                show_sources=not no_highlight
+            )
         
         # Display configuration
         click.echo(f"\nConfiguration for account: {account}")
+        if not no_highlight:
+            click.echo("(Values marked with '# overridden from global' come from account-specific config)")
         click.echo("=" * 70)
         click.echo(output)
         click.echo("=" * 70)
@@ -833,11 +880,18 @@ def show_config(ctx: click.Context, account: str, format: str):
     except FileNotFoundError as e:
         click.echo(f"Error: Configuration file not found: {e}", err=True)
         sys.exit(1)
+    except ValueError as e:
+        # Account name validation error
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
     except ConfigurationError as e:
         click.echo(f"Error: Configuration error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error: Unexpected error loading configuration: {e}", err=True)
+        import traceback
+        if ctx.obj.get('debug', False):
+            traceback.print_exc()
         sys.exit(1)
 
 

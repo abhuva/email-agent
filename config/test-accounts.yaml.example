@@ -1,0 +1,167 @@
+# V4 End-to-End Test Accounts Configuration
+#
+# This file documents test email accounts used for E2E testing.
+# Copy this file to config/test-accounts.yaml and fill in your test account details.
+#
+# SECURITY: Never commit actual credentials to version control.
+# All passwords and API keys must be stored in environment variables.
+#
+# This file is for documentation purposes only - it helps testers understand
+# which accounts are available and what their capabilities are.
+#
+# For actual test execution, credentials are loaded from environment variables
+# as specified in the account config files (config/accounts/*.yaml).
+
+# ============================================================================
+# Test Account Requirements
+# ============================================================================
+# For comprehensive E2E testing, you need at least:
+# - 2 test accounts per supported provider (Gmail, Outlook, custom IMAP)
+# - Accounts with different capabilities (IMAP, POP3, SMTP)
+# - Accounts configured to avoid spam filters interfering with tests
+# - Accounts with appropriate rate limits and security settings (2FA, app passwords)
+
+# ============================================================================
+# Test Account Documentation
+# ============================================================================
+# Document each test account with:
+#   - account_id: Unique identifier (matches config/accounts/<id>.yaml filename)
+#   - provider: Email provider (Gmail, Outlook, custom IMAP, etc.)
+#   - email_address: Full email address (for reference)
+#   - capabilities: Supported protocols (IMAP, POP3, SMTP)
+#   - password_env: Environment variable name containing password
+#   - notes: Any special configuration or limitations
+
+test_accounts:
+  # Example: Gmail Test Account 1
+  - account_id: "test-gmail-1"
+    provider: "Gmail"
+    email_address: "test-account-1@gmail.com"  # Example - use your actual test account
+    capabilities:
+      - "IMAP"
+      - "SMTP"
+    password_env: "IMAP_PASSWORD_TEST_GMAIL_1"
+    notes: |
+      - Requires app password (2FA enabled)
+      - IMAP server: imap.gmail.com:993
+      - Rate limits: Standard Gmail limits apply
+      - Test mailbox: Use dedicated test folder to avoid interference
+
+  # Example: Gmail Test Account 2
+  - account_id: "test-gmail-2"
+    provider: "Gmail"
+    email_address: "test-account-2@gmail.com"  # Example - use your actual test account
+    capabilities:
+      - "IMAP"
+      - "SMTP"
+    password_env: "IMAP_PASSWORD_TEST_GMAIL_2"
+    notes: |
+      - Requires app password (2FA enabled)
+      - IMAP server: imap.gmail.com:993
+      - Used for multi-account testing scenarios
+
+  # Example: Outlook Test Account 1
+  - account_id: "test-outlook-1"
+    provider: "Outlook"
+    email_address: "test-account-1@outlook.com"  # Example - use your actual test account
+    capabilities:
+      - "IMAP"
+      - "SMTP"
+    password_env: "IMAP_PASSWORD_TEST_OUTLOOK_1"
+    notes: |
+      - Requires app password (2FA enabled)
+      - IMAP server: outlook.office365.com:993
+      - Rate limits: Standard Outlook limits apply
+
+  # Example: Custom IMAP Test Account
+  - account_id: "test-custom-1"
+    provider: "Custom IMAP"
+    email_address: "test@custom-domain.com"  # Example - use your actual test account
+    capabilities:
+      - "IMAP"
+      - "SMTP"
+    password_env: "IMAP_PASSWORD_TEST_CUSTOM_1"
+    notes: |
+      - Custom IMAP server configuration
+      - IMAP server: mail.custom-domain.com:993
+      - No 2FA required (test environment)
+
+# ============================================================================
+# Environment Variable Setup
+# ============================================================================
+# For each test account, set the corresponding environment variable:
+#
+#   export IMAP_PASSWORD_TEST_GMAIL_1='your-app-password'
+#   export IMAP_PASSWORD_TEST_GMAIL_2='your-app-password'
+#   export IMAP_PASSWORD_TEST_OUTLOOK_1='your-app-password'
+#   export IMAP_PASSWORD_TEST_CUSTOM_1='your-password'
+#
+# Or add to .env file (which is gitignored):
+#   IMAP_PASSWORD_TEST_GMAIL_1=your-app-password
+#   IMAP_PASSWORD_TEST_GMAIL_2=your-app-password
+#   IMAP_PASSWORD_TEST_OUTLOOK_1=your-app-password
+#   IMAP_PASSWORD_TEST_CUSTOM_1=your-password
+
+# ============================================================================
+# Account Configuration Files
+# ============================================================================
+# Each test account must have a corresponding config file in config/accounts/:
+#
+#   config/accounts/test-gmail-1.yaml
+#   config/accounts/test-gmail-2.yaml
+#   config/accounts/test-outlook-1.yaml
+#   config/accounts/test-custom-1.yaml
+#
+# These files should reference the password_env variables above.
+# See config/accounts/example-account.yaml for template.
+
+# ============================================================================
+# Test Account Setup Checklist
+# ============================================================================
+# For each test account:
+#   [ ] Create email account (if not exists)
+#   [ ] Configure 2FA (if required by provider)
+#   [ ] Generate app password (if 2FA enabled)
+#   [ ] Set password_env environment variable
+#   [ ] Create config/accounts/<account-id>.yaml file
+#   [ ] Configure inbox settings (disable spam filters, forwarding rules)
+#   [ ] Verify IMAP connection works
+#   [ ] Document account in this file
+#   [ ] Test sending/receiving emails manually
+
+# ============================================================================
+# Provider-Specific Setup Notes
+# ============================================================================
+
+# Gmail:
+#   - Enable IMAP in Gmail settings
+#   - Enable 2FA (required for app passwords)
+#   - Generate app password: Google Account > Security > App passwords
+#   - Use app password (not regular password) in password_env
+#   - IMAP server: imap.gmail.com:993
+#   - Consider creating test labels/folders for organized testing
+
+# Outlook:
+#   - Enable IMAP in Outlook settings
+#   - Enable 2FA (recommended)
+#   - Generate app password: Microsoft Account > Security > App passwords
+#   - Use app password (not regular password) in password_env
+#   - IMAP server: outlook.office365.com:993
+#   - Consider creating test folders for organized testing
+
+# Custom IMAP:
+#   - Configure IMAP server settings per provider documentation
+#   - May or may not require 2FA (depends on provider)
+#   - Use regular password or app password as required
+#   - Document server, port, and any special requirements
+
+# ============================================================================
+# Security Best Practices
+# ============================================================================
+# - Never commit actual passwords or API keys to version control
+# - Use environment variables for all credentials
+# - Use app passwords instead of main account passwords when possible
+# - Rotate test account passwords periodically
+# - Use dedicated test accounts (not production accounts)
+# - Monitor test account usage for suspicious activity
+# - Keep test accounts separate from personal/production accounts

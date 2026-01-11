@@ -111,6 +111,10 @@ email-agent/
 │   ├── v4-content-parser.md   # V4 HTML to Markdown parser (Task 5) ✅
 │   ├── v4-rules-engine.md     # V4 Rules engine (Tasks 6-7) ✅
 │   ├── v4-account-processor.md # V4 Account Processor (Tasks 8-9) ✅
+│   ├── v4-e2e-test-setup.md  # V4 E2E test account setup (Task 19.1) ✅
+│   ├── v4-e2e-test-environment.md # V4 E2E test environment (Task 19.2) ✅
+│   ├── v4-e2e-test-scenarios.md # V4 E2E test scenarios (Task 19.3) ✅
+│   └── v4-e2e-test-execution.md # V4 E2E test execution guide (Task 19.5) ✅
 │   │
 │   ├── live-test-guide.md    # Live testing guide
 │   ├── CODE_REVIEW_2026-01.md
@@ -276,9 +280,11 @@ email-agent/
 **This workflow is MANDATORY and must not be skipped.** See [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc) for complete details.
 
 ### Testing
-- **334 tests total** (all passing)
+- **334+ tests total** (all passing)
 - Run: `pytest` or `pytest -v`
-- Integration tests: `tests/test_integration_v2_workflow.py`
+- Integration tests: `tests/test_integration_v3_workflow.py`
+- V3 E2E tests: `tests/test_e2e_imap.py`, `tests/test_e2e_llm.py`
+- V4 E2E tests: `tests/test_e2e_v4_pipeline.py` (Task 19) ✅
 - Live tests: `scripts/test_imap_live.py`
 
 ### Code Style
@@ -336,6 +342,7 @@ email-agent/
 - **Unit tests:** One per V3 module in `tests/` (test_cli_v3.py, test_config_v3.py, test_imap_client.py, etc.)
 - **Integration tests:** `test_integration_v3_workflow.py` - End-to-end V3 workflow tests
 - **E2E tests:** Live tests with real IMAP connections (see `docs/v3-e2e-tests.md`)
+- **V4 E2E tests:** `test_e2e_v4_pipeline.py` - Complete V4 pipeline E2E tests with real email accounts (Task 19) ✅
 - **Live tests:** Scripts in `scripts/` directory
 
 ### Mock Strategy
@@ -354,7 +361,7 @@ email-agent/
 - Documentation complete
 
 **V4 Implementation:** 🚧 **IN PROGRESS** (on `v4-orchestrator` branch)
-- **Tasks 1-9 Complete (45% of tasks, 47% of subtasks):**
+- **Tasks 1-9, 19 Complete (50% of tasks, 52% of subtasks):**
   - ✅ Task 1: Configuration directory structure
   - ✅ Task 2: Configuration loader with deep merge logic
   - ✅ Task 3: Configuration schema validation
@@ -364,7 +371,8 @@ email-agent/
   - ✅ Task 7: Rules engine - Whitelist rules
   - ✅ Task 8: Account Processor class
   - ✅ Task 9: Safety interlock with cost estimation
-- **Remaining Tasks:** 10-20 (Master Orchestrator, CLI integration, etc.)
+  - ✅ Task 19: End-to-end testing with real email accounts
+- **Remaining Tasks:** 10-18, 20 (Master Orchestrator, CLI integration, etc.)
 
 **Next:** Check `tasks/tasks.json` or run `task-master next` for next task
 
@@ -380,7 +388,7 @@ email-agent/
 3. **Check:** `tasks/tasks.json` or run `task-master next` for current task
 4. **Review:** Relevant module docs in `docs/` directory
    - V3: `docs/v3-*.md`
-   - V4: `docs/v4-*.md` (Tasks 1-9 documented)
+   - V4: `docs/v4-*.md` (Tasks 1-9, 19 documented)
 5. **Understand:** Current task context from `tasks/task_*.txt`
 6. **Note:** All tasks include a mandatory final stage - see [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc)
 

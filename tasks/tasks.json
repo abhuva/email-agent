@@ -1101,7 +1101,7 @@
       "id": 15,
       "title": "Implement Configuration Display Command",
       "description": "Add functionality to display merged configuration for debugging",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         11,
         14
@@ -1114,7 +1114,7 @@
           "id": 1,
           "title": "Define CLI interface and options for `show-config` command",
           "description": "Add the `show-config --account <name>` command to the CLI, including options for output formats and any future-proof flags.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Extend the existing CLI/command parser to register a new `show-config` command (or subcommand, depending on current CLI design) that accepts a required `--account <name>` argument. 2) Add optional flags for output format, e.g. `--format yaml` and `--format json`, with a sensible default (likely YAML). 3) If the CLI has a shared options system, reuse existing pattern for enumeration/validation of option values. 4) Ensure help/usage text clearly documents the command’s purpose ('display merged configuration for debugging'), required arguments, and available formats. 5) Wire the command handler to a new function signature (e.g. `run_show_config(accountName: string, format: OutputFormat)`), leaving the implementation stubbed for now."
         },
@@ -1122,7 +1122,7 @@
           "id": 2,
           "title": "Implement configuration merge logic for global and account scopes",
           "description": "Create a reusable function that computes the merged configuration for a given account by overlaying account-specific config on top of global defaults.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1132,7 +1132,7 @@
           "id": 3,
           "title": "Design data structure to track overridden vs inherited values",
           "description": "Extend the merged configuration representation to annotate which values are overridden from global config versus inherited, enabling highlighting in output.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -1142,7 +1142,7 @@
           "id": 4,
           "title": "Implement formatted output and highlighting of overrides",
           "description": "Create the rendering layer for the annotated merged configuration, supporting human-readable YAML/JSON output and visually highlighting overridden values.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -1152,7 +1152,7 @@
           "id": 5,
           "title": "Wire command handler, error handling, and tests for `show-config`",
           "description": "Connect the CLI command to the merge and formatting logic, handle error cases, and add end-to-end tests for `show-config --account`.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             4
           ],
@@ -1162,7 +1162,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
