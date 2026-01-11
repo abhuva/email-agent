@@ -778,7 +778,7 @@
       "id": 11,
       "title": "Update CLI for Multi-Account Support",
       "description": "Enhance the CLI to support account-specific commands",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         10
       ],
@@ -790,7 +790,7 @@
           "id": 1,
           "title": "Extend CLI argument parsing to support new multi-account flags",
           "description": "Add and wire up the new CLI options `process --account <name>`, `process --all`, and `show-config --account <name>` in the existing CLI module.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Identify where CLI commands and flags are currently defined (e.g., argparse/Click/subcommand registry) and extend the `process` and `show-config` commands to accept the new flags.\n- For `process`, add mutually exclusive options `--account <name>` and `--all` alongside any existing options.\n- For `show-config`, add the `--account <name>` option.\n- Ensure the parsed arguments structure (e.g., options object) includes fields for `accountName`, `allAccounts`, etc., that can be consumed downstream.\n- Update any command routing or dispatch switch statements so that invocations including these options reach the appropriate handler functions without changing behavior of existing commands."
         },
@@ -798,7 +798,7 @@
           "id": 2,
           "title": "Implement argument validation rules for account-related options",
           "description": "Define and enforce validation rules for the new account-related flags to ensure correct and unambiguous CLI usage.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -808,7 +808,7 @@
           "id": 3,
           "title": "Integrate account-aware commands with MasterOrchestrator",
           "description": "Connect the new CLI command variants to the MasterOrchestrator so that account-specific and all-account processing is executed correctly.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -819,7 +819,7 @@
           "id": 4,
           "title": "Update and refine CLI help text and usage documentation",
           "description": "Improve the CLI help output and related in-tool documentation to clearly describe the new multi-account options and their usage patterns.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -831,7 +831,7 @@
           "id": 5,
           "title": "Add comprehensive tests and perform regression verification",
           "description": "Create or extend automated tests to cover new behaviors and verify that existing CLI functionality remains unaffected.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -844,7 +844,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
