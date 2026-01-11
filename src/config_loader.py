@@ -208,6 +208,70 @@ class ConfigLoader:
             )
             return {}
     
+    @staticmethod
+    def deep_merge(base: Dict, override: Dict) -> Dict:
+        """
+        Deep merge two configuration dictionaries according to V4 merge rules.
+        
+        Merge rules:
+        - Dictionaries: Recursively deep merged (keys in override overwrite keys in base)
+        - Lists: Completely replaced (lists in override replace lists in base, no concatenation)
+        - Primitives: Overwritten (values in override replace values in base)
+        - Mismatched types: Override value replaces base value
+        
+        This function does not mutate the input arguments.
+        
+        Args:
+            base: Base configuration dictionary
+            override: Override configuration dictionary
+            
+        Returns:
+            New dictionary containing the merged configuration
+            
+        Examples:
+            >>> base = {'a': 1, 'b': {'x': 10, 'y': 20}, 'c': [1, 2, 3]}
+            >>> override = {'b': {'y': 30, 'z': 40}, 'c': [4, 5]}
+            >>> merged = ConfigLoader.deep_merge(base, override)
+            >>> merged
+            {'a': 1, 'b': {'x': 10, 'y': 30, 'z': 40}, 'c': [4, 5]}
+            
+            >>> # Lists are replaced, not concatenated
+            >>> base = {'items': [1, 2, 3]}
+            >>> override = {'items': [4, 5]}
+            >>> ConfigLoader.deep_merge(base, override)
+            {'items': [4, 5]}
+        """
+        # Start with a copy of the base dictionary
+        result = base.copy()
+        
+        for key, override_value in override.items():
+            base_value = result.get(key)
+            
+            # Case 1: Both values are dictionaries - recursively merge
+            if isinstance(base_value, dict) and isinstance(override_value, dict):
+                result[key] = ConfigLoader.deep_merge(base_value, override_value)
+            
+            # Case 2: Both values are lists - replace (not concatenate)
+            elif isinstance(base_value, list) and isinstance(override_value, list):
+                result[key] = override_value.copy()  # Copy to avoid mutation
+            
+            # Case 3: All other cases - override replaces base
+            # This includes:
+            # - Primitives (int, str, float, bool, None)
+            # - Mismatched types (e.g., base is dict but override is list)
+            # - Override is dict/list but base is not
+            else:
+                # For mutable types (dict, list), make a copy to avoid mutation
+                if isinstance(override_value, dict):
+                    result[key] = override_value.copy()
+                elif isinstance(override_value, list):
+                    result[key] = override_value.copy()
+                else:
+                    # Primitives can be assigned directly
+                    result[key] = override_value
+        
+        return result
+    
     def load_merged_config(self, account_name: str) -> Dict:
         """
         Load and merge global and account-specific configurations.
