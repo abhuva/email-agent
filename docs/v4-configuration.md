@@ -247,6 +247,133 @@ Edit `config/whitelist.yaml`:
   add_tags: ["#vip"]
 ```
 
+## Configuration Loader
+
+The V4 configuration system uses `src/config_loader.py` to load and merge configurations.
+
+### ConfigLoader Class
+
+The `ConfigLoader` class handles loading global and account-specific configurations with deep merge logic.
+
+#### Basic Usage
+
+```python
+from src.config_loader import ConfigLoader
+
+# Initialize loader
+loader = ConfigLoader('config')
+
+# Load merged configuration for an account
+config = loader.load_merged_config('work')
+print(config['imap']['server'])
+```
+
+#### Module-Level Convenience Function
+
+```python
+from src.config_loader import load_merged_config
+
+# Convenience function (uses default 'config' directory)
+config = load_merged_config('work')
+```
+
+### Deep Merge Rules
+
+The configuration loader implements the following merge rules:
+
+1. **Dictionaries:** Deep merged recursively
+   - Keys in account config overwrite keys in global config
+   - Nested dictionaries are merged recursively
+   
+2. **Lists:** Completely replaced
+   - Lists in account config replace lists in global config (no concatenation)
+   
+3. **Primitives:** Overwritten
+   - String, int, float, bool values in account config replace values in global config
+
+#### Example
+
+```yaml
+# config/config.yaml (Global)
+imap:
+  server: global.imap.com
+  port: 143
+  query: ALL
+items: [1, 2, 3]
+
+# config/accounts/work.yaml (Account Override)
+imap:
+  server: work.imap.com
+  port: 993
+items: [4, 5]
+
+# Result (Merged)
+imap:
+  server: work.imap.com  # Overridden
+  port: 993              # Overridden
+  query: ALL             # Preserved from global
+items: [4, 5]            # List replaced (not [1, 2, 3, 4, 5])
+```
+
+### Error Handling
+
+The configuration loader provides robust error handling:
+
+- **Missing Global Config:** Raises `FileNotFoundError` (global config is required)
+- **Missing Account Config:** Returns global-only configuration (account config is optional)
+- **Invalid YAML:** Raises `ConfigurationError` with detailed error message
+- **Non-Dict Root:** Raises `ConfigurationError` if YAML root is not a dictionary
+- **Invalid Account Name:** Raises `ValueError` for:
+  - Empty or whitespace-only names
+  - Path traversal patterns (`../`, `..\\`)
+  - Non-string types
+
+### Account Name Validation
+
+Account names are validated to prevent security issues:
+
+- Strips whitespace automatically
+- Disallows path traversal patterns (`../`, `..\\`, `/`, `\\`)
+- Must be non-empty after stripping
+- Must be a string type
+
+### API Reference
+
+#### ConfigLoader Class
+
+```python
+class ConfigLoader:
+    def __init__(
+        self,
+        base_dir: Path | str = "config",
+        global_filename: str = "config.yaml",
+        accounts_dirname: str = "accounts"
+    ) -> None
+    
+    def load_global_config(self) -> Dict:
+        """Load global configuration file."""
+    
+    def load_account_config(self, account_name: str) -> Dict:
+        """Load account-specific configuration (returns {} if missing)."""
+    
+    def load_merged_config(self, account_name: str) -> Dict:
+        """Load and merge global + account configurations."""
+    
+    @staticmethod
+    def deep_merge(base: Dict, override: Dict) -> Dict:
+        """Deep merge two configuration dictionaries."""
+```
+
+#### Module-Level Function
+
+```python
+def load_merged_config(
+    account_name: str,
+    base_dir: Path | str = DEFAULT_BASE_DIR
+) -> Dict:
+    """Convenience function to load merged configuration."""
+```
+
 ## Implementation Status
 
 - ✅ **Task 1.1:** Base configuration directory structure created
@@ -254,7 +381,7 @@ Edit `config/whitelist.yaml`:
 - ✅ **Task 1.3:** Account-specific configuration file placeholders created
 - ✅ **Task 1.4:** Blacklist and whitelist configuration placeholders created
 - ✅ **Task 1.5:** Filesystem permissions documented
-- ⏳ **Task 2:** Configuration loader with deep merge logic (next)
+- ✅ **Task 2:** Configuration loader with deep merge logic (complete)
 
 ## Related Documentation
 
