@@ -240,6 +240,7 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "src/__pycache__/logging_helpers.cpython-313.pyc",
     "docs/v4-logging-system.md",
     "src/logging_helpers.py",
     "tests/__pycache__/test_logging_context.cpython-313-pytest-8.3.5.pyc",
@@ -274,7 +275,6 @@
     "docs/MAIN_DOCS.md",
     "docs/v3-note-generator.md",
     "config/prompt.md",
-    "config/summarization_prompt.md",
-    "docs/code-cleanup-assessment-2026.md"
+    "config/summarization_prompt.md"
   ]
 }

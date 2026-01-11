@@ -1,8 +1,8 @@
 # V4 Main Entry Point Integration Design
 
-**Task:** 18.1 - Analyze new architecture integration points for main.py  
-**Status:** Design Document  
-**Date:** 2026-01-05
+**Task:** 18 - Update Main Entry Point  
+**Status:** ✅ Complete  
+**Date:** 2026-01-05 (Design), 2026-01-11 (Implementation)
 
 ## Overview
 
@@ -344,24 +344,65 @@ def main() -> int:
         logger.info("Shutting down email agent V4")
 ```
 
+## Implementation Status
+
+**Task 18 - Complete ✅**
+
+All subtasks have been completed:
+
+1. ✅ **Subtask 18.1**: Analyzed new architecture integration points (Design document created)
+2. ✅ **Subtask 18.2**: Implemented `build_runtime_config()` function (`src/runtime_config.py`)
+3. ✅ **Subtask 18.3**: Refactored `main.py` to construct and run MasterOrchestrator
+4. ✅ **Subtask 18.4**: Integrated new CLI parsing and command dispatch
+5. ✅ **Subtask 18.5**: Implemented clean shutdown and lifecycle management
+
+### Implementation Details
+
+The refactored `main.py` now:
+
+1. **Detects V3 vs V4 mode** based on command-line arguments:
+   - V4 mode: Detected by presence of `--account`, `--all-accounts`, or `--accounts` flags
+   - V3 mode: All other commands (backward compatible)
+
+2. **V4 Mode Flow**:
+   - Parses CLI arguments using `MasterOrchestrator.parse_args()`
+   - Adapts parsed args for `build_runtime_config()` compatibility
+   - Builds runtime configuration from CLI + environment + defaults
+   - Initializes centralized logging with config from runtime config
+   - Constructs `MasterOrchestrator` with config paths
+   - Runs orchestration via `orchestrator.run()`
+   - Handles shutdown and returns appropriate exit codes
+
+3. **V3 Mode Flow** (Backward Compatible):
+   - Routes to existing Click CLI (`src/cli_v3.py`)
+   - Maintains full backward compatibility with existing V3 commands
+
+4. **Lifecycle Management**:
+   - Signal handlers for graceful shutdown (SIGINT, SIGTERM)
+   - Proper error handling with appropriate exit codes
+   - Cleanup in finally blocks
+   - Structured logging for startup and shutdown events
+
+### Key Files
+
+- **`main.py`**: Refactored entry point with V3/V4 mode detection
+- **`src/runtime_config.py`**: Runtime configuration builder (Task 18.2)
+- **`src/orchestrator.py`**: MasterOrchestrator class (Task 10)
+- **`src/logging_config.py`**: Centralized logging initialization (Task 12)
+
 ## Dependencies Status
 
 - ✅ **ConfigLoader** (Task 2): Complete - `src/config_loader.py` exists
 - ✅ **EmailContext** (Task 4): Complete - `src/models.py` exists
-- ⏳ **MasterOrchestrator** (Task 10): Pending
-- ⏳ **New CLI** (Task 11): Pending
-- ⏳ **Enhanced Logging** (Task 12): Pending
-
-## Next Steps
-
-1. **Subtask 18.2**: Implement `build_runtime_config()` function
-2. **Subtask 18.3**: Refactor `main.py` to use MasterOrchestrator (when Task 10 is complete)
-3. **Subtask 18.4**: Integrate new CLI (when Task 11 is complete)
-4. **Subtask 18.5**: Add shutdown and lifecycle management
+- ✅ **MasterOrchestrator** (Task 10): Complete - `src/orchestrator.py` exists
+- ✅ **New CLI** (Task 11): Complete - V4 support in `src/cli_v3.py`
+- ✅ **Enhanced Logging** (Task 12): Complete - `src/logging_config.py` exists
+- ✅ **Runtime Config** (Task 18.2): Complete - `src/runtime_config.py` exists
 
 ## Notes
 
-- This design assumes Tasks 10, 11, and 12 will be completed before Task 18.3-18.4
-- The design is flexible enough to work with partial implementations
-- Configuration precedence: CLI > Env > Defaults
-- All account processing must be isolated (no state bleeding)
+- ✅ All dependencies completed before Task 18 implementation
+- ✅ Configuration precedence: CLI > Env > Defaults (implemented in `build_runtime_config()`)
+- ✅ All account processing is isolated (enforced by MasterOrchestrator)
+- ✅ Backward compatibility maintained for V3 commands
+- ✅ V4 mode uses MasterOrchestrator's own CLI parsing for consistency
