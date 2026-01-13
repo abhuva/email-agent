@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README-AI.md",
+                "file": "docs/v4-configuration.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README-AI"
+              "title": "v4-configuration"
             }
           }
         ],
@@ -149,13 +149,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "README-AI.md",
+                "file": "docs/v4-configuration.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von README-AI"
+              "title": "Gliederung von v4-configuration"
             }
           },
           {
@@ -240,6 +240,20 @@
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "docs/MAIN_DOCS.md",
+    "docs/v4-config-schema-reference.md",
+    "docs/v4-configuration-reference.md",
+    "docs/v4-migration-guide.md",
+    "docs/v4-installation-setup.md",
+    "docs/v4-documentation-guide.md",
+    "README.md",
+    "README-AI.md",
+    "docs/v4-quick-start.md",
+    "docs/v4-multi-account-best-practices.md",
+    "docs/v4-troubleshooting.md",
+    "docs/v4-cli-usage.md",
+    "docs/v4-rule-syntax-guide.md",
+    "tasks/task_021.txt",
     "docs/v4-integration-tests.md",
     "tests/integration/__pycache__/test_e2e_scenarios.cpython-313-pytest-8.3.5.pyc",
     "tests/integration/__pycache__/test_content_parser_llm.cpython-313-pytest-8.3.5.pyc",
@@ -250,31 +264,17 @@
     "tests/integration/__pycache__/test_config_loader_account_processor.cpython-313-pytest-8.3.5.pyc",
     "tests/integration/__pycache__/test_utils.cpython-313-pytest-8.3.5.pyc",
     "tests/integration/__pycache__/__init__.cpython-313.pyc",
-    "tests/integration/__pycache__/mock_services.cpython-313.pyc",
     "docs/v4-unit-tests.md",
     "docs/v4-e2e-test-execution.md",
     "docs/v4-e2e-test-scenarios.md",
     "docs/v4-e2e-test-environment.md",
     "docs/v4-e2e-test-setup.md",
-    "docs/v4-config-schema-reference.md",
     "docs/v4-progress-bars.md",
     "docs/v4-logging-system.md",
     "docs/v4-logging-design.md",
     "docs/v4-orchestrator.md",
     "prd-v4.md",
     "pdd_V4.md",
-    "docs/v4-account-processor.md",
-    "docs/v4-rules-engine.md",
-    "docs/v4-content-parser.md",
-    "LIVE_TEST_SETUP.md",
-    "old pdd+prd/prd.md",
-    "docs/v4-main-integration-design.md",
-    "docs/v4-models.md",
-    "docs/test-isolation-fix.md",
-    "docs/v4-configuration.md",
-    "README-AI.md",
-    "Merkzettel.md",
-    "old pdd+prd/pdd 1.md",
-    "docs/TROUBLESHOOTING.md"
+    "docs/v4-account-processor.md"
   ]
 }
