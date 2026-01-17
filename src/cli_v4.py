@@ -411,32 +411,56 @@ def show_config(
         python main.py show-config --account work --format json --with-sources
     """
     try:
-        from src.config_display import ConfigDisplay
+        from src.config_display import AnnotatedConfigMerger, ConfigFormatter
+        from src.config_loader import ConfigurationError
         
         # Get config loader from context
         config_loader = _get_config_loader(ctx)
         
-        # Load merged config for account
-        merged_config = config_loader.load_merged_config(account)
+        # Load global and account configs separately for annotation
+        global_config = config_loader.load_global_config()
+        account_config = config_loader.load_account_config(account)
         
-        # Create display instance
-        display = ConfigDisplay()
+        # Create annotated merged config if highlighting is enabled
+        if not no_highlight:
+            merger = AnnotatedConfigMerger()
+            annotated_config = merger.merge_with_annotations(global_config, account_config)
+        else:
+            # Just use plain merged config
+            annotated_config = config_loader.load_merged_config(account)
         
         # Format and display
+        formatter = ConfigFormatter()
         if format.lower() == 'json':
-            output = display.format_json(
-                merged_config,
+            output = formatter.format_json(
+                annotated_config,
                 show_sources=not no_highlight,
                 include_source_fields=with_sources
             )
         else:
-            output = display.format_yaml(
-                merged_config,
+            output = formatter.format_yaml(
+                annotated_config,
                 show_sources=not no_highlight
             )
         
+        # Display configuration
+        click.echo(f"\nConfiguration for account: {account}")
+        if not no_highlight:
+            click.echo("(Values marked with '# overridden from global' come from account-specific config)")
+        click.echo("=" * 70)
         click.echo(output)
+        click.echo("=" * 70)
         
+    except FileNotFoundError as e:
+        click.echo(f"Error: Configuration file not found: {e}", err=True)
+        sys.exit(1)
+    except ValueError as e:
+        # Account name validation error
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except ConfigurationError as e:
+        click.echo(f"Error: Configuration error: {e}", err=True)
+        sys.exit(1)
     except Exception as e:
         click.echo(f"Error displaying configuration: {e}", err=True)
         logger = logging.getLogger('email_agent')
