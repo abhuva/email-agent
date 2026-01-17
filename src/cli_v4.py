@@ -277,7 +277,8 @@ def process(
 @click.option(
     '--account',
     type=str,
-    help='Account name for cleanup operation. If not specified, uses default account.'
+    required=True,
+    help='Account name for cleanup operation (required).'
 )
 @click.option(
     '--dry-run',
@@ -286,7 +287,7 @@ def process(
     help='Preview which flags would be removed without actually removing them.'
 )
 @click.pass_context
-def cleanup_flags(ctx: click.Context, account: Optional[str], dry_run: bool):
+def cleanup_flags(ctx: click.Context, account: str, dry_run: bool):
     """
     Maintenance command to clean up application-specific IMAP flags.
     
@@ -298,13 +299,127 @@ def cleanup_flags(ctx: click.Context, account: Optional[str], dry_run: bool):
     cause them to be reprocessed on the next run. This action cannot be undone.
     
     This command requires explicit confirmation before execution (security requirement).
+    
+    Examples:
+        python main.py cleanup-flags --account work
+        python main.py cleanup-flags --account work --dry-run
     """
-    # TODO: Migrate cleanup_flags module to use V4 ConfigLoader instead of settings facade
-    click.echo("Error: cleanup-flags command is not yet fully migrated to V4.", err=True)
-    click.echo("This command will be available in a future update.", err=True)
-    click.echo("For now, please use the V3 CLI: python main.py cleanup-flags", err=True)
-    sys.exit(1)
-    # Note: Once cleanup_flags.py is migrated to V4, implement here
+    try:
+        from src.cleanup_flags import CleanupFlags, CleanupFlagsError
+        from src.account_processor import create_imap_client_from_config
+        from src.config_loader import ConfigurationError
+        
+        # Get config loader from context
+        config_loader = _get_config_loader(ctx)
+        
+        # Load account configuration
+        try:
+            account_config = config_loader.load_merged_config(account)
+        except (FileNotFoundError, ConfigurationError) as e:
+            click.echo(f"Error: Failed to load configuration for account '{account}': {e}", err=True)
+            sys.exit(1)
+        
+        # Get application flags from config
+        imap_config = account_config.get('imap', {})
+        application_flags = imap_config.get('application_flags', [])
+        
+        if not application_flags:
+            click.echo("Warning: No application-specific flags configured for this account.", err=True)
+            click.echo("Using default flags: AIProcessed, ObsidianNoteCreated, NoteCreationFailed", err=True)
+            application_flags = ["AIProcessed", "ObsidianNoteCreated", "NoteCreationFailed"]
+        
+        flags_list = ', '.join(application_flags)
+        
+        # Display warning message
+        click.echo("\n" + "=" * 70, err=True)
+        click.echo("WARNING: This command will remove application-specific flags from emails", err=True)
+        click.echo("in your IMAP mailbox. This action cannot be undone.", err=True)
+        click.echo("=" * 70 + "\n", err=True)
+        
+        click.echo(f"Account: {account}")
+        click.echo(f"Application-specific flags to remove: {flags_list}")
+        click.echo("\nThis may cause emails to be reprocessed on the next run.")
+        
+        if dry_run:
+            click.echo("\n[DRY RUN MODE] No flags will actually be removed.")
+        
+        # Mandatory confirmation prompt (security requirement)
+        if not dry_run:
+            confirmation = click.prompt(
+                "\nType 'yes' to confirm and proceed, or anything else to cancel",
+                type=str,
+                default='no'
+            )
+            
+            if confirmation.lower().strip() != 'yes':
+                click.echo("\nOperation cancelled. No flags were modified.", err=True)
+                sys.exit(0)
+        
+        # Create IMAP client from config
+        imap_client = create_imap_client_from_config(account_config)
+        
+        # Create cleanup manager with V4 config
+        cleanup = CleanupFlags(config=account_config, imap_client=imap_client)
+        cleanup.connect()
+        
+        try:
+            # Scan for flags
+            click.echo("\nScanning emails for application-specific flags...")
+            scan_results = cleanup.scan_flags(dry_run=dry_run)
+            
+            if not scan_results:
+                click.echo("\nNo emails with application-specific flags found.")
+                cleanup.disconnect()
+                return
+            
+            # Display scan results
+            formatted_results = cleanup.format_scan_results(scan_results)
+            click.echo(formatted_results)
+            
+            # Remove flags
+            if dry_run:
+                click.echo("\n[DRY RUN] Preview of what would be removed:")
+            else:
+                click.echo("\nRemoving application-specific flags...")
+            
+            summary = cleanup.remove_flags(scan_results, dry_run=dry_run)
+            
+            # Display summary
+            click.echo("\n" + "=" * 70)
+            click.echo("Cleanup Summary:")
+            click.echo(f"  Emails scanned: {summary.total_emails_scanned}")
+            click.echo(f"  Emails with flags: {summary.emails_with_flags}")
+            click.echo(f"  Flags removed: {summary.total_flags_removed}")
+            click.echo(f"  Emails modified: {summary.emails_modified}")
+            if summary.errors > 0:
+                click.echo(f"  Errors: {summary.errors}", err=True)
+            click.echo("=" * 70)
+            
+            if dry_run:
+                click.echo("\n[DRY RUN] No flags were actually removed.")
+            else:
+                click.echo("\nCleanup complete!")
+            
+            cleanup.disconnect()
+            
+            # Exit with error code if there were errors
+            if summary.errors > 0:
+                sys.exit(1)
+                
+        except Exception as e:
+            cleanup.disconnect()
+            raise
+        
+    except CleanupFlagsError as e:
+        click.echo(f"\nError during cleanup operation: {e}", err=True)
+        logger = logging.getLogger('email_agent')
+        logger.error(f"Cleanup flags command failed: {e}", exc_info=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\nUnexpected error during cleanup operation: {e}", err=True)
+        logger = logging.getLogger('email_agent')
+        logger.error(f"Cleanup flags command failed: {e}", exc_info=True)
+        sys.exit(1)
 
 
 @cli.command()

@@ -58,23 +58,56 @@ class CleanupFlags:
     - Flag removal with confirmation
     - Detailed logging
     
-    Example:
+    Supports both V3 (settings facade) and V4 (config dict) modes.
+    
+    Example (V3):
         cleanup = CleanupFlags()
+        summary = cleanup.scan_flags(dry_run=True)
+        if not dry_run:
+            cleanup.remove_flags(summary, confirm=True)
+    
+    Example (V4):
+        cleanup = CleanupFlags(config=account_config, imap_client=imap_client)
         summary = cleanup.scan_flags(dry_run=True)
         if not dry_run:
             cleanup.remove_flags(summary, confirm=True)
     """
     
-    def __init__(self):
-        """Initialize cleanup flags manager."""
-        self.imap_client = ImapClient()
+    def __init__(self, config: Optional[Dict[str, Any]] = None, imap_client: Optional[ImapClient] = None):
+        """
+        Initialize cleanup flags manager.
+        
+        Args:
+            config: Optional account-specific configuration dictionary (V4 mode).
+                   If None, uses settings facade (V3 mode).
+            imap_client: Optional IMAP client instance (V4 mode).
+                        If None, creates new ImapClient (V3 mode).
+        """
+        self._config = config
+        self._use_v4 = config is not None
+        
+        if imap_client:
+            self.imap_client = imap_client
+        else:
+            self.imap_client = ImapClient()
+        
         self.application_flags: List[str] = []
         self._load_application_flags()
     
     def _load_application_flags(self) -> None:
-        """Load application-specific flags from settings."""
+        """Load application-specific flags from config or settings."""
         try:
-            self.application_flags = settings.get_imap_application_flags()
+            if self._use_v4:
+                # V4: Get from config dict
+                imap_config = self._config.get('imap', {})
+                self.application_flags = imap_config.get('application_flags', [])
+                if not self.application_flags:
+                    # Fallback to defaults
+                    self.application_flags = ["AIProcessed", "ObsidianNoteCreated", "NoteCreationFailed"]
+            else:
+                # V3: Get from settings facade
+                self.application_flags = settings.get_imap_application_flags()
+            
             logger.info(f"Loaded {len(self.application_flags)} application-specific flags: {self.application_flags}")
         except Exception as e:
             logger.error(f"Failed to load application flags: {e}")
@@ -120,7 +153,13 @@ class CleanupFlags:
         try:
             # Get all emails (use ALL query to get everything)
             # We'll fetch flags for all emails
-            user_query = settings.get_imap_query()
+            if self._use_v4:
+                # V4: Get from config dict
+                imap_config = self._config.get('imap', {})
+                user_query = imap_config.get('query', 'ALL')
+            else:
+                # V3: Get from settings facade
+                user_query = settings.get_imap_query()
             logger.debug(f"Using IMAP query: {user_query}")
             
             # Search for all emails matching the query
