@@ -9,7 +9,7 @@
 
 ## Overview
 
-Complete reference for V4 command-line interface, including all commands, options, flags, and common workflows. V4 CLI supports both V3 (single-account) and V4 (multi-account) processing modes.
+Complete reference for V4 command-line interface, including all commands, options, flags, and common workflows. V4 CLI uses V4 components exclusively (MasterOrchestrator, ConfigLoader) and supports multi-account processing with account isolation.
 
 ---
 
@@ -17,10 +17,10 @@ Complete reference for V4 command-line interface, including all commands, option
 
 V4 CLI is built using the `click` library and supports:
 
-- **V3 Mode:** Single-account processing (backward compatible)
-- **V4 Mode:** Multi-account processing with account isolation
+- **Multi-Account Processing:** Process specific accounts or all accounts with account isolation
 - **Dry-Run Mode:** Preview processing without side effects
 - **Configuration Management:** View and validate configurations
+- **Account-Specific Operations:** All commands support account-specific configuration
 
 **Entry Point:**
 ```bash
@@ -39,28 +39,32 @@ python main.py <command> --help
 
 ### Process Command
 
-The `process` command is the main entry point for email processing. It supports both V3 (single-account) and V4 (multi-account) modes.
+The `process` command is the main entry point for email processing. It requires either `--account <name>` or `--all` to specify which accounts to process.
 
 **Command:**
 ```bash
 python main.py process [OPTIONS]
 ```
 
-#### V4 Multi-Account Mode
-
 **Usage:**
 ```bash
 # Process specific account
-python main.py process --account <name> [--dry-run]
+python main.py process --account <name> [OPTIONS]
 
 # Process all accounts
-python main.py process --all [--dry-run]
+python main.py process --all [OPTIONS]
 ```
 
-**Options:**
+**Required Options:**
 - `--account <name>`: Process a specific account by name (mutually exclusive with --all)
 - `--all`: Process all available accounts (mutually exclusive with --account)
+
+**Additional Options:**
 - `--dry-run`: Preview processing without making changes (no file writes, no IMAP flag changes)
+- `--uid <ID>`: Process a specific email by UID (requires --account, cannot be used with --all)
+- `--force-reprocess`: Reprocess emails that have already been processed (ignores processed tags)
+- `--max-emails <N>`: Maximum number of emails to process (overrides config max_emails_per_run)
+- `--debug-prompt`: Write the formatted classification prompt to a debug file in logs/ directory
 
 **Examples:**
 ```bash
@@ -73,8 +77,17 @@ python main.py process --all
 # Preview processing for 'work' account
 python main.py process --account work --dry-run
 
-# Preview processing for all accounts
-python main.py process --all --dry-run
+# Process specific email by UID
+python main.py process --account work --uid 12345
+
+# Force reprocess an email
+python main.py process --account work --uid 12345 --force-reprocess
+
+# Process with email limit
+python main.py process --account work --max-emails 10
+
+# Debug prompt generation
+python main.py process --account work --uid 12345 --debug-prompt
 ```
 
 **Behavior:**
@@ -82,20 +95,7 @@ python main.py process --all --dry-run
 - Processes accounts in sequence with state isolation
 - Shows safety interlock cost estimation before processing
 - Logs account-specific processing information
-
-#### V3 Single-Account Mode
-
-**Usage:**
-```bash
-python main.py process [--uid <ID>] [--force-reprocess] [--dry-run] [--max-emails <N>] [--debug-prompt]
-```
-
-**Options:**
-- `--uid <ID>`: Process a specific email by UID
-- `--force-reprocess`: Reprocess emails that have already been processed (ignores processed tags)
-- `--dry-run`: Preview processing without making changes
-- `--max-emails <N>`: Maximum number of emails to process
-- `--debug-prompt`: Write the formatted classification prompt to a debug file
+- Requires account specification (no default single-account mode)
 
 **Examples:**
 ```bash
@@ -118,12 +118,7 @@ python main.py process --max-emails 5
 python main.py process --uid 400 --debug-prompt
 ```
 
-**Behavior:**
-- Uses V3 `Pipeline` for single-account processing
-- Backward compatible with V3 workflows
-- Processes emails from global config only
-
-**Note:** When `--account` or `--all` is specified, the command uses V4 mode. Otherwise, it uses V3 mode for backward compatibility.
+**Note:** The V4 CLI requires account specification. All processing uses V4 components (MasterOrchestrator, ConfigLoader) exclusively.
 
 ### Show-Config Command (V4)
 
@@ -242,17 +237,16 @@ These options apply to all commands:
 
 ### Process Command Options
 
-**V4 Mode Options:**
-- `--account <name>`: Process specific account
-- `--all`: Process all accounts
-- `--dry-run`: Preview mode
+**Required Options (choose one):**
+- `--account <name>`: Process specific account (mutually exclusive with --all)
+- `--all`: Process all accounts (mutually exclusive with --account)
 
-**V3 Mode Options:**
-- `--uid <ID>`: Process specific email by UID
-- `--force-reprocess`: Ignore processed tags
-- `--dry-run`: Preview mode
-- `--max-emails <N>`: Limit number of emails
-- `--debug-prompt`: Write prompt to debug file
+**Additional Options:**
+- `--dry-run`: Preview mode (no side effects)
+- `--uid <ID>`: Process specific email by UID (requires --account, cannot be used with --all)
+- `--force-reprocess`: Ignore processed tags and reprocess emails
+- `--max-emails <N>`: Limit number of emails to process
+- `--debug-prompt`: Write classification prompt to debug file
 
 ### Show-Config Command Options
 
@@ -263,7 +257,8 @@ These options apply to all commands:
 
 ### Cleanup-Flags Command Options
 
-- `--dry-run`: Preview mode
+- `--account <name>`: Required. Account name for cleanup operation
+- `--dry-run`: Preview mode (shows what would be removed without actually removing)
 
 ### Backfill Command Options
 
@@ -474,8 +469,8 @@ python main.py show-config --account work
 
 **Process with debugging:**
 ```bash
-# V3 mode: Debug prompt
-python main.py process --uid 400 --debug-prompt
+# Debug prompt (requires account)
+python main.py process --account work --uid 400 --debug-prompt
 
 # Check logs
 tail -f logs/agent.log
@@ -483,11 +478,11 @@ tail -f logs/agent.log
 
 **Process with limits:**
 ```bash
-# V3 mode: Limit emails
-python main.py process --max-emails 5
+# Limit emails (requires account)
+python main.py process --account work --max-emails 5
 
-# Backfill with date range
-python main.py backfill --start-date 2024-01-01 --end-date 2024-12-31 --max-emails 100
+# Process all accounts with limit
+python main.py process --all --max-emails 10
 ```
 
 **Configuration management:**

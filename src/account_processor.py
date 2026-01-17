@@ -277,9 +277,12 @@ class ConfigurableImapClient(ImapClient):
         Args:
             config: Configuration dictionary containing IMAP settings under 'imap' key
         """
-        super().__init__()
+        # Get processed_tag from config for base class
+        imap_config = config.get('imap', {})
+        processed_tag = imap_config.get('processed_tag', 'AIProcessed')
+        super().__init__(processed_tag=processed_tag)
         self._account_config = config
-        self._imap_config = config.get('imap', {})
+        self._imap_config = imap_config
         
         # Validate required fields
         required_fields = ['server', 'port', 'username']
@@ -293,14 +296,14 @@ class ConfigurableImapClient(ImapClient):
         """
         Establish connection to IMAP server using credentials from config.
         
-        Overrides parent connect() to use account-specific config instead of settings facade.
+        Overrides parent connect() to use account-specific config.
         
         Raises:
             IMAPConnectionError: If connection or authentication fails
             AccountProcessorSetupError: If required configuration is missing
         """
         if self._connected:
-            self.logger.warning("Already connected to IMAP server")
+            logger.warning("Already connected to IMAP server")
             return
         
         try:

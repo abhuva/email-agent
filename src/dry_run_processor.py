@@ -60,13 +60,9 @@ def output_email_processing_info(
         is_spam = getattr(classification_result, 'is_spam', False)
         
         # Display scores with thresholds
-        try:
-            from src.settings import settings
-            importance_threshold = settings.get_importance_threshold()
-            spam_threshold = settings.get_spam_threshold()
-        except Exception:
-            importance_threshold = 8
-            spam_threshold = 5
+        # Use default thresholds (can be made configurable if needed)
+        importance_threshold = 8
+        spam_threshold = 5
         
         output.detail("Importance Score", f"{importance_score}/10 (threshold: {importance_threshold})")
         if importance_score >= importance_threshold:

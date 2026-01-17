@@ -1,12 +1,18 @@
-# CLI Module
+# CLI Module (V3 - Historical)
 
-**Status:** ✅ Complete (Task 2, Task 11, Task 15)  
-**Module:** `src/cli_v3.py`  
-**Tests:** `tests/test_cli_v3.py`
+**Status:** ✅ Complete (Historical - Superseded by V4 CLI)  
+**Module:** `src/cli_v3.py` (removed in V4 migration)  
+**Tests:** `tests/test_cli_v3.py` (historical)
+
+> **⚠️ This document describes the historical V3 CLI which has been superseded by V4.**
+> 
+> **For current CLI documentation, see: [V4 CLI Usage Guide](v4-cli-usage.md)**
 
 ## Overview
 
-The CLI module implements a command-line interface using the `click` library as specified in PDD Section 6. It supports both V3 (single-account) and V4 (multi-account) processing modes. The V3 mode uses the original Pipeline class, while V4 mode uses the MasterOrchestrator for multi-account processing.
+The V3 CLI module implemented a command-line interface using the `click` library. It supported both V3 (single-account) and V4 (multi-account) processing modes. The V3 mode used the original Pipeline class, while V4 mode used the MasterOrchestrator for multi-account processing.
+
+**Note:** This CLI has been completely replaced by the V4 CLI (`src/cli_v4.py`), which uses V4 components exclusively (MasterOrchestrator, ConfigLoader) and no longer supports V3 mode.
 
 ## CLI Structure
 

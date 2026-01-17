@@ -271,12 +271,18 @@ def generate_email_summary(
         >>> 'success' in result
         True
     """
-    from src.settings import settings
-    
     # Check if summarization is required
+    # Note: If summarization_result is None, we cannot determine if summarization is needed
+    # without config. This function should be called with summarization_result already determined.
     if summarization_result is None:
-        from src.summarization import check_summarization_required
-        summarization_result = check_summarization_required(email)
+        logger.warning("generate_email_summary called without summarization_result or config")
+        return {
+            'success': False,
+            'summary': '',
+            'action_items': [],
+            'priority': 'medium',
+            'error': 'summarization_result_required'
+        }
     
     if not summarization_result.get('summarize', False):
         reason = summarization_result.get('reason', 'unknown')
@@ -328,8 +334,10 @@ def generate_email_summary(
         )
         
         # Get model and settings from summarization config
-        model = settings.get_summarization_model()
-        temperature = settings.get_summarization_temperature()
+        # Note: These should be passed as parameters or retrieved from config dict
+        # For now, use defaults if not available
+        model = 'openai/gpt-4o-mini'  # Default model
+        temperature = 0.7  # Default temperature
         max_tokens = 300  # Can be made configurable later if needed
         
         # Call LLM API

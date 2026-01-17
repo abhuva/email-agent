@@ -11,7 +11,6 @@ from email.header import decode_header
 from typing import List, Dict, Any, Optional
 from contextlib import contextmanager
 
-from src.settings import settings
 from src.config import ConfigError
 
 logger = logging.getLogger(__name__)
@@ -45,64 +44,31 @@ class ImapClient:
         client.disconnect()
     """
     
-    def __init__(self):
-        """Initialize IMAP client (does not connect yet)."""
+    def __init__(self, processed_tag: str = 'AIProcessed'):
+        """
+        Initialize IMAP client (does not connect yet).
+        
+        Args:
+            processed_tag: Tag used to mark processed emails (default: 'AIProcessed')
+        """
         self._imap: Optional[imaplib.IMAP4] = None
         self._connected = False
+        self._processed_tag = processed_tag
     
     def connect(self) -> None:
         """
-        Establish connection to IMAP server using credentials from settings facade.
+        Establish connection to IMAP server.
+        
+        Note: This method must be overridden in subclasses to provide connection details.
+        The base implementation raises NotImplementedError.
         
         Raises:
             IMAPConnectionError: If connection or authentication fails
-            ConfigError: If required configuration is missing
+            NotImplementedError: If not overridden in subclass
         """
-        if self._connected:
-            logger.warning("Already connected to IMAP server")
-            return
-        
-        try:
-            # Get configuration from settings facade
-            server = settings.get_imap_server()
-            port = settings.get_imap_port()
-            username = settings.get_imap_username()
-            password = settings.get_imap_password()
-            
-            logger.info(f"Connecting to IMAP server {server}:{port} as {username}")
-            
-            # Connect based on port (SSL for 993, STARTTLS for 143)
-            if port == 993:
-                # Use SSL from the start (IMAPS)
-                self._imap = imaplib.IMAP4_SSL(server, port)
-            elif port == 143:
-                # Use STARTTLS (upgrade plain connection to TLS)
-                self._imap = imaplib.IMAP4(server, port)
-                self._imap.starttls()
-            else:
-                # Default to SSL for other ports
-                logger.warning(f"Port {port} not standard (143/993), defaulting to SSL")
-                self._imap = imaplib.IMAP4_SSL(server, port)
-            
-            # Authenticate
-            self._imap.login(username, password)
-            
-            # Select INBOX (default mailbox)
-            typ, data = self._imap.select('INBOX')
-            if typ != 'OK':
-                raise IMAPConnectionError(f"Failed to select INBOX: {data}")
-            
-            self._connected = True
-            logger.info("IMAP connection established successfully")
-            
-        except imaplib.IMAP4.error as e:
-            error_msg = f"IMAP authentication failed: {e}"
-            logger.error(error_msg)
-            raise IMAPConnectionError(error_msg) from e
-        except Exception as e:
-            error_msg = f"IMAP connection failed: {e}"
-            logger.error(error_msg)
-            raise IMAPConnectionError(error_msg) from e
+        raise NotImplementedError(
+            "connect() must be overridden in subclass or use ConfigurableImapClient"
+        )
     
     def disconnect(self) -> None:
         """Close IMAP connection."""
@@ -323,10 +289,10 @@ class ImapClient:
         self._ensure_connected()
         
         try:
-            # Get configuration from settings facade
-            user_query = settings.get_imap_query()
-            processed_tag = settings.get_imap_processed_tag()
-            max_emails_per_run = max_emails or settings.get_max_emails_per_run()
+            # Use default values (subclasses should override this method)
+            user_query = 'ALL'
+            processed_tag = self._processed_tag
+            max_emails_per_run = max_emails
             
             if force_reprocess:
                 logger.info(f"Searching for emails (force-reprocess mode, query: {user_query})")
@@ -519,7 +485,7 @@ class ImapClient:
         """
         Check if an email has been processed.
         
-        Uses the processed_tag from settings to determine processed status.
+        Uses the processed_tag from instance configuration.
         
         Args:
             uid: Email UID
@@ -530,8 +496,7 @@ class ImapClient:
         Raises:
             IMAPConnectionError: If not connected
         """
-        processed_tag = settings.get_imap_processed_tag()
-        return self.has_flag(uid, processed_tag)
+        return self.has_flag(uid, self._processed_tag)
     
     def mark_as_processed(self, uid: str) -> bool:
         """
@@ -546,8 +511,7 @@ class ImapClient:
         Raises:
             IMAPConnectionError: If not connected
         """
-        processed_tag = settings.get_imap_processed_tag()
-        return self.set_flag(uid, processed_tag)
+        return self.set_flag(uid, self._processed_tag)
     
     def get_next_unprocessed_email(self, force_reprocess: bool = False) -> Optional[Dict[str, Any]]:
         """

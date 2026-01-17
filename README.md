@@ -5,52 +5,44 @@
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
 **Current Status:** 
-- **V3 (Foundational Upgrade)** - ✅ Complete and production-ready on `main` branch
-- **V4 (Orchestrator)** - 🚧 In Development on `v4-orchestrator` branch - Multi-tenant platform with rules engine (Tasks 1-9 complete)
+- **V4 (Orchestrator)** - ✅ Complete and production-ready - Multi-tenant platform with rules engine, multi-account support, and V4-only CLI
+- **V3 (Foundational Upgrade)** - Historical version (superseded by V4)
 - **V1 and V2** - Historical versions
 
 ---
 
 ## Features
 
-### V3 Features (Current Version)
+### V4 Features (Current Version)
+- **Multi-Account Support**: Process multiple email accounts with isolated state and configuration
 - **Score-Based Classification**: Granular importance and spam scores (0-10) instead of rigid categories
 - **CLI Controls**: Developer-friendly commands for targeted processing, debugging, and maintenance
-  - `python main.py process` - Process emails with options for single UID, force-reprocess, and dry-run
-  - `python main.py cleanup-flags` - Safely remove application-specific IMAP flags
-  - `python main.py backfill` - Process historical emails with date range filtering
-- **Jinja2 Templating**: Flexible note generation using external template files
-- **Modular Architecture**: Clean separation of concerns with dedicated modules for IMAP, LLM, decision logic, and note generation
-- **Settings Facade**: Centralized configuration management through `settings.py` facade
-- **Dual Logging**: Operational logs (`agent.log`) and structured analytics (`analytics.jsonl`)
-- **Threshold-Based Classification**: Configurable thresholds for importance and spam detection
-- **Retry Logic**: Robust error handling with exponential backoff for LLM API calls
-- **Dry-Run Mode**: Preview processing without making changes
-- **Force-Reprocess**: Reprocess already-processed emails for testing and refinement
-- **Backfill Support**: Process historical emails with progress tracking and throttling
-
-### V4 Features (In Development - v4-orchestrator branch)
-- **Multi-Account Support**: Process multiple email accounts with isolated state and configuration
+  - `python main.py process --account <name>` - Process emails for a specific account
+  - `python main.py process --all` - Process all configured accounts
+  - `python main.py process --account <name> --uid <ID>` - Process specific email by UID
+  - `python main.py process --account <name> --force-reprocess` - Reprocess already-processed emails
+  - `python main.py cleanup-flags --account <name>` - Safely remove application-specific IMAP flags
+  - `python main.py show-config --account <name>` - Display merged configuration for an account
 - **Configuration System**: Default + Override model with deep merge (global config + account-specific overrides)
 - **Rules Engine**: 
   - **Blacklist Rules**: Pre-processing rules to drop or record emails without AI processing
   - **Whitelist Rules**: Post-LLM modifiers that boost scores and add tags
 - **HTML Content Parsing**: Convert HTML emails to Markdown using `html2text` with automatic fallback to plain text
 - **Account Processor**: Isolated per-account processing pipeline with complete state isolation
+- **Jinja2 Templating**: Flexible note generation using external template files
+- **Modular Architecture**: Clean separation of concerns with dedicated modules for IMAP, LLM, decision logic, and note generation
+- **Centralized Logging**: Operational logs with structured context and account lifecycle tracking
+- **Threshold-Based Classification**: Configurable thresholds for importance and spam detection
+- **Retry Logic**: Robust error handling with exponential backoff for LLM API calls
+- **Dry-Run Mode**: Preview processing without making changes
+- **Force-Reprocess**: Reprocess already-processed emails for testing and refinement
 - **Safety Interlock**: Cost estimation and user confirmation before high-cost operations
 - **EmailContext Data Model**: Structured data class for tracking email state through the pipeline
 
-**V4 Progress (Tasks 1-9, 19 Complete):**
-- ✅ Task 1: Configuration directory structure
-- ✅ Task 2: Configuration loader with deep merge logic
-- ✅ Task 3: Configuration schema validation
-- ✅ Task 4: EmailContext data class
-- ✅ Task 5: Content parser (HTML to Markdown)
-- ✅ Task 6: Rules engine - Blacklist rules
-- ✅ Task 7: Rules engine - Whitelist rules
-- ✅ Task 8: Account Processor class
-- ✅ Task 9: Safety interlock with cost estimation
-- ✅ Task 19: End-to-end testing with real email accounts
+### Historical Versions
+- **V3 (Foundational Upgrade)**: Score-based classification, CLI controls, Jinja2 templating (superseded by V4)
+- **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
+- **V1 (Email Tagging)**: Basic IMAP email fetching and AI classification
 
 ### Historical Versions
 - **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
@@ -82,15 +74,19 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 
 3. **Configure the agent:**
    ```bash
-   # Copy example configuration
+   # Copy example global configuration
    cp config/config.yaml.example config/config.yaml
+   
+   # Copy example account configuration
+   cp config/accounts/example-account.yaml config/accounts/my-account.yaml
    
    # Copy example environment file
    cp .env.example .env
    ```
 
 4. **Edit configuration files:**
-   - Edit `config/config.yaml` with your IMAP server details
+   - Edit `config/config.yaml` with global settings (IMAP defaults, LLM settings, etc.)
+   - Edit `config/accounts/my-account.yaml` with account-specific settings (IMAP server, credentials, etc.)
    - Edit `.env` with your IMAP password and OpenRouter API key
    - See [Configuration](#configuration) section for details
 
@@ -106,44 +102,51 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 ### Basic Usage
 
 ```bash
-# Process emails (default: processes up to max_emails_per_run from config)
-python main.py process
+# Process emails for a specific account
+python main.py process --account work
 
-# Process a specific email by UID
-python main.py process --uid 12345
+# Process all configured accounts
+python main.py process --all
+
+# Process a specific email by UID (requires account)
+python main.py process --account work --uid 12345
 
 # Force reprocess an already-processed email
-python main.py process --uid 12345 --force-reprocess
+python main.py process --account work --uid 12345 --force-reprocess
 
 # Preview processing without making changes (dry-run)
-python main.py process --dry-run
-
-# Use custom config and env files
-python main.py --config custom-config.yaml --env .env.production process
+python main.py process --account work --dry-run
 
 # Clean up application-specific IMAP flags (with confirmation)
-python main.py cleanup-flags
+python main.py cleanup-flags --account work
 
-# Process historical emails (backfill)
-python main.py backfill --since 2024-01-01 --until 2024-12-31
+# Display merged configuration for an account
+python main.py show-config --account work
 ```
 
 ### Command-Line Options
 
 **Main Commands:**
 - `process` - Process emails with AI classification and note generation
-  - `--uid <ID>` - Process a specific email by UID
+  - `--account <name>` - Process a specific account (required, mutually exclusive with --all)
+  - `--all` - Process all configured accounts (mutually exclusive with --account)
+  - `--uid <ID>` - Process a specific email by UID (requires --account)
   - `--force-reprocess` - Ignore processed_tag and reprocess email
   - `--dry-run` - Preview processing without making changes
+  - `--max-emails <N>` - Maximum number of emails to process
+  - `--debug-prompt` - Write classification prompt to debug file
 - `cleanup-flags` - Remove application-specific IMAP flags (requires confirmation)
-- `backfill` - Process historical emails
-  - `--since <DATE>` - Start date (YYYY-MM-DD)
-  - `--until <DATE>` - End date (YYYY-MM-DD)
-  - `--throttle <SECONDS>` - Delay between emails (default: 2)
+  - `--account <name>` - Account name (required)
+  - `--dry-run` - Preview which flags would be removed
+- `show-config` - Display merged configuration for an account
+  - `--account <name>` - Account name (required)
+  - `--format yaml|json` - Output format (default: yaml)
+  - `--with-sources` - Include source fields in JSON output
+  - `--no-highlight` - Disable highlighting of overridden values
 
 **Global Options:**
-- `--config <PATH>` - Path to YAML configuration file (default: config/config.yaml)
-- `--env <PATH>` - Path to .env secrets file (default: .env)
+- `--config-dir <PATH>` - Base directory for configuration files (default: config)
+- `--log-level DEBUG|INFO|WARNING|ERROR` - Set logging level (default: INFO)
 - `--version` - Show program version
 - `--help` - Show help message
 
@@ -151,17 +154,19 @@ python main.py backfill --since 2024-01-01 --until 2024-12-31
 
 ## Configuration
 
-### Configuration File (`config/config.yaml`)
+V4 uses a multi-account configuration system with global defaults and account-specific overrides. Configuration is stored in two places:
 
-V3 uses a grouped configuration structure. The main configuration file contains all operational parameters:
+1. **Global Configuration** (`config/config.yaml`) - Default settings for all accounts
+2. **Account-Specific Configuration** (`config/accounts/<account-name>.yaml`) - Overrides for specific accounts
+
+### Global Configuration File (`config/config.yaml`)
+
+The global configuration file contains default settings that apply to all accounts unless overridden:
 
 ```yaml
-# IMAP Server Configuration
+# IMAP Server Configuration (defaults - can be overridden per account)
 imap:
-  server: 'imap.example.com'          # IMAP server hostname
   port: 143                            # IMAP port (143 for STARTTLS, 993 for SSL)
-  username: 'your-email@example.com'   # Email account username
-  password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
   query: 'ALL'                         # IMAP search query (e.g., 'ALL', 'UNSEEN', 'SENTSINCE 01-Jan-2024')
   processed_tag: 'AIProcessed'         # IMAP flag name for processed emails
   application_flags:                   # Application-specific flags for cleanup command
@@ -208,7 +213,25 @@ processing:
     - 'important'                       # Tag generated when importance_score >= threshold
 ```
 
-See `config/config.yaml.example` for a complete example with detailed comments.
+### Account-Specific Configuration (`config/accounts/<account-name>.yaml`)
+
+Each account has its own configuration file that can override global settings:
+
+```yaml
+# Account-specific IMAP settings (overrides global defaults)
+imap:
+  server: 'imap.example.com'          # IMAP server hostname (required per account)
+  username: 'your-email@example.com'   # Email account username (required per account)
+  password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
+
+# Account-specific paths (overrides global defaults)
+paths:
+  obsidian_vault: '/path/to/account/vault'  # Account-specific Obsidian vault
+```
+
+**Note:** Account-specific configs only need to include values that differ from global defaults. The V4 configuration system uses deep merge to combine global and account-specific settings.
+
+See `config/accounts/example-account.yaml` for a complete example.
 
 ### Environment Variables (`.env`)
 
@@ -225,48 +248,63 @@ OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
 
 The prompt file contains the instructions sent to the AI for email classification. It should be a Markdown file with YAML frontmatter. See `config/prompt.md.example` for a template.
 
+**See Also:** [V4 Configuration Reference](docs/v4-configuration-reference.md) for complete configuration documentation.
+
 ---
 
 ## How It Works
 
-### V3 Workflow (Current Version)
+### V4 Workflow (Current Version)
 
-1. **Configuration Loading**: Loads V3 configuration structure through `settings.py` facade
-2. **Email Fetching**: Connects to IMAP server and fetches emails based on configured query (excluding processed emails)
-3. **AI Classification**: Sends email content to LLM API, receives JSON with `importance_score` and `spam_score` (0-10)
-4. **Decision Logic**: Applies threshold-based classification:
-   - If `importance_score >= importance_threshold` → marks as important
-   - If `spam_score >= spam_threshold` → marks as spam
-5. **Note Generation**: Uses Jinja2 template to generate Markdown note with:
-   - YAML frontmatter (metadata, scores, processing info)
-   - Email body (converted from HTML/plain text to Markdown)
-6. **File Creation**: Saves note to Obsidian vault directory
-7. **Tagging**: Tags email with `AIProcessed` flag to prevent reprocessing
-8. **Logging**: Records to operational log and structured analytics
-9. **Changelog**: Appends entry to changelog file
+1. **Configuration Loading**: Loads global config and account-specific overrides using `ConfigLoader`
+2. **Account Processing**: For each account (or specified account):
+   a. **Rules Engine**: Applies blacklist rules to filter emails before processing
+   b. **Email Fetching**: Connects to IMAP server and fetches emails based on configured query (excluding processed emails)
+   c. **Content Parsing**: Converts HTML emails to Markdown using `html2text` with fallback to plain text
+   d. **AI Classification**: Sends email content to LLM API, receives JSON with `importance_score` and `spam_score` (0-10)
+   e. **Rules Engine**: Applies whitelist rules to boost scores and add tags
+   f. **Decision Logic**: Applies threshold-based classification:
+      - If `importance_score >= importance_threshold` → marks as important
+      - If `spam_score >= spam_threshold` → marks as spam
+   g. **Note Generation**: Uses Jinja2 template to generate Markdown note with:
+      - YAML frontmatter (metadata, scores, processing info)
+      - Email body (converted from HTML/plain text to Markdown)
+   h. **File Creation**: Saves note to Obsidian vault directory
+   i. **Tagging**: Tags email with `AIProcessed` flag to prevent reprocessing
+   j. **Logging**: Records to operational log with structured context and account lifecycle tracking
+3. **Summary**: Displays processing summary for all accounts
 
-### Complete Processing Flow (V3)
+### Complete Processing Flow (V4)
 
 ```
-Start → Load Config (settings.py) → Connect IMAP → Fetch Emails
+Start → Load Global Config → Load Account Configs → For each account:
+  ↓
+Account Processor:
+  ↓
+Blacklist Rules → Filter Emails
+  ↓
+Connect IMAP → Fetch Emails
   ↓
 For each email:
   ↓
-Truncate body → Send to LLM API → Receive JSON scores
+Parse HTML → Markdown → Truncate body → Send to LLM API → Receive JSON scores
   ↓
-Apply thresholds → Determine classification
+Whitelist Rules → Apply thresholds → Determine classification
   ↓
 Render Jinja2 template → Generate Markdown note
   ↓
 Save to Obsidian vault → Tag email (AIProcessed)
   ↓
-Log to analytics.jsonl → Append to changelog
+Log with context → Next email
   ↓
-Generate summary → Exit
+Account Summary → Next account
+  ↓
+Overall Summary → Exit
 ```
 
 ### Historical Workflows
 
+- **V3**: Single-account processing with settings facade (superseded by V4)
 - **V2**: Used keyword-based classification (urgent/neutral/spam) and conditional summarization
 - **V1**: Basic email tagging with simple AI classification
 
@@ -274,24 +312,27 @@ Generate summary → Exit
 
 ## Documentation
 
-### V3 Documentation (Current Production Version)
-- **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy, requirements, roadmap (✅ Complete)
-- **[V3 Configuration Guide](docs/v3-configuration.md)** — V3 configuration system and settings facade
-- **[V3 CLI Guide](docs/v3-cli.md)** — Command-line interface documentation
-- **[V3 Migration Guide](docs/v3-migration-guide.md)** — Migrating from V2 to V3
-- **[V3 Orchestrator](docs/v3-orchestrator.md)** — Pipeline orchestration
-- **[V3 Note Generator](docs/v3-note-generator.md)** — Jinja2 templating system
-- **[V3 Decision Logic](docs/v3-decision-logic.md)** — Threshold-based classification
+### V4 Documentation (Current Production Version)
+- **[Product Design Doc V4 (PDD)](pdd_V4.md)** — V4 project strategy and requirements (✅ Complete)
+- **[V4 CLI Usage Guide](docs/v4-cli-usage.md)** — Complete command-line interface reference
+- **[V4 Configuration System](docs/v4-configuration.md)** — Multi-tenant configuration with account-specific overrides
+- **[V4 Configuration Reference](docs/v4-configuration-reference.md)** — Complete configuration reference with all options
+- **[V4 Rules Engine](docs/v4-rules-engine.md)** — Blacklist and whitelist rules for email filtering
+- **[V4 Account Processor](docs/v4-account-processor.md)** — Isolated per-account email processing pipeline
+- **[V4 Master Orchestrator](docs/v4-orchestrator.md)** — Multi-account orchestrator with CLI integration
+- **[V4 Content Parser](docs/v4-content-parser.md)** — HTML to Markdown conversion with fallback
+- **[V4 Models](docs/v4-models.md)** — EmailContext data class for pipeline state tracking
+- **[V4 Installation & Setup](docs/v4-installation-setup.md)** — Installation, setup, and initial configuration guide
+- **[V4 Quick Start](docs/v4-quick-start.md)** — Minimal setup guide to get V4 running quickly
+- **[V4 Migration Guide](docs/v4-migration-guide.md)** — Step-by-step guide for migrating from V3 to V4
+- **[V4 Troubleshooting](docs/v4-troubleshooting.md)** — Comprehensive troubleshooting guide for common V4 issues
 - **[Scoring Criteria](docs/scoring-criteria.md)** — Email scoring system
 
-### V4 Documentation (In Development - v4-orchestrator branch)
-- **[Product Design Doc V4 (PDD)](pdd_V4.md)** — V4 project strategy and requirements
-- **[V4 Configuration System](docs/v4-configuration.md)** — Multi-tenant configuration with account-specific overrides (Tasks 1-3) ✅
-- **[V4 Models](docs/v4-models.md)** — EmailContext data class for pipeline state tracking (Task 4) ✅
-- **[V4 Content Parser](docs/v4-content-parser.md)** — HTML to Markdown conversion with fallback (Task 5) ✅
-- **[V4 Rules Engine](docs/v4-rules-engine.md)** — Blacklist and whitelist rules for email filtering (Tasks 6-7) ✅
-- **[V4 Account Processor](docs/v4-account-processor.md)** — Isolated per-account email processing pipeline (Tasks 8-9) ✅
-- **[V4 End-to-End Testing](docs/v4-e2e-test-setup.md)** — E2E test setup, environment, scenarios, and execution guide (Task 19) ✅
+### Historical Documentation
+- **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy (historical, superseded by V4)
+- **[V3 Configuration Guide](docs/v3-configuration.md)** — V3 configuration system (historical)
+- **[V3 CLI Guide](docs/v3-cli.md)** — V3 command-line interface (historical)
+- **[V3 Migration Guide](docs/v3-migration-guide.md)** — Migrating from V2 to V3 (historical)
 
 ### General Documentation
 - **[Main Documentation Map](docs/MAIN_DOCS.md)** — Centralized documentation index
@@ -442,7 +483,7 @@ pytest tests/test_e2e_v4_pipeline.py -v -m "not e2e_v4"
 > **Start here:** [README-AI.md](README-AI.md) - Optimized entry point with complete project structure, architecture, and development context.
 > 
 > Then:
-> 1. Review [pdd.md](pdd.md) for V3 implementation details (current version)
+> 1. Review [pdd_V4.md](pdd_V4.md) for V4 implementation details (current version)
 > 2. Run `task-master list` and `task-master next` to see project state/tasks
 > 3. Review module docs in `docs/` as needed
 
@@ -451,14 +492,9 @@ pytest tests/test_e2e_v4_pipeline.py -v -m "not e2e_v4"
 > 1. Read this README.md for overview
 > 2. See [docs/COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md) for detailed user guide
 > 3. See [docs/MAIN_DOCS.md](docs/MAIN_DOCS.md) for documentation index
-> 4. See [docs/v3-migration-guide.md](docs/v3-migration-guide.md) if migrating from V2
+> 4. See [docs/v4-migration-guide.md](docs/v4-migration-guide.md) if migrating from V3
 
-*Don't forget: Secrets and configs are in `.env` and `config/config.yaml`. See docs above for details.*
-
-**Note:** 
-- **V3** (Foundational Upgrade) is the current production version on `main` branch. See [pdd.md](pdd.md) for V3 implementation details.
-- **V4** (Orchestrator) is in development on `v4-orchestrator` branch. See [pdd_V4.md](pdd_V4.md) for V4 implementation details.
-- **V1 and V2** are historical versions.
+*Don't forget: Secrets and configs are in `.env`, `config/config.yaml` (global), and `config/accounts/*.yaml` (account-specific). See docs above for details.*
 
 ---
 
@@ -467,20 +503,23 @@ pytest tests/test_e2e_v4_pipeline.py -v -m "not e2e_v4"
 **Q: How do I switch AI models?**  
 A: Edit `classification.model` in `config/config.yaml`. Supported models: `openai/gpt-3.5-turbo`, `google/gemini-2.5-flash-lite-preview-09-2025`, `openai/gpt-4o-mini`, `anthropic/claude-3-haiku`, etc.
 
+**Q: How do I process emails for an account?**  
+A: Use `python main.py process --account <name>` to process emails for a specific account, or `python main.py process --all` to process all accounts.
+
 **Q: How do I process a specific email?**  
-A: Use `python main.py process --uid <UID>` to process a single email by its UID.
+A: Use `python main.py process --account <name> --uid <UID>` to process a single email by its UID.
 
 **Q: How do I reprocess an already-processed email?**  
-A: Use `python main.py process --uid <UID> --force-reprocess` to ignore the processed tag and reprocess.
+A: Use `python main.py process --account <name> --uid <UID> --force-reprocess` to ignore the processed tag and reprocess.
 
 **Q: How do I preview processing without making changes?**  
-A: Use `python main.py process --dry-run` to see what would happen without modifying IMAP flags or creating files.
-
-**Q: How do I process historical emails?**  
-A: Use `python main.py backfill --since 2024-01-01 --until 2024-12-31` to process emails from a date range.
+A: Use `python main.py process --account <name> --dry-run` to see what would happen without modifying IMAP flags or creating files.
 
 **Q: How do I clean up application flags?**  
-A: Use `python main.py cleanup-flags` (requires confirmation) to remove all application-specific IMAP flags.
+A: Use `python main.py cleanup-flags --account <name>` (requires confirmation) to remove all application-specific IMAP flags for an account.
+
+**Q: How do I view the merged configuration for an account?**  
+A: Use `python main.py show-config --account <name>` to display the merged configuration (global + account-specific overrides).
 
 **Q: Why aren't tags visible in Thunderbird?**  
 A: Thunderbird's "Schlagworte" view only shows KEYWORDS extension tags. The flags are still applied and searchable via IMAP. See [docs/imap-keywords-vs-flags.md](docs/imap-keywords-vs-flags.md).
@@ -497,24 +536,29 @@ A: Edit the Jinja2 template at `config/note_template.md.j2` to customize the Mar
 ```
 email-agent/
 ├── src/                    # Source code
-│   ├── cli_v3.py          # V3 CLI interface (click-based)
-│   ├── settings.py        # V3 configuration facade
-│   ├── config_v3_loader.py # V3 configuration loading
-│   ├── orchestrator.py   # V3 pipeline orchestration
-│   ├── imap_client.py    # V3 IMAP operations
-│   ├── llm_client.py      # V3 LLM API client
-│   ├── decision_logic.py  # V3 threshold-based classification
-│   ├── note_generator.py  # V3 Jinja2 note generation
-│   ├── v3_logger.py       # V3 logging system
+│   ├── cli_v4.py          # V4 CLI interface (click-based)
+│   ├── orchestrator.py    # V4 MasterOrchestrator (multi-account)
+│   ├── account_processor.py # V4 Account Processor (per-account pipeline)
+│   ├── config_loader.py   # V4 configuration loader with deep merge
+│   ├── config_schema.py   # V4 configuration schema validation
+│   ├── rules.py           # V4 rules engine (blacklist/whitelist)
+│   ├── content_parser.py  # V4 HTML to Markdown parser
+│   ├── models.py          # V4 EmailContext data class
+│   ├── imap_client.py     # IMAP operations
+│   ├── llm_client.py      # LLM API client with retry logic
+│   ├── decision_logic.py  # Threshold-based classification
+│   ├── note_generator.py  # Jinja2 note generation
 │   └── ...                # Additional modules
 ├── tests/                  # Test suite
 ├── config/                 # Configuration files
-│   ├── config.yaml.example # V3 configuration template
+│   ├── config.yaml.example # Global configuration template
+│   ├── accounts/           # Account-specific configurations
+│   │   └── example-account.yaml
 │   └── note_template.md.j2 # Jinja2 note template
 ├── docs/                   # Documentation
 ├── scripts/                # Utility scripts
 ├── logs/                   # Log files (gitignored)
-├── main.py                 # Entry point (V3)
+├── main.py                 # Entry point (V4)
 └── requirements.txt        # Dependencies
 ```
 
@@ -533,4 +577,9 @@ email-agent/
 
 ---
 
-> **For AI agents:** Always start with [README-AI.md](README-AI.md) for complete project context, then review the PDD and current tasks before making changes!
+> **For AI agents:** Always start with [README-AI.md](README-AI.md) for complete project context, then review the PDD V4 and current tasks before making changes!
+
+**Note:** 
+- **V4** (Orchestrator) is the current production version. See [pdd_V4.md](pdd_V4.md) for V4 implementation details.
+- **V3** (Foundational Upgrade) is a historical version that has been superseded by V4. See [pdd.md](pdd.md) for historical V3 implementation details.
+- **V1 and V2** are historical versions.

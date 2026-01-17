@@ -14,25 +14,30 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def get_summarization_tags() -> List[str]:
+def get_summarization_tags(config: Optional[Dict[str, Any]] = None) -> List[str]:
     """
     Safely access and validate the summarization_tags configuration.
+    
+    Args:
+        config: Optional configuration dictionary. If not provided, returns empty list.
     
     Returns:
         List of tag strings that trigger summarization, or empty list if invalid/missing
     
     Examples:
-        >>> tags = get_summarization_tags()
+        >>> tags = get_summarization_tags({'processing': {'summarization_tags': ['important']}})
         >>> 'important' in tags
         True
     """
     try:
-        from src.settings import settings
+        if config is None:
+            logger.debug("No config provided to get_summarization_tags, returning empty list")
+            return []
         
         # Get summarization tags from config
         try:
-            processing_config = settings._config.processing
-            tags = getattr(processing_config, 'summarization_tags', None)
+            processing_config = config.get('processing', {})
+            tags = processing_config.get('summarization_tags', None)
         except Exception:
             tags = None
         
@@ -157,7 +162,8 @@ def load_summarization_prompt(prompt_path: Optional[str]) -> Optional[str]:
 
 
 def check_summarization_required(
-    email: Dict[str, Any]
+    email: Dict[str, Any],
+    config: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Determine if an email should be summarized and load the prompt if needed.
@@ -166,6 +172,7 @@ def check_summarization_required(
     
     Args:
         email: Email dict with 'tags' key (list of tag strings)
+        config: Optional configuration dictionary. If not provided, returns no summarization.
     
     Returns:
         Dict with keys:
@@ -175,15 +182,22 @@ def check_summarization_required(
     
     Examples:
         >>> email = {'tags': ['important']}
-        >>> result = check_summarization_required(email)
+        >>> config = {'processing': {'summarization_tags': ['important']}}
+        >>> result = check_summarization_required(email, config)
         >>> result['summarize']
         True
     """
     try:
-        from src.settings import settings
+        if config is None:
+            logger.debug("No config provided to check_summarization_required, skipping summarization")
+            return {
+                'summarize': False,
+                'prompt': None,
+                'reason': 'no_config_provided'
+            }
         
-        # Get summarization tags from settings
-        summarization_tags = get_summarization_tags()
+        # Get summarization tags from config
+        summarization_tags = get_summarization_tags(config)
         
         if not summarization_tags:
             logger.debug("No summarization tags configured, skipping summarization")
@@ -207,10 +221,10 @@ def check_summarization_required(
                 'reason': 'tags_do_not_match'
             }
         
-        # Email should be summarized - load the prompt from settings
+        # Email should be summarized - load the prompt from config
         try:
-            paths_config = settings._config.paths
-            prompt_path = getattr(paths_config, 'summarization_prompt_path', None)
+            paths_config = config.get('paths', {})
+            prompt_path = paths_config.get('summarization_prompt_path', None)
         except Exception:
             prompt_path = None
         

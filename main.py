@@ -2,11 +2,14 @@
 """
 Main entry point for the email agent V4.
 
-V4 CLI Commands:
-    python main.py process [--account <name>] [--all] [--dry-run] [--uid <ID>] [--force-reprocess]
-    python main.py cleanup-flags [--account <name>] [--dry-run]
-    python main.py backfill [--account <name>] [--start-date <date>] [--end-date <date>] [--dry-run]
-    python main.py show-config [--account <name>] [--format <format>]
+V4 CLI Commands (V4-only architecture):
+    python main.py process --account <name> [--dry-run] [--uid <ID>] [--force-reprocess] [--max-emails <N>] [--debug-prompt]
+    python main.py process --all [--dry-run] [--max-emails <N>]
+    python main.py cleanup-flags --account <name> [--dry-run]
+    python main.py show-config --account <name> [--format yaml|json] [--with-sources] [--no-highlight]
+
+Note: All commands require account specification. The V4 CLI uses V4 components exclusively
+(MasterOrchestrator, ConfigLoader) and no longer supports V3 mode.
 
 See --help for available options.
 """

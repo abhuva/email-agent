@@ -15,7 +15,6 @@ Architecture:
 
 Usage:
     >>> from src.note_generator import NoteGenerator
-    >>> from src.settings import settings
     >>> 
     >>> generator = NoteGenerator()
     >>> note_content = generator.generate_note(
