@@ -18,6 +18,7 @@ from datetime import datetime
 
 from src.settings import settings
 from src.config import ConfigError
+from src.dry_run_output import DryRunOutput
 
 
 @dataclass
@@ -220,11 +221,8 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
     if dry_run:
         from src.dry_run import set_dry_run
         set_dry_run(True)
-        try:
-            from src.dry_run_output import DryRunOutput, Colors, _colorize
-            click.echo(_colorize("[DRY RUN MODE] No files will be written or flags set", Colors.YELLOW, bold=True))
-        except ImportError:
-            click.echo("[DRY RUN MODE] No files will be written or flags set")
+        output = DryRunOutput()
+        output.warning("DRY RUN MODE: No files will be written or flags set")
     
     # Initialize logging
     try:
@@ -258,22 +256,20 @@ def process(ctx: click.Context, uid: Optional[str], force_reprocess: bool, dry_r
         pipeline = Pipeline()
         summary = pipeline.process_emails(pipeline_options)
         
-        # Display results
-        if dry_run:
-            try:
-                from src.dry_run_output import DryRunOutput
-                output = DryRunOutput()
-                output.header("Processing Complete")
-                output.info(f"Processed {summary.total_emails} email(s)")
-                output.detail("Successful", summary.successful)
-                output.detail("Failed", summary.failed)
-                output.detail("Total time", f"{summary.total_time:.2f}s")
-                if summary.total_emails > 0:
-                    output.detail("Average time", f"{summary.average_time:.2f}s per email")
-            except ImportError:
-                click.echo(f"\nProcessing complete: {summary.successful} successful, {summary.failed} failed")
-        else:
-            click.echo(f"\nProcessing complete: {summary.successful} successful, {summary.failed} failed in {summary.total_time:.2f}s")
+        # Display results using DryRunOutput for consistent formatting
+        output = DryRunOutput()
+        output.header("Processing Complete", level=1)
+        output.info(f"Processed {summary.total_emails} email(s)")
+        output.detail("Successful", summary.successful)
+        output.detail("Failed", summary.failed)
+        output.detail("Total time", f"{summary.total_time:.2f}s")
+        if summary.total_emails > 0:
+            output.detail("Average time", f"{summary.average_time:.2f}s per email")
+        
+        if summary.failed > 0:
+            output.error(f"{summary.failed} email(s) failed processing")
+        elif summary.successful > 0:
+            output.success("All emails processed successfully")
         
         # Exit with error code if any failures
         if summary.failed > 0:
@@ -344,17 +340,16 @@ def cleanup_flags(ctx: click.Context, dry_run: bool):
         click.echo(f"Error: Failed to load application flags configuration: {e}", err=True)
         sys.exit(1)
     
-    # Display warning message
-    click.echo("\n" + "=" * 70, err=True)
-    click.echo("WARNING: This command will remove application-specific flags from emails", err=True)
-    click.echo("in your IMAP mailbox. This action cannot be undone.", err=True)
-    click.echo("=" * 70 + "\n", err=True)
-    
-    click.echo(f"Application-specific flags to remove: {flags_list}")
-    click.echo("\nThis may cause emails to be reprocessed on the next run.")
+    # Display warning message using DryRunOutput
+    output = DryRunOutput()
+    output.header("WARNING", level=1)
+    output.warning("This command will remove application-specific flags from emails")
+    output.warning("in your IMAP mailbox. This action cannot be undone.")
+    output.info(f"Application-specific flags to remove: {flags_list}")
+    output.info("This may cause emails to be reprocessed on the next run.")
     
     if dry_run:
-        click.echo("\n[DRY RUN MODE] No flags will actually be removed.")
+        output.warning("DRY RUN MODE: No flags will actually be removed.")
     
     # Mandatory confirmation prompt (PDD requirement)
     if not dry_run:
@@ -365,7 +360,8 @@ def cleanup_flags(ctx: click.Context, dry_run: bool):
         )
         
         if confirmation.lower().strip() != 'yes':
-            click.echo("\nOperation cancelled. No flags were modified.", err=True)
+            output = DryRunOutput()
+            output.info("Operation cancelled. No flags were modified.")
             sys.exit(0)
     
     # Perform cleanup operation
@@ -377,41 +373,43 @@ def cleanup_flags(ctx: click.Context, dry_run: bool):
         
         try:
             # Scan for flags
-            click.echo("\nScanning emails for application-specific flags...")
+            output = DryRunOutput()
+            output.info("Scanning emails for application-specific flags...")
             scan_results = cleanup.scan_flags(dry_run=dry_run)
             
             if not scan_results:
-                click.echo("\nNo emails with application-specific flags found.")
+                output.info("No emails with application-specific flags found.")
                 cleanup.disconnect()
                 return options
             
             # Display scan results
             formatted_results = cleanup.format_scan_results(scan_results)
+            # Use DryRunOutput for scan results if it's a simple string
+            # Otherwise, output the formatted results as-is
+            output.info("Scan results:")
             click.echo(formatted_results)
             
             # Remove flags
             if dry_run:
-                click.echo("\n[DRY RUN] Preview of what would be removed:")
+                output.warning("DRY RUN: Preview of what would be removed:")
             else:
-                click.echo("\nRemoving application-specific flags...")
+                output.info("Removing application-specific flags...")
             
             summary = cleanup.remove_flags(scan_results, dry_run=dry_run)
             
-            # Display summary
-            click.echo("\n" + "=" * 70)
-            click.echo("Cleanup Summary:")
-            click.echo(f"  Emails scanned: {summary.total_emails_scanned}")
-            click.echo(f"  Emails with flags: {summary.emails_with_flags}")
-            click.echo(f"  Flags removed: {summary.total_flags_removed}")
-            click.echo(f"  Emails modified: {summary.emails_modified}")
+            # Display summary using DryRunOutput
+            output.header("Cleanup Summary", level=1)
+            output.detail("Emails scanned", summary.total_emails_scanned)
+            output.detail("Emails with flags", summary.emails_with_flags)
+            output.detail("Flags removed", summary.total_flags_removed)
+            output.detail("Emails modified", summary.emails_modified)
             if summary.errors > 0:
-                click.echo(f"  Errors: {summary.errors}", err=True)
-            click.echo("=" * 70)
+                output.error(f"Errors: {summary.errors}")
             
             if dry_run:
-                click.echo("\n[DRY RUN] No flags were actually removed.")
+                output.warning("DRY RUN: No flags were actually removed.")
             else:
-                click.echo("\nCleanup complete!")
+                output.success("Cleanup complete!")
             
             cleanup.disconnect()
             
@@ -526,25 +524,23 @@ def backfill(
         click.echo(f"Error: Start date ({start_date_obj}) must be before end date ({end_date_obj})", err=True)
         sys.exit(1)
     
-    # Display backfill configuration
-    click.echo("\n" + "=" * 70)
-    click.echo("BACKFILL OPERATION")
-    click.echo("=" * 70)
-    click.echo(f"Start date: {start_date_obj or 'All time'}")
-    click.echo(f"End date: {end_date_obj or 'All time'}")
-    click.echo(f"Folder: {folder or 'Default (INBOX)'}")
-    click.echo(f"Force reprocess: {force_reprocess}")
-    click.echo(f"Dry run: {dry_run}")
-    click.echo(f"Max emails: {max_emails or 'Unlimited'}")
-    click.echo(f"Throttling: {calls_per_minute or 'From settings'}")
-    click.echo("=" * 70 + "\n")
+    # Display backfill configuration using DryRunOutput
+    output = DryRunOutput()
+    output.header("Backfill Operation", level=1)
+    output.detail("Start date", start_date_obj or 'All time')
+    output.detail("End date", end_date_obj or 'All time')
+    output.detail("Folder", folder or 'Default (INBOX)')
+    output.detail("Force reprocess", force_reprocess)
+    output.detail("Dry run", dry_run)
+    output.detail("Max emails", max_emails or 'Unlimited')
+    output.detail("Throttling", calls_per_minute or 'From settings')
     
     if dry_run:
-        click.echo("[DRY RUN MODE] No files will be written and no IMAP flags will be set.\n")
+        output.warning("DRY RUN MODE: No files will be written and no IMAP flags will be set.")
     
     # Confirm before proceeding (for large backfills)
     if not dry_run and (not max_emails or max_emails > 100):
-        click.echo("Warning: This will process all matching emails, which may take a long time.")
+        output.warning("This will process all matching emails, which may take a long time.")
         confirmation = click.prompt(
             "Type 'yes' to proceed, or anything else to cancel",
             type=str,
@@ -552,7 +548,7 @@ def backfill(
         )
         
         if confirmation.lower().strip() != 'yes':
-            click.echo("\nOperation cancelled.", err=True)
+            output.info("Operation cancelled.")
             sys.exit(0)
     
     # Perform backfill operation
@@ -570,27 +566,30 @@ def backfill(
             max_emails=max_emails
         )
         
-        # Display summary
-        click.echo("\n" + "=" * 70)
-        click.echo("BACKFILL SUMMARY")
-        click.echo("=" * 70)
-        click.echo(f"Total emails found: {summary.total_emails}")
-        click.echo(f"  ✓ Successfully processed: {summary.processed}")
-        click.echo(f"  ✗ Failed: {summary.failed}")
-        click.echo(f"  ⊘ Skipped: {summary.skipped}")
-        click.echo(f"Total time: {summary.total_time:.2f}s")
-        click.echo(f"Average time per email: {summary.average_time:.2f}s")
+        # Display summary using DryRunOutput
+        output = DryRunOutput()
+        output.header("Backfill Summary", level=1)
+        output.detail("Total emails found", summary.total_emails)
+        output.detail("Successfully processed", summary.processed)
+        output.detail("Failed", summary.failed)
+        output.detail("Skipped", summary.skipped)
+        output.detail("Total time", f"{summary.total_time:.2f}s")
+        output.detail("Average time per email", f"{summary.average_time:.2f}s")
         if summary.processed > 0:
             success_rate = (summary.processed / summary.total_emails) * 100
-            click.echo(f"Success rate: {success_rate:.1f}%")
-        click.echo(f"Start time: {summary.start_time}")
-        click.echo(f"End time: {summary.end_time}")
-        click.echo("=" * 70)
+            output.detail("Success rate", f"{success_rate:.1f}%")
+        output.detail("Start time", summary.start_time)
+        output.detail("End time", summary.end_time)
+        
+        if summary.failed > 0:
+            output.error(f"{summary.failed} email(s) failed processing")
+        elif summary.processed > 0:
+            output.success("Backfill completed successfully")
         
         if dry_run:
-            click.echo("\n[DRY RUN] No files were written and no IMAP flags were set.")
+            output.warning("DRY RUN: No files were written and no IMAP flags were set.")
         else:
-            click.echo("\nBackfill complete!")
+            output.success("Backfill complete!")
         
         # Exit with error code if there were failures
         if summary.failed > 0:
@@ -738,24 +737,22 @@ def _process_v4_accounts(
         # Run orchestration
         result = orchestrator.run(argv)
         
-        # Display results
-        click.echo("\n" + "=" * 70)
-        click.echo("Processing Summary")
-        click.echo("=" * 70)
-        click.echo(f"Total accounts: {result.total_accounts}")
-        click.echo(f"  ✓ Successful: {result.successful_accounts}")
-        click.echo(f"  ✗ Failed: {result.failed_accounts}")
-        click.echo(f"Total time: {result.total_time:.2f}s")
+        # Display results using DryRunOutput
+        output = DryRunOutput()
+        output.header("Processing Summary", level=1)
+        output.detail("Total accounts", result.total_accounts)
+        output.detail("Successful", result.successful_accounts)
+        output.detail("Failed", result.failed_accounts)
+        output.detail("Total time", f"{result.total_time:.2f}s")
         
         if result.failed_accounts > 0:
-            click.echo("\nFailed accounts:")
+            output.warning("Some accounts failed processing")
             for account_id, (success, error) in result.account_results.items():
                 if not success:
-                    click.echo(f"  - {account_id}: {error}", err=True)
-            click.echo("=" * 70)
+                    output.error(f"{account_id}: {error}")
             sys.exit(1)
         else:
-            click.echo("=" * 70)
+            output.success("All accounts processed successfully")
             
     except Exception as e:
         click.echo(f"Error during multi-account processing: {e}", err=True)
@@ -869,13 +866,13 @@ def show_config(
                 show_sources=not no_highlight
             )
         
-        # Display configuration
-        click.echo(f"\nConfiguration for account: {account}")
+        # Display configuration using DryRunOutput
+        formatter_output = DryRunOutput()
+        formatter_output.header(f"Configuration for account: {account}", level=1)
         if not no_highlight:
-            click.echo("(Values marked with '# overridden from global' come from account-specific config)")
-        click.echo("=" * 70)
-        click.echo(output)
-        click.echo("=" * 70)
+            formatter_output.info("(Values marked with '# overridden from global' come from account-specific config)")
+        # Output the formatted config (YAML/JSON) as a code block
+        formatter_output.code_block(output)
         
     except FileNotFoundError as e:
         click.echo(f"Error: Configuration file not found: {e}", err=True)

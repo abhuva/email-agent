@@ -398,6 +398,7 @@ class TemplateRenderer:
         processing_config = self._loader._config.get('processing', {}) if hasattr(self._loader, '_config') else {}
         context['importance_threshold'] = processing_config.get('importance_threshold', 7)
         context['spam_threshold'] = processing_config.get('spam_threshold', 5)
+        if not processing_config:
             logger.warning("Settings not initialized, using default thresholds")
         
         # Add summary data if available (raw response, no parsing)
