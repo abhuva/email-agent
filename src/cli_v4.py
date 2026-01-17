@@ -1,7 +1,7 @@
 """
 V4 Command-line interface for the email agent.
 
-This module implements the V4 CLI using Click, replacing cli_v3.py.
+This module implements the V4 CLI using Click.
 All commands use V4 components (MasterOrchestrator, ConfigLoader) exclusively.
 
 CLI Structure:
@@ -481,10 +481,9 @@ def backfill(
         python main.py backfill --account work --max-emails 100
         python main.py backfill --account work --dry-run
     """
-    # TODO: Migrate backfill module to use V4 AccountProcessor instead of Pipeline
+    # TODO: Migrate backfill module to use V4 AccountProcessor
     click.echo("Error: backfill command is not yet fully migrated to V4.", err=True)
     click.echo("This command will be available in a future update.", err=True)
-    click.echo("For now, please use the V3 CLI: python main.py backfill", err=True)
     sys.exit(1)
     # Note: Once backfill.py is migrated to V4, implement here using AccountProcessor
 

@@ -1,10 +1,8 @@
 """
-V3 IMAP client module for email retrieval and flag management.
+IMAP client module for email retrieval and flag management.
 
-This module provides a clean interface for IMAP operations using the settings.py facade.
-Replaces direct IMAP connection code with a modular, V3-compliant implementation.
-
-All configuration access is through the settings.py facade, not direct YAML access.
+This module provides a clean interface for IMAP operations.
+Configuration is provided via account-specific configuration dictionaries or factory methods.
 """
 import imaplib
 import logging
@@ -36,10 +34,9 @@ class IMAPFetchError(IMAPClientError):
 
 class ImapClient:
     """
-    V3 IMAP client for email retrieval and flag management.
+    IMAP client for email retrieval and flag management.
     
-    This class provides a clean interface for IMAP operations, using the
-    settings.py facade for all configuration access.
+    This class provides a clean interface for IMAP operations.
     
     Example:
         client = ImapClient()

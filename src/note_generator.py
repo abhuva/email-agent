@@ -1,10 +1,10 @@
 """
-V3 Note Generator Module
+Note Generator Module
 
 This module provides templating functionality for generating Markdown notes
 from email content and classification results using Jinja2.
 
-All configuration access is through the settings.py facade, not direct YAML access.
+Configuration is provided via account-specific configuration dictionaries.
 
 Architecture:
     - TemplateLoader: Handles template file loading and validation
@@ -346,7 +346,7 @@ class TemplateRenderer:
         context = {
             'uid': email_data.get('uid', ''),
             'subject': email_data.get('subject', '[No Subject]'),
-            'from': from_value,  # Keep for backward compatibility
+            'from': from_value,  # Legacy field name (use from_name/from_mail instead)
             'from_name': from_name if from_name else None,
             'from_mail': from_mail if from_mail else None,
             'to': email_data.get('to', []),
@@ -560,7 +560,7 @@ processing_meta:
             context = {
                 'uid': email_data.get('uid', ''),
                 'subject': email_data.get('subject', '[No Subject]'),
-                'from': from_value,  # Keep for backward compatibility
+                'from': from_value,  # Legacy field name (use from_name/from_mail instead)
                 'from_name': from_name if from_name else None,
                 'from_mail': from_mail if from_mail else None,
                 'to': email_data.get('to', []),

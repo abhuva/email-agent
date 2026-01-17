@@ -250,7 +250,6 @@ def generate_email_summary(
     
     This function orchestrates prompt formatting, API calls, error handling,
     and response parsing to generate a structured summary.
-    Uses V3 settings facade directly.
     
     Args:
         email: Email dict with 'subject', 'sender', 'body', 'date', etc.
@@ -328,7 +327,7 @@ def generate_email_summary(
             email_date
         )
         
-        # Get model and settings from V3 summarization config
+        # Get model and settings from summarization config
         model = settings.get_summarization_model()
         temperature = settings.get_summarization_temperature()
         max_tokens = 300  # Can be made configurable later if needed

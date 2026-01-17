@@ -101,9 +101,9 @@ class OrchestrationResult:
         )
 
 
-# Note: Pipeline class and V3 dataclasses (ProcessOptions, ProcessingResult, PipelineSummary) 
-# have been removed. They were only used by cli_v3.py and backfill.py, which will be 
-# removed/updated in later subtasks (22.12 and backfill migration).
+# Note: Pipeline class and related dataclasses (ProcessOptions, ProcessingResult, PipelineSummary) 
+# have been removed as part of the V4 migration. They were replaced by MasterOrchestrator 
+# and AccountProcessor.
 
 
 class MasterOrchestrator:
@@ -409,7 +409,7 @@ Examples:
             Services are initialized lazily on first use if not already initialized.
         """
         # Components are now created per-account with account-specific config
-        # This method is kept for compatibility but does nothing
+        # This method is kept for interface compatibility but does nothing
         pass
     
     def create_account_processor(self, account_id: str) -> AccountProcessor:

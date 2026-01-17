@@ -2,8 +2,7 @@
 V4 Configuration Schema Definition
 
 This module defines the schema for V4 configuration validation.
-V4 configuration is V3-compatible, meaning it uses the same structure
-as V3 but supports account-specific overrides via deep merge.
+V4 configuration supports account-specific overrides via deep merge.
 
 The schema is defined as a dictionary structure that can express:
 - Required fields

@@ -224,7 +224,7 @@ class DecisionLogic:
     This class implements the core decision logic that compares processed scores
     against configured thresholds to determine email categorization.
     
-    All configuration is accessed through the settings.py facade.
+    Configuration is provided via account-specific configuration dictionaries.
     """
     
     def __init__(self, config: Dict[str, Any]):

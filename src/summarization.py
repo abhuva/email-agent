@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def get_summarization_tags() -> List[str]:
     """
-    Safely access and validate the summarization_tags configuration from V3 settings.
+    Safely access and validate the summarization_tags configuration.
     
     Returns:
         List of tag strings that trigger summarization, or empty list if invalid/missing
@@ -29,7 +29,7 @@ def get_summarization_tags() -> List[str]:
     try:
         from src.settings import settings
         
-        # Get summarization tags from V3 config
+        # Get summarization tags from config
         try:
             processing_config = settings._config.processing
             tags = getattr(processing_config, 'summarization_tags', None)
@@ -163,7 +163,6 @@ def check_summarization_required(
     Determine if an email should be summarized and load the prompt if needed.
     
     This is the main function that orchestrates tag checking and prompt loading.
-    Uses V3 settings facade directly.
     
     Args:
         email: Email dict with 'tags' key (list of tag strings)
@@ -183,7 +182,7 @@ def check_summarization_required(
     try:
         from src.settings import settings
         
-        # Get summarization tags from V3 settings
+        # Get summarization tags from settings
         summarization_tags = get_summarization_tags()
         
         if not summarization_tags:
@@ -208,7 +207,7 @@ def check_summarization_required(
                 'reason': 'tags_do_not_match'
             }
         
-        # Email should be summarized - load the prompt from V3 settings
+        # Email should be summarized - load the prompt from settings
         try:
             paths_config = settings._config.paths
             prompt_path = getattr(paths_config, 'summarization_prompt_path', None)

@@ -1,10 +1,10 @@
 """
-V3 Prompt Renderer
+Prompt Renderer
 
 This module handles loading and rendering the score-based classification prompt
 with configuration integration and template variable substitution.
 
-All configuration access is through the settings.py facade.
+Configuration is provided via account-specific configuration dictionaries.
 """
 import os
 import yaml
