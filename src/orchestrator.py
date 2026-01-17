@@ -1372,6 +1372,28 @@ Examples:
             help='Set logging level (default: INFO)'
         )
         
+        # Processing options
+        parser.add_argument(
+            '--uid',
+            type=str,
+            help='Target a specific email by UID. If not provided, processes emails according to configured query.'
+        )
+        parser.add_argument(
+            '--force-reprocess',
+            action='store_true',
+            help='Ignore existing processed_tag and reprocess emails even if already marked as processed.'
+        )
+        parser.add_argument(
+            '--max-emails',
+            type=int,
+            help='Maximum number of emails to process (overrides config max_emails_per_run). Useful for testing.'
+        )
+        parser.add_argument(
+            '--debug-prompt',
+            action='store_true',
+            help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
+        )
+        
         return parser.parse_args(argv)
     
     def _discover_available_accounts(self) -> List[str]:
@@ -1657,8 +1679,13 @@ Examples:
                         # Set up account (IMAP connection, etc.)
                         processor.setup()
                         
-                        # Run processing
-                        processor.run()
+                        # Run processing with options from CLI
+                        processor.run(
+                            force_reprocess=args.force_reprocess,
+                            uid=args.uid,
+                            max_emails=args.max_emails,
+                            debug_prompt=args.debug_prompt
+                        )
                         
                         # Teardown (cleanup, close connections)
                         processor.teardown()

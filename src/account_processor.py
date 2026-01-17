@@ -715,7 +715,13 @@ class AccountProcessor:
             self.logger.error(error_msg)
             raise AccountProcessorSetupError(error_msg) from e
     
-    def run(self, force_reprocess: bool = False) -> None:
+    def run(
+        self,
+        force_reprocess: bool = False,
+        uid: Optional[str] = None,
+        max_emails: Optional[int] = None,
+        debug_prompt: bool = False
+    ) -> None:
         """
         Execute the processing pipeline for this account.
         
@@ -733,6 +739,9 @@ class AccountProcessor:
         
         Args:
             force_reprocess: If True, include processed emails in search
+            uid: Optional specific email UID to process (if provided, only this email is processed)
+            max_emails: Optional maximum number of emails to process (overrides config)
+            debug_prompt: If True, write classification prompts to debug files
         
         Raises:
             AccountProcessorRunError: If run fails critically
@@ -749,6 +758,21 @@ class AccountProcessor:
         self._processing_context['start_time'] = time.time()
         
         try:
+            # If UID is specified, process only that email (skip safety interlock)
+            if uid:
+                self.logger.info(f"Processing specific email UID: {uid}")
+                try:
+                    email_data = self._imap_conn.get_email_by_uid(uid)
+                    if email_data:
+                        self._process_message(email_data, debug_prompt=debug_prompt)
+                        self.logger.info(f"Successfully processed email UID {uid}")
+                    else:
+                        self.logger.warning(f"Email UID {uid} not found")
+                except Exception as e:
+                    self.logger.error(f"Failed to process email UID {uid}: {e}")
+                    raise AccountProcessorRunError(f"Failed to process email UID {uid}: {e}") from e
+                return
+            
             # Safety Interlock: Step 1 - Count emails before fetching
             self.logger.info("Safety interlock: Counting emails before processing...")
             email_count, uids = self._imap_conn.count_unprocessed_emails(force_reprocess=force_reprocess)
@@ -810,9 +834,10 @@ class AccountProcessor:
                 self.logger.info("Safety interlock is disabled. Proceeding without cost check.")
             
             # Safety Interlock: Step 5 - Fetch emails using pre-counted UIDs
-            max_emails = self.config.get('processing', {}).get('max_emails_per_run')
+            # Use max_emails parameter if provided, otherwise use config
+            max_emails_config = max_emails if max_emails is not None else self.config.get('processing', {}).get('max_emails_per_run')
             emails = self._imap_conn.get_unprocessed_emails(
-                max_emails=max_emails,
+                max_emails=max_emails_config,
                 force_reprocess=force_reprocess,
                 uids=uids  # Use pre-counted UIDs to avoid re-searching
             )
@@ -829,7 +854,7 @@ class AccountProcessor:
                 unit="emails"
             ):
                 try:
-                    self._process_message(email_dict)
+                    self._process_message(email_dict, debug_prompt=debug_prompt)
                 except Exception as e:
                     # Log error but continue processing other emails
                     error_msg = (
@@ -906,7 +931,7 @@ class AccountProcessor:
             self.logger.error(error_msg)
             raise AccountProcessorRunError(error_msg) from e
     
-    def _process_message(self, email_dict: Dict[str, Any]) -> None:
+    def _process_message(self, email_dict: Dict[str, Any], debug_prompt: bool = False) -> None:
         """
         Process a single email through the complete pipeline.
         
@@ -920,6 +945,7 @@ class AccountProcessor:
         
         Args:
             email_dict: Email dictionary from IMAP client
+            debug_prompt: If True, write classification prompts to debug files
         """
         # Create EmailContext from IMAP data
         email_context = from_imap_dict(email_dict)
@@ -948,7 +974,7 @@ class AccountProcessor:
         self._parse_content(email_context)
         
         # Stage 3: LLM Classification
-        llm_response = self._classify_with_llm(email_context)
+        llm_response = self._classify_with_llm(email_context, debug_prompt=debug_prompt)
         if not llm_response:
             self.logger.warning(
                 f"LLM classification failed for UID {uid}, skipping note generation"
@@ -974,6 +1000,9 @@ class AccountProcessor:
             )
             classification_result = self.decision_logic.classify(adjusted_llm_response)
         
+        # Stage 4.5: Summarization (if email is important and summarization is configured)
+        self._generate_summary_if_needed(email_context, classification_result, uid)
+        
         # Stage 5: Note Generation
         self._generate_note(email_context, classification_result)
         
@@ -984,6 +1013,9 @@ class AccountProcessor:
         
         # Set IMAP flag
         self._mark_email_processed(uid)
+        
+        # Log to structured analytics (if available)
+        self._log_email_processed(uid, classification_result, success=True)
         
         self.logger.info(
             f"Successfully processed email UID {uid} for account {self.account_id}"
@@ -1030,12 +1062,13 @@ class AccountProcessor:
                 f"using plain text fallback for account {self.account_id}"
             )
     
-    def _classify_with_llm(self, email_context: EmailContext) -> Optional[LLMResponse]:
+    def _classify_with_llm(self, email_context: EmailContext, debug_prompt: bool = False) -> Optional[LLMResponse]:
         """
         Classify email using LLM.
         
         Args:
             email_context: EmailContext to classify
+            debug_prompt: If True, write classification prompts to debug files
         
         Returns:
             LLMResponse if classification succeeds, None otherwise
@@ -1048,7 +1081,9 @@ class AccountProcessor:
             llm_response = self.llm_client.classify_email(
                 email_content=email_content,
                 user_prompt=None,  # TODO: Load prompt from config if needed
-                max_chars=None  # TODO: Get from config
+                max_chars=None,  # TODO: Get from config
+                debug_prompt=debug_prompt,
+                debug_uid=email_context.uid
             )
             
             self.logger.debug(
@@ -1094,13 +1129,163 @@ class AccountProcessor:
         email_context.llm_score = new_score
         email_context.whitelist_boost = new_score - current_score
         email_context.whitelist_tags = tags
-        
+
         if tags or email_context.whitelist_boost != 0.0:
             self.logger.debug(
                 f"Whitelist applied to UID {email_context.uid} "
                 f"(account {self.account_id}): "
                 f"boost={email_context.whitelist_boost}, tags={tags}"
             )
+    
+    def _generate_summary_if_needed(
+        self,
+        email_context: EmailContext,
+        classification_result: ClassificationResult,
+        uid: str
+    ) -> None:
+        """
+        Generate summary for email if summarization is required.
+        
+        This method:
+        - Checks if email tags match summarization_tags from config
+        - Calls LLM to generate summary if required
+        - Stores summary result in email_context for template rendering
+        - Handles errors gracefully (summarization failure doesn't break pipeline)
+        
+        Args:
+            email_context: EmailContext to check and potentially summarize
+            classification_result: Classification result with tags
+            uid: Email UID for logging
+        """
+        try:
+            # Get summarization tags from config
+            summarization_tags = self.config.get('processing', {}).get('summarization_tags')
+            if not summarization_tags or not isinstance(summarization_tags, list):
+                self.logger.debug(
+                    f"Summarization not configured for account {self.account_id}, skipping"
+                )
+                return
+            
+            # Get tags from classification result
+            email_tags = classification_result.to_frontmatter_dict().get('tags', [])
+            
+            # Check if email should be summarized
+            from src.summarization import should_summarize_email
+            if not should_summarize_email(email_tags, summarization_tags):
+                reason = f"tags {email_tags} do not match summarization_tags {summarization_tags}"
+                self.logger.debug(f"Summarization not required for UID {uid}: {reason}")
+                return
+            
+            self.logger.info(
+                f"Summarization required for email UID {uid} "
+                f"(account {self.account_id}, tags: {email_tags})"
+            )
+            
+            # Get summarization prompt path from config
+            summarization_prompt_path = self.config.get('paths', {}).get('summarization_prompt_path')
+            
+            # Load summarization prompt
+            from src.summarization import load_summarization_prompt
+            prompt = load_summarization_prompt(summarization_prompt_path)
+            
+            if not prompt:
+                self.logger.warning(
+                    f"Summarization required but prompt failed to load "
+                    f"(path: {summarization_prompt_path}) for UID {uid}"
+                )
+                return
+            
+            # Create email dict for summarization (needs email content)
+            email_data = {
+                'uid': email_context.uid,
+                'subject': email_context.subject,
+                'from': email_context.sender,
+                'body': email_context.parsed_body or email_context.raw_text or '',
+                'html_body': email_context.raw_html or '',
+                'date': email_context.date or '',
+                'to': email_context.to,
+                'tags': email_tags
+            }
+            
+            # Create OpenRouter client from config for summarization
+            try:
+                from src.openrouter_client import OpenRouterClient
+                import os
+                
+                openrouter_config = self.config.get('openrouter', {})
+                api_key_env = openrouter_config.get('api_key_env', 'OPENROUTER_API_KEY')
+                api_url = openrouter_config.get('api_url', 'https://openrouter.ai/api/v1')
+                
+                api_key = os.getenv(api_key_env)
+                if not api_key:
+                    self.logger.warning(
+                        f"OpenRouter API key not found (env: {api_key_env}), "
+                        f"skipping summarization for UID {uid}"
+                    )
+                    return
+                
+                openrouter_client = OpenRouterClient(api_key, api_url)
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to create OpenRouter client for summarization: {e}"
+                )
+                return
+            
+            # Generate summary using LLM
+            try:
+                from src.email_summarization import generate_email_summary
+                summarization_result = {
+                    'summarize': True,
+                    'prompt': prompt,
+                    'reason': None
+                }
+                
+                summary_result = generate_email_summary(
+                    email_data,
+                    openrouter_client,
+                    summarization_result
+                )
+                
+                # Store summary result in email_context for template rendering
+                # We'll add it to email_data dict in _generate_note
+                email_context.summary = summary_result
+                
+                if summary_result.get('success', False):
+                    summary_text = summary_result.get('summary', '')
+                    self.logger.info(
+                        f"Successfully generated summary for email UID {uid} "
+                        f"({len(summary_text)} chars, account {self.account_id})"
+                    )
+                else:
+                    error = summary_result.get('error', 'unknown')
+                    self.logger.warning(
+                        f"Summary generation failed for email UID {uid} "
+                        f"(account {self.account_id}): {error}"
+                    )
+                    
+            except Exception as e:
+                # Graceful degradation - log but continue
+                self.logger.error(
+                    f"Error generating summary for email UID {uid} "
+                    f"(account {self.account_id}): {e}",
+                    exc_info=True
+                )
+                email_context.summary = {
+                    'success': False,
+                    'summary': '',
+                    'action_items': [],
+                    'priority': 'medium',
+                    'error': f'summary_generation_error: {str(e)}'
+                }
+                
+        except Exception as e:
+            # Never let summarization check break the pipeline
+            self.logger.error(
+                f"Unexpected error in summarization check for UID {uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+            # Don't set summary - template will handle missing summary gracefully
     
     def _generate_note(
         self,
@@ -1116,15 +1301,22 @@ class AccountProcessor:
         """
         try:
             # Convert EmailContext to email_data dict for note generator
+            # Include all extracted metadata (date, to, cc, message_id)
             email_data = {
                 'uid': email_context.uid,
                 'subject': email_context.subject,
                 'from': email_context.sender,
                 'body': email_context.parsed_body or email_context.raw_text or '',
                 'html_body': email_context.raw_html or '',
-                'date': None,  # TODO: Extract from IMAP if available
-                'to': []  # TODO: Extract from IMAP if available
+                'date': email_context.date or '',  # Use extracted date (empty string if None)
+                'to': email_context.to,  # Use extracted recipients
+                'cc': email_context.cc,  # Use extracted CC recipients
+                'message_id': email_context.message_id,  # Use extracted Message-ID
             }
+            
+            # Add summary if available (from summarization step)
+            if email_context.summary:
+                email_data['summary'] = email_context.summary
             
             # Generate note using note generator
             note_content = self.note_generator.generate_note(
@@ -1132,11 +1324,12 @@ class AccountProcessor:
                 classification_result=classification_result
             )
             
-            # TODO: Write note to file system
-            # For now, we just log that note was generated
-            self.logger.info(
-                f"Generated note for UID {email_context.uid} "
-                f"(account {self.account_id}): {len(note_content)} characters"
+            # Write note to file system with account-specific subdirectory
+            self._write_note_to_disk(
+                note_content=note_content,
+                email_subject=email_context.subject,
+                email_uid=email_context.uid,
+                email_date=email_context.date  # Pass date for file timestamp
             )
             
         except Exception as e:
@@ -1157,15 +1350,17 @@ class AccountProcessor:
             # Parse content for raw note
             self._parse_content(email_context)
             
-            # Create minimal email_data for raw note
+            # Create email_data for raw note with all metadata
             email_data = {
                 'uid': email_context.uid,
                 'subject': email_context.subject,
                 'from': email_context.sender,
                 'body': email_context.parsed_body or email_context.raw_text or '',
                 'html_body': email_context.raw_html or '',
-                'date': None,
-                'to': []
+                'date': email_context.date or '',  # Use extracted date
+                'to': email_context.to,  # Use extracted recipients
+                'cc': email_context.cc,  # Use extracted CC recipients
+                'message_id': email_context.message_id,  # Use extracted Message-ID
             }
             
             # Generate note without classification result (raw markdown)
@@ -1174,10 +1369,12 @@ class AccountProcessor:
                 classification_result=None  # No AI classification for raw notes
             )
             
-            # TODO: Write note to file system
-            self.logger.info(
-                f"Generated raw note for UID {email_context.uid} "
-                f"(account {self.account_id}): {len(note_content)} characters"
+            # Write note to file system with account-specific subdirectory
+            self._write_note_to_disk(
+                note_content=note_content,
+                email_subject=email_context.subject,
+                email_uid=email_context.uid,
+                email_date=email_context.date  # Pass date for file timestamp
             )
             
         except Exception as e:
@@ -1185,6 +1382,163 @@ class AccountProcessor:
                 f"Raw note generation failed for UID {email_context.uid} "
                 f"(account {self.account_id}): {e}",
                 exc_info=True
+            )
+    
+    def _write_note_to_disk(
+        self,
+        note_content: str,
+        email_subject: str,
+        email_uid: str,
+        email_date: Optional[str] = None
+    ) -> None:
+        """
+        Write note to file system with account-specific subdirectory.
+        
+        Creates a subdirectory in the Obsidian vault named after the account
+        (e.g., 'info-nica' for account_id 'info.nica') and writes the note there.
+        
+        Args:
+            note_content: Generated note content (Markdown)
+            email_subject: Email subject for filename generation
+            email_uid: Email UID for logging
+            email_date: Optional email date string (RFC 2822 format) for file timestamp
+        """
+        from src.obsidian_note_creation import write_obsidian_note
+        from src.obsidian_utils import InvalidPathError, WritePermissionError, FileWriteError
+        from src.dry_run import is_dry_run
+        from datetime import datetime, timezone
+        from email.utils import parsedate_to_datetime
+        
+        try:
+            # Get vault path from config
+            vault_path = self.config.get('paths', {}).get('obsidian_vault')
+            if not vault_path:
+                self.logger.error(
+                    f"Cannot write note for UID {email_uid}: "
+                    f"obsidian_vault not configured in paths"
+                )
+                return
+            
+            # Create account-specific subdirectory name
+            # Convert account_id (e.g., 'info.nica') to subdirectory name (e.g., 'info-nica')
+            account_subdir = self.account_id.replace('.', '-')
+            account_vault_path = Path(vault_path) / account_subdir
+            
+            # Check if in dry-run mode
+            dry_run_mode = is_dry_run()
+            
+            if dry_run_mode:
+                self.logger.info(
+                    f"[DRY RUN] Would write note for UID {email_uid} "
+                    f"to {account_vault_path}"
+                )
+            else:
+                # Ensure account subdirectory exists
+                account_vault_path.mkdir(parents=True, exist_ok=True)
+                self.logger.debug(
+                    f"Using account-specific vault path: {account_vault_path}"
+                )
+            
+            # Parse email date for file timestamp (use email date if available)
+            timestamp = None
+            if email_date:
+                try:
+                    # Parse RFC 2822 date format (e.g., "Wed, 13 Sep 2023 14:34:53 +0200")
+                    timestamp = parsedate_to_datetime(email_date)
+                    # Convert to UTC if timezone-aware
+                    if timestamp.tzinfo:
+                        timestamp = timestamp.astimezone(timezone.utc)
+                    self.logger.debug(f"Using email date for timestamp: {timestamp}")
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(
+                        f"Failed to parse email date '{email_date}': {e}, using current time"
+                    )
+                    timestamp = datetime.now(timezone.utc)
+            else:
+                # No email date available, use current time
+                timestamp = datetime.now(timezone.utc)
+                self.logger.debug("No email date available, using current time")
+            
+            # Write note using existing write_obsidian_note function
+            # Note: write_obsidian_note respects dry-run mode internally
+            file_path = write_obsidian_note(
+                note_content=note_content,
+                email_subject=email_subject,
+                vault_path=str(account_vault_path),
+                timestamp=timestamp,  # Use parsed email date or current time
+                overwrite=False  # Don't overwrite existing files
+            )
+            
+            self.logger.info(
+                f"Successfully wrote note for UID {email_uid} "
+                f"(account {self.account_id}): {file_path}"
+            )
+            
+        except (InvalidPathError, WritePermissionError, FileWriteError) as e:
+            self.logger.error(
+                f"Failed to write note for UID {email_uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Unexpected error writing note for UID {email_uid} "
+                f"(account {self.account_id}): {e}",
+                exc_info=True
+            )
+    
+    def _log_email_processed(
+        self,
+        uid: str,
+        classification_result: Optional[ClassificationResult],
+        success: bool,
+        error: Optional[str] = None
+    ) -> None:
+        """
+        Log email processing result to structured analytics.
+        
+        Args:
+            uid: Email UID
+            classification_result: Classification result (if successful)
+            success: Whether processing succeeded
+            error: Error message (if failed)
+        """
+        try:
+            # Try to use V3's EmailLogger for structured analytics
+            from src.v3_logger import EmailLogger, AnalyticsWriter, LogFileManager
+            
+            # Get analytics file path from config
+            analytics_file = self.config.get('paths', {}).get('analytics_file', 'logs/analytics.jsonl')
+            
+            # Create EmailLogger instance with account-specific analytics file
+            # Need to create AnalyticsWriter first, then pass it to EmailLogger
+            file_manager = LogFileManager(analytics_file=analytics_file)
+            analytics_writer = AnalyticsWriter(analytics_file, file_manager=file_manager)
+            email_logger = EmailLogger(analytics_writer=analytics_writer)
+            
+            if success and classification_result:
+                # Log successful processing
+                email_logger.log_email_processed(
+                    uid=uid,
+                    status='success',
+                    importance_score=int(classification_result.importance_score) if classification_result.importance_score >= 0 else -1,
+                    spam_score=int(classification_result.spam_score) if classification_result.spam_score >= 0 else -1
+                )
+            else:
+                # Log failed processing
+                email_logger.log_email_processed(
+                    uid=uid,
+                    status='error',
+                    importance_score=-1,
+                    spam_score=-1
+                )
+        except ImportError:
+            # EmailLogger not available, skip structured logging
+            self.logger.debug("EmailLogger not available, skipping structured analytics")
+        except Exception as e:
+            # Don't let logging failures break the pipeline
+            self.logger.warning(
+                f"Failed to log to structured analytics for UID {uid}: {e}"
             )
     
     def _mark_email_processed(self, uid: str) -> None:

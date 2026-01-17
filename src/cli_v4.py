@@ -180,6 +180,12 @@ def _format_orchestration_result(result, use_formatted_output: bool = True) -> N
     type=int,
     help='Maximum number of emails to process (overrides config max_emails_per_run). Useful for testing with a limited number of emails.'
 )
+@click.option(
+    '--debug-prompt',
+    is_flag=True,
+    default=False,
+    help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
+)
 @click.pass_context
 def process(
     ctx: click.Context,
@@ -188,7 +194,8 @@ def process(
     dry_run: bool,
     uid: Optional[str],
     force_reprocess: bool,
-    max_emails: Optional[int]
+    max_emails: Optional[int],
+    debug_prompt: bool
 ):
     """
     Main command for email processing.
@@ -235,13 +242,15 @@ def process(
     if dry_run:
         argv.append('--dry-run')
     
-    # Note: UID, force_reprocess, and max_emails are not yet supported by MasterOrchestrator
-    # These will need to be added to AccountProcessor or passed through somehow
-    # For now, we'll log a warning if they're used
-    if uid or force_reprocess or max_emails:
-        click.echo("Warning: --uid, --force-reprocess, and --max-emails options are not yet fully supported in V4.", err=True)
-        click.echo("These features will be added in a future update.", err=True)
-        # TODO: Implement these features in AccountProcessor
+    # Add processing options to argv for MasterOrchestrator
+    if uid:
+        argv.extend(['--uid', uid])
+    if force_reprocess:
+        argv.append('--force-reprocess')
+    if max_emails:
+        argv.extend(['--max-emails', str(max_emails)])
+    if debug_prompt:
+        argv.append('--debug-prompt')
     
     try:
         # Get orchestrator from context
