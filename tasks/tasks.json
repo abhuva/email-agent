@@ -1658,6 +1658,191 @@
           "parentTaskId": 21
         }
       ]
+    },
+    {
+      "id": 22,
+      "title": "Migrate CLI from V3 to V4 and Remove Dual-Mode Routing",
+      "description": "Execute a complete migration from V3 to V4 architecture across all components: CLI, entry points, orchestrator, configuration, logging, and error handling. Remove all V3 modules, backward compatibility code, and dual-mode routing to establish a clean V4-only codebase with a single code path.",
+      "details": "This task encompasses a comprehensive migration from V3 to V4 architecture across the entire codebase:\n\n1. CLI Migration:\n   - Remove cli_v3.py completely\n   - Create or update the V4 CLI to use MasterOrchestrator exclusively\n   - Ensure all commands previously available in V3 CLI are implemented in the V4 CLI\n   - Update command signatures to match V4 patterns and naming conventions\n   - Implement any missing functionality from V3 CLI in the V4 version\n   - Update help text and documentation strings to reflect V4 architecture\n\n2. Main Entry Point Changes:\n   - Identify the main entry point file(s) that currently contain V3/V4 routing logic\n   - Remove all conditional code that checks for V3 vs V4 mode\n   - Remove any version detection or compatibility flags\n   - Update the entry point to initialize only V4 components\n   - Ensure the entry point directly calls the V4 CLI and MasterOrchestrator\n   - Remove any imports of V3-specific modules\n\n3. Orchestrator Cleanup:\n   - Remove the Pipeline class completely\n   - Update all command execution to use MasterOrchestrator exclusively\n   - Remove any Pipeline-specific configuration and initialization\n   - Ensure MasterOrchestrator is the single orchestration mechanism\n\n4. Configuration Migration:\n   - Remove config_v3_loader.py and config_v3_schema.py\n   - Remove settings.py (V3 settings facade)\n   - Update CLI to use ConfigLoader instead of V3 settings facade\n   - Ensure all configuration options are properly mapped to V4 equivalents\n   - Update any command-line arguments that were specific to V3\n\n5. Logging Migration:\n   - Remove v3_logger.py\n   - Replace all instances of v3_logger with the V4 logging system\n   - Update logging method calls to use V4 logging patterns\n   - Ensure log levels are correctly mapped between V3 and V4\n\n6. Error Handling Migration:\n   - Remove error_handling_v3.py\n   - Update error handling to use V4 error handling mechanisms\n   - Ensure proper error messages are displayed to users\n   - Update exception catching and handling to use V4 patterns\n\n7. Backward Compatibility Removal:\n   - Remove all adapter classes and methods that bridge V3 and V4\n   - Remove compatibility flags and version checks\n   - Remove any V3-specific code paths and shims\n   - Clean up all V3 references from docstrings and comments\n\n8. UI/Output Formatting:\n   - Integrate DryRunOutput into V4 for consistent user experience\n   - Standardize output formats across all commands\n   - Update progress reporting to use V4 mechanisms\n\n9. Testing and Documentation:\n   - Update all tests to use V4 components only\n   - Update user-facing and developer documentation\n   - Perform final verification that no V3 code remains\n\nThe implementation should establish a clean V4-only codebase with no V3 remnants, no backward compatibility layers, and a single code path throughout.",
+      "testStrategy": "Testing should verify that the CLI functions correctly with the V4 architecture and that all V3 code has been completely removed:\n\n1. Functional Testing:\n   - Execute each CLI command that existed in V3 using the new V4 CLI\n   - Verify all commands produce the expected output and behavior\n   - Test with various input parameters to ensure proper handling\n   - Verify help text and documentation are accurate\n\n2. Integration Testing:\n   - Test the CLI with the MasterOrchestrator to ensure proper integration\n   - Verify that configuration is correctly passed from CLI to orchestrator\n   - Test error scenarios to ensure proper error handling and reporting\n   - Verify logging is correctly captured and formatted\n\n3. Code Review and Static Analysis:\n   - Perform a thorough code review to ensure no V3 imports remain\n   - Use static analysis tools to verify no V3 modules are referenced\n   - Verify all V3/V4 routing logic has been removed\n   - Check for any remaining backward compatibility code\n   - Verify all V3 modules have been deleted: config_v3_loader.py, config_v3_schema.py, settings.py, v3_logger.py, error_handling_v3.py\n\n4. Regression Testing:\n   - Run the full test suite to ensure no functionality was lost\n   - Compare output of common operations between old and new implementation\n   - Verify all tests pass with V4 components only\n\n5. Edge Cases:\n   - Test with invalid inputs to ensure proper error handling\n   - Test with edge case configurations\n   - Test all error scenarios to verify V4 error handling\n\n6. Final Verification:\n   - Confirm no V3 code paths exist in the codebase\n   - Verify single code path through V4 architecture\n   - Validate that all functionality is preserved\n\nAll tests should pass with the V4-only implementation, and there should be no references to V3 code, V3 modules, or compatibility layers in the codebase.",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Analyze V3/V4 Code Structure and Create Migration Plan",
+          "description": "Perform a comprehensive analysis of the existing codebase to identify all V3 components, dependencies, and integration points that need to be migrated to V4.",
+          "dependencies": [],
+          "details": "Implementation steps:\n1. Map out the current CLI architecture by analyzing cli_v3.py and identifying all commands, options, and functionality\n2. Document the entry points and routing logic between V3 and V4 modes\n3. Identify all dependencies on V3 components throughout the codebase\n4. Create a detailed mapping of V3 commands to their V4 equivalents\n5. Document configuration parameters that need migration from V3 settings to V4 ConfigLoader\n6. Identify any V3-specific error handling patterns\n7. Document all V3 modules to be removed: config_v3_loader.py, config_v3_schema.py, settings.py, v3_logger.py, error_handling_v3.py\n8. Identify all backward compatibility code and adapters that will be removed\n9. Create a comprehensive test plan to validate functionality before and after migration\n10. Establish success criteria for the migration\n\nTesting approach: Create a validation checklist that will be used to verify the migration is complete and correct.\n\n<info added on 2026-01-17T19:54:03.177Z>\n**Expanded Analysis Scope:**  \nConduct a full codebase scan using tools like `grep -r \"cli_v3\\|Pipeline\\|config_v3\\|v3_logger\\|error_handling_v3\" .`, `ripgrep` (rg), or `ast` parsing scripts to identify **all V3 components** beyond CLI, including:  \n- **Core V3 modules:** `cli_v3.py`, `Pipeline` class (search for `class Pipeline` or `from . import Pipeline`), `config_v3_loader.py`, `config_v3_schema.py`, `settings.py` (V3 facade), `v3_logger.py`, `error_handling_v3.py`.  \n- **V3 references:** Cross-module imports (`from cli_v3 import`, `import Pipeline`), function calls (`Pipeline().run()`, `v3_logger.error()`), and conditional usage (`if USE_V3_MODE:`).  \n- **Backward compatibility code:** Adapters (`V3ToV4Adapter`), shims (`def legacy_pipeline(): return V4Pipeline()`), and `# TODO: remove after V4 migration` comments.  \n- **V3-specific tests:** Files matching `test_v3_*.py`, `test_cli_v3.py`, or test cases using `Pipeline` mocks (`@pytest.mark.v3`).  \n- **V3 documentation:** Docstrings referencing V3 (`\"V3 config loader (deprecated)\"`), README sections, and API docs mentioning V3 endpoints/classes.  \n\n**Technical Implementation Notes:**  \n- **Dependency graph:** Use `pydeps` or `modulefinder` script:  \n  ```python\n  import modulefinder\n  finder = modulefinder.ModuleFinder()\n  finder.run_script('cli_v3.py')\n  for name, mod in finder.modules.items(): print(name, mod.__file__)\n  ```  \n- **Import analysis:** Script to map V3 dependencies:  \n  ```python\n  import ast\n  def find_v3_imports(file_path):\n      with open(file_path) as f: tree = ast.parse(f.read())\n      for node in ast.walk(tree):\n          if isinstance(node, ast.ImportFrom) and any('v3' in alias.name for alias in node.names):\n              print(f\"{file_path}: {node.module}\")\n  # Run: find . -name \"*.py\" -exec python3 find_v3_imports.py {} \\;\n  ```  \n- **Test coverage:** `pytest --collect-only -m v3` to list V3-marked tests; document fixtures mocking V3 components.  \n\n**Migration Risk Assessment:**  \n- Prioritize modules by import frequency and test coverage.  \n- Flag circular dependencies between V3/V4 (e.g., `cli_v3.py` → `Pipeline` → `config_v3_loader.py`).  \n- Document data migration needs for `Pipeline` state or V3 configs persisting in databases/files.[1]\n</info added on 2026-01-17T19:54:03.177Z>\n\n<info added on 2026-01-17T19:57:26.796Z>\n<info added on 2026-01-18T14:32:05.123Z>\n**Migration Plan Implementation Details:**\n\n**Phase Breakdown with Technical Specifics:**\n1. **Dependency Isolation:**\n   - Create adapter interfaces in `adapters/v3_compatibility.py` to decouple V3 components\n   - Implement facade pattern for V3 logger calls: `def log_warning(msg): v3_logger.warning(msg) if USE_V3 else v4_logger.warning(msg)`\n\n2. **Test Environment Preparation:**\n   - Set up CI pipeline variant with `MIGRATION_TEST=1` environment flag\n   - Create snapshot tests of CLI outputs: `pytest --snapshot-cli-output tests/migration/`\n   - Implement test fixtures that validate identical behavior: \n     ```python\n     @pytest.fixture\n     def compare_v3_v4_output():\n         def _compare(command):\n             v3_result = subprocess.run(['python', '-m', 'main', '--v3', command], capture_output=True)\n             v4_result = subprocess.run(['python', '-m', 'main', command], capture_output=True)\n             assert v3_result.stdout == v4_result.stdout\n         return _compare\n     ```\n\n3. **Command Migration:**\n   - For each CLI command, implement V4 equivalent with identical interface\n   - Example for `cleanup-flags`: \n     ```python\n     # V4 implementation with identical interface\n     @click.command(\"cleanup-flags\")\n     @click.option(\"--older-than\", type=int, default=30, help=\"Remove flags older than N days\")\n     def cleanup_flags_v4(older_than):\n         \"\"\"V4 implementation of cleanup-flags command\"\"\"\n         config = ConfigLoader().load()\n         FlagManager(config).cleanup(days=older_than)\n     ```\n\n4. **Configuration Migration:**\n   - Create schema migration tool in `tools/migrate_config.py`\n   - Add config validation that detects V3 format and suggests migration:\n     ```python\n     def detect_v3_config(config_dict):\n         \"\"\"Returns True if config appears to be V3 format\"\"\"\n         return ('pipeline_settings' in config_dict and \n                 'feature_flags' in config_dict.get('pipeline_settings', {}))\n     ```\n\n5. **Pipeline Class Replacement:**\n   - Implement `orchestrator.py` refactoring with backward compatibility:\n     ```python\n     # Temporary compatibility layer\n     class Pipeline:\n         \"\"\"Legacy V3 Pipeline (deprecated)\"\"\"\n         def __init__(self, *args, **kwargs):\n             warnings.warn(\"Pipeline class is deprecated, use Orchestrator\", DeprecationWarning)\n             self.orchestrator = Orchestrator(*args, **kwargs)\n             \n         def run(self, *args, **kwargs):\n             return self.orchestrator.execute(*args, **kwargs)\n     ```\n\n**Technical Debt Tracking:**\n- Create JIRA epic \"V4 Migration\" with subtasks for each module\n- Add `# TODO: V4MIGRATION` comments with JIRA ticket numbers\n- Implement linter rule to detect V3 imports: `flake8-v3-imports`\n\n**Data Migration Strategy:**\n- For persisted Pipeline states, implement DB migration script in `tools/migrate_pipeline_state.py`\n- Add config version detection and auto-upgrade for config files:\n  ```python\n  def upgrade_config_if_needed(config_path):\n      \"\"\"Detects V3 config and upgrades if needed\"\"\"\n      with open(config_path) as f:\n          config = json.load(f)\n      if detect_v3_config(config):\n          print(f\"Upgrading V3 config at {config_path}\")\n          upgraded = migrate_v3_to_v4_config(config)\n          with open(f\"{config_path}.v4\", 'w') as f:\n              json.dump(upgraded, f, indent=2)\n          return f\"{config_path}.v4\"\n      return config_path\n  ```\n\n**Rollback Plan:**\n- Implement feature flag `USE_V4_ONLY=False` to enable V3 fallback\n- Create emergency rollback script `tools/rollback_to_v3.py`\n- Document manual rollback procedure in `docs/v4-migration-rollback.md`\n</info added on 2026-01-18T14:32:05.123Z>\n</info added on 2026-01-17T19:57:26.796Z>",
+          "status": "in-progress",
+          "parentTaskId": 22
+        },
+        {
+          "id": 2,
+          "title": "Implement Core V4 CLI Command Structure",
+          "description": "Create the foundational structure for the V4 CLI that will replace cli_v3.py, focusing on the command hierarchy and basic framework.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation steps:\n1. Create a new CLI module based on V4 architecture patterns\n2. Define the command hierarchy structure that mirrors the functionality of cli_v3.py\n3. Implement the base command classes that will be extended for specific functionality\n4. Set up integration with MasterOrchestrator for command execution\n5. Implement command registration and discovery mechanisms\n6. Create help text templates and documentation string formats\n7. Set up basic argument parsing using V4 patterns\n8. Implement the command execution flow without specific command implementations\n\nTesting approach: Create unit tests for the base command structure and verify that the command hierarchy is correctly established.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 3,
+          "title": "Migrate Individual CLI Commands from V3 to V4",
+          "description": "Systematically implement each command from cli_v3.py in the new V4 CLI structure, ensuring all functionality is preserved.",
+          "dependencies": [
+            2
+          ],
+          "details": "Implementation steps:\n1. Prioritize commands based on usage frequency and complexity\n2. For each command from cli_v3.py:\n   a. Create corresponding V4 command class\n   b. Implement argument parsing and validation\n   c. Update command signatures to match V4 patterns\n   d. Implement command execution logic using MasterOrchestrator\n   e. Update help text and documentation\n3. Ensure all command options and flags are preserved with V4 naming conventions\n4. Implement any command aliases needed for user experience\n5. Add appropriate error handling for each command using V4 error handling mechanisms\n\nTesting approach: Create unit tests for each migrated command and manually verify that each command produces the same output as its V3 counterpart.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 4,
+          "title": "Update Main Entry Point to Remove V3/V4 Routing",
+          "description": "Modify the main entry point file(s) to eliminate all V3/V4 routing logic and ensure the application initializes only V4 components.",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Implementation steps:\n1. Identify all main entry point files containing V3/V4 routing logic\n2. Remove conditional code that checks for V3 vs V4 mode\n3. Remove version detection and compatibility flags\n4. Update imports to remove V3-specific modules\n5. Simplify initialization to only use V4 components\n6. Ensure the entry point directly calls the V4 CLI and MasterOrchestrator\n7. Update any environment variable handling to V4 patterns\n8. Remove any V3-specific startup configuration\n\nTesting approach: Verify that the application starts correctly with only V4 components and that all commands are routed through the V4 CLI.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 5,
+          "title": "Migrate Configuration from V3 Settings to V4 ConfigLoader",
+          "description": "Update the CLI to use ConfigLoader instead of V3 settings facade, ensuring all configuration options are properly mapped to V4 equivalents.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implementation steps:\n1. Identify all configuration parameters used in cli_v3.py\n2. Create mapping of V3 configuration parameters to V4 ConfigLoader equivalents\n3. Update CLI implementation to use ConfigLoader for all configuration access\n4. Implement any missing configuration options in ConfigLoader\n5. Update configuration file loading and parsing logic\n6. Update environment variable handling for configuration\n7. Ensure configuration validation follows V4 patterns\n8. Update any configuration-related error messages\n9. Remove settings.py (V3 settings facade)\n10. Remove config_v3_loader.py and config_v3_schema.py\n\nTesting approach: Create tests that verify configuration is correctly loaded and accessed using ConfigLoader, and that all V3 configuration options have V4 equivalents.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 6,
+          "title": "Migrate Logging from v3_logger to V4 Logging System",
+          "description": "Replace all instances of v3_logger with the V4 logging system throughout the CLI implementation and remove v3_logger.py.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implementation steps:\n1. Identify all logging calls in cli_v3.py and the new V4 CLI implementation\n2. Replace v3_logger imports with V4 logging imports\n3. Update logging method calls to use V4 logging patterns\n4. Ensure log levels are correctly mapped between V3 and V4\n5. Update any custom logging formatters or handlers\n6. Implement any CLI-specific logging configuration\n7. Update log message text to reflect V4 terminology\n8. Ensure logging initialization happens at the appropriate time in the application lifecycle\n9. Remove v3_logger.py completely\n10. Verify no v3_logger imports remain in the codebase\n\nTesting approach: Verify that all logging events are correctly captured and formatted using the V4 logging system.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 7,
+          "title": "Migrate Error Handling to V4 Mechanisms",
+          "description": "Update all error handling in the CLI to use V4 error handling mechanisms and remove error_handling_v3.py.",
+          "dependencies": [
+            3,
+            6
+          ],
+          "details": "Implementation steps:\n1. Identify all error handling patterns in cli_v3.py\n2. Create mapping of V3 error types to V4 error types\n3. Update exception catching and handling to use V4 patterns\n4. Implement appropriate error reporting using V4 mechanisms\n5. Update error messages to reflect V4 terminology\n6. Ensure consistent error codes and exit statuses\n7. Implement any missing error types needed for CLI functionality\n8. Update error formatting and presentation to users\n9. Remove error_handling_v3.py completely\n10. Verify no error_handling_v3 imports remain in the codebase\n\nTesting approach: Create tests that verify errors are correctly caught, handled, and reported using V4 error handling mechanisms.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 8,
+          "title": "Remove Pipeline Class and Update Orchestrator Integration",
+          "description": "Remove the Pipeline class and update the CLI to use MasterOrchestrator exclusively for all command execution.",
+          "dependencies": [
+            3,
+            5,
+            7
+          ],
+          "details": "Implementation steps:\n1. Identify all uses of the Pipeline class in the CLI and throughout the codebase\n2. Refactor code to use MasterOrchestrator instead of Pipeline\n3. Update command execution flow to align with MasterOrchestrator patterns\n4. Remove Pipeline class imports and dependencies\n5. Update any Pipeline-specific configuration to use MasterOrchestrator configuration\n6. Ensure all Pipeline functionality is available through MasterOrchestrator\n7. Update any error handling specific to Pipeline execution\n8. Verify that all commands use MasterOrchestrator consistently\n9. Remove Pipeline class definition completely\n\nTesting approach: Create tests that verify all commands execute correctly through MasterOrchestrator and produce the expected results.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 9,
+          "title": "Remove Backward Compatibility Code",
+          "description": "Identify and remove all backward compatibility code, adapters, and shims that were used to support V3 components.",
+          "dependencies": [
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "details": "Implementation steps:\n1. Identify all backward compatibility code throughout the codebase\n2. Remove V3-specific imports and dependencies\n3. Remove adapter classes and methods that bridge V3 and V4\n4. Remove compatibility flags and version checks\n5. Clean up any deprecated methods or classes\n6. Remove any V3-specific configuration handling\n7. Update docstrings and comments to remove V3 references\n8. Remove any conditional code that checks for V3 vs V4\n9. Verify that no V3 components are referenced anywhere in the codebase\n10. Perform a final sweep to ensure all backward compatibility layers are removed\n\nTesting approach: Use static analysis tools to verify that no V3 components are imported or referenced, and run the full test suite to ensure functionality is preserved.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 10,
+          "title": "Integrate V4 UI/Output Formatting with DryRunOutput",
+          "description": "Update the CLI to use V4 output formatting mechanisms including DryRunOutput for consistent user experience.",
+          "dependencies": [
+            3,
+            7
+          ],
+          "details": "Implementation steps:\n1. Identify all output formatting in cli_v3.py\n2. Update CLI to use V4 output formatting classes and methods\n3. Implement DryRunOutput integration for all commands that support dry run mode\n4. Standardize output formats across all commands\n5. Update progress reporting to use V4 mechanisms\n6. Implement any missing output formatters needed for CLI functionality\n7. Ensure consistent styling and formatting across all command outputs\n8. Update any command-specific output handling\n9. Remove any V3-specific output formatting code\n\nTesting approach: Create tests that verify output formatting is consistent across all commands and matches expected V4 patterns.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 11,
+          "title": "Update Tests for V4 CLI Implementation",
+          "description": "Update existing tests and create new tests to verify the functionality of the V4 CLI implementation, removing all V3 test code.",
+          "dependencies": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "details": "Implementation steps:\n1. Identify all tests related to cli_v3.py and V3 components\n2. Remove tests that are specific to V3 functionality or backward compatibility\n3. Update test imports to use V4 CLI components only\n4. Update test assertions to match V4 output patterns\n5. Create new tests for V4-specific functionality\n6. Update mock objects and test fixtures to use V4 components\n7. Implement integration tests that verify end-to-end functionality\n8. Update any test utilities or helpers to support V4 testing\n9. Ensure test coverage is maintained or improved for all CLI functionality\n10. Verify that no tests reference V3 modules or components\n\nTesting approach: Run the full test suite and verify that all tests pass with the V4 CLI implementation.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 12,
+          "title": "Remove V3 Modules and Verify Clean Codebase",
+          "description": "Delete all V3-specific modules and verify that no V3 code remains in the codebase.",
+          "dependencies": [
+            5,
+            6,
+            7,
+            9
+          ],
+          "details": "Implementation steps:\n1. Delete config_v3_loader.py\n2. Delete config_v3_schema.py\n3. Delete settings.py (V3 settings facade)\n4. Delete v3_logger.py\n5. Delete error_handling_v3.py\n6. Delete cli_v3.py\n7. Perform a comprehensive search for any remaining V3 imports or references\n8. Remove any V3-specific comments or documentation\n9. Verify that all imports have been updated to use V4 components\n10. Confirm that no V3 modules are referenced in configuration files or setup scripts\n\nTesting approach: Use file system and code search tools to verify that all V3 modules have been deleted and no V3 references remain.",
+          "status": "pending",
+          "parentTaskId": 22
+        },
+        {
+          "id": 13,
+          "title": "Update Documentation and Perform Final Verification",
+          "description": "Update all documentation to reflect the V4-only architecture and perform final verification of the migration.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "details": "Implementation steps:\n1. Update user-facing documentation to reflect V4 CLI commands and options\n2. Update developer documentation to reflect V4 architecture\n3. Update README files and getting started guides\n4. Update any command help text or usage examples\n5. Remove any migration guides or V3 references from documentation\n6. Update API documentation for CLI components\n7. Update any architecture diagrams or design documentation\n8. Perform final verification against the migration plan created in subtask 1\n9. Conduct user acceptance testing with stakeholders\n10. Verify that documentation no longer references V3 or backward compatibility\n\nTesting approach: Verify that all documentation accurately reflects the V4-only CLI implementation and conduct a final review of all functionality against the original requirements.",
+          "status": "pending",
+          "parentTaskId": 22
+        }
+      ]
     }
   ],
   "metadata": {
