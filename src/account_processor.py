@@ -1504,21 +1504,18 @@ class AccountProcessor:
             error: Error message (if failed)
         """
         try:
-            # Try to use V3's EmailLogger for structured analytics
-            from src.v3_logger import EmailLogger, AnalyticsWriter, LogFileManager
+            # Use V4 AnalyticsWriter for structured analytics
+            from src.analytics_writer import AnalyticsWriter
             
             # Get analytics file path from config
             analytics_file = self.config.get('paths', {}).get('analytics_file', 'logs/analytics.jsonl')
             
-            # Create EmailLogger instance with account-specific analytics file
-            # Need to create AnalyticsWriter first, then pass it to EmailLogger
-            file_manager = LogFileManager(analytics_file=analytics_file)
-            analytics_writer = AnalyticsWriter(analytics_file, file_manager=file_manager)
-            email_logger = EmailLogger(analytics_writer=analytics_writer)
+            # Create AnalyticsWriter instance
+            analytics_writer = AnalyticsWriter(analytics_file)
             
             if success and classification_result:
                 # Log successful processing
-                email_logger.log_email_processed(
+                analytics_writer.write_email_processing(
                     uid=uid,
                     status='success',
                     importance_score=int(classification_result.importance_score) if classification_result.importance_score >= 0 else -1,
@@ -1526,15 +1523,12 @@ class AccountProcessor:
                 )
             else:
                 # Log failed processing
-                email_logger.log_email_processed(
+                analytics_writer.write_email_processing(
                     uid=uid,
                     status='error',
                     importance_score=-1,
                     spam_score=-1
                 )
-        except ImportError:
-            # EmailLogger not available, skip structured logging
-            self.logger.debug("EmailLogger not available, skipping structured analytics")
         except Exception as e:
             # Don't let logging failures break the pipeline
             self.logger.warning(
