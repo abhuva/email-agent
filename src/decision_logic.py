@@ -1,5 +1,5 @@
 """
-V3 Decision Logic Module
+V4 Decision Logic Module
 
 This module implements threshold-based decision logic for email classification
 using numerical scores from the LLM.
@@ -8,7 +8,7 @@ It processes LLM scores, applies configurable thresholds, handles edge cases,
 and provides a standardized classification result format.
 
 Architecture:
-    - Uses settings.py facade for all configuration access
+    - Uses account-specific configuration passed as dictionary
     - Processes LLMResponse objects from llm_client.py
     - Returns ClassificationResult objects for downstream modules
     - Handles edge cases and provides confidence scoring
@@ -17,7 +17,8 @@ Usage:
     >>> from src.decision_logic import DecisionLogic
     >>> from src.llm_client import LLMResponse
     >>> 
-    >>> logic = DecisionLogic()
+    >>> config = {'processing': {'importance_threshold': 7, 'spam_threshold': 5}}
+    >>> logic = DecisionLogic(config)
     >>> llm_response = LLMResponse(spam_score=2, importance_score=9)
     >>> result = logic.classify(llm_response)
     >>> print(result.is_important)
@@ -30,7 +31,6 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from enum import Enum
 
-from src.settings import settings
 from src.llm_client import LLMResponse
 
 logger = logging.getLogger(__name__)
@@ -227,27 +227,22 @@ class DecisionLogic:
     All configuration is accessed through the settings.py facade.
     """
     
-    def __init__(self):
-        """Initialize decision logic with thresholds from settings."""
-        self._importance_threshold = None
-        self._spam_threshold = None
-        self._load_thresholds()
-    
-    def _load_thresholds(self) -> None:
-        """Load thresholds from settings facade."""
-        try:
-            self._importance_threshold = settings.get_importance_threshold()
-            self._spam_threshold = settings.get_spam_threshold()
-            logger.debug(
-                f"Loaded thresholds: importance={self._importance_threshold}, "
-                f"spam={self._spam_threshold}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to load thresholds: {e}")
-            # Use PDD defaults as fallback
-            self._importance_threshold = 8
-            self._spam_threshold = 5
-            logger.warning(f"Using default thresholds: importance=8, spam=5")
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize decision logic with thresholds from account-specific configuration.
+        
+        Args:
+            config: Account-specific merged configuration dictionary
+        """
+        # Extract thresholds from processing configuration
+        processing_config = config.get('processing', {})
+        self._importance_threshold = processing_config.get('importance_threshold', 7)
+        self._spam_threshold = processing_config.get('spam_threshold', 5)
+        
+        logger.debug(
+            f"Loaded thresholds: importance={self._importance_threshold}, "
+            f"spam={self._spam_threshold}"
+        )
     
     def _apply_thresholds(
         self,

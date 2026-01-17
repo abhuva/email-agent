@@ -1,11 +1,12 @@
 """
-V3 LLM client module for email classification.
+V4 LLM client module for email classification.
 
-This module provides a clean interface for LLM API interactions using the settings.py facade.
-Implements retry logic, structured JSON response parsing, and error handling as specified in the PDD.
+This module provides a clean interface for LLM API interactions using account-specific configuration.
+Implements retry logic, structured JSON response parsing, and error handling.
 
-All configuration access is through the settings.py facade, not direct YAML access.
+All configuration is passed via config dictionary (account-specific merged config).
 """
+import os
 import json
 import logging
 import random
@@ -14,7 +15,6 @@ import requests
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
-from src.settings import settings
 from src.config import ConfigError
 
 logger = logging.getLogger(__name__)
@@ -52,35 +52,49 @@ class LLMResponse:
 
 class LLMClient:
     """
-    V3 LLM client for email classification.
+    V4 LLM client for email classification.
     
-    This class provides a clean interface for LLM API interactions, using the
-    settings.py facade for all configuration access.
+    This class provides a clean interface for LLM API interactions, using
+    account-specific configuration passed as a dictionary.
     
     Example:
-        client = LLMClient()
+        config = loader.load_merged_config('work')
+        client = LLMClient(config)
         response = client.classify_email(email_content)
         print(f"Spam: {response.spam_score}, Importance: {response.importance_score}")
     """
     
-    def __init__(self):
-        """Initialize LLM client (loads configuration from settings facade)."""
-        self._api_key: Optional[str] = None
-        self._api_url: Optional[str] = None
-        self._model: Optional[str] = None
-        self._temperature: Optional[float] = None
-        self._retry_attempts: Optional[int] = None
-        self._retry_delay_seconds: Optional[int] = None
-    
-    def _load_config(self) -> None:
-        """Load configuration from settings facade (lazy loading)."""
-        if self._api_key is None:
-            self._api_key = settings.get_openrouter_api_key()
-            self._api_url = settings.get_openrouter_api_url()
-            self._model = settings.get_classification_model()
-            self._temperature = settings.get_classification_temperature()
-            self._retry_attempts = settings.get_classification_retry_attempts()
-            self._retry_delay_seconds = settings.get_classification_retry_delay_seconds()
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize LLM client with account-specific configuration.
+        
+        Args:
+            config: Account-specific merged configuration dictionary
+            
+        Raises:
+            ConfigError: If required configuration values are missing or invalid
+        """
+        # Extract OpenRouter configuration
+        openrouter_config = config.get('openrouter', {})
+        api_key_env = openrouter_config.get('api_key_env', 'OPENROUTER_API_KEY')
+        self._api_key = os.environ.get(api_key_env)
+        if not self._api_key:
+            raise ConfigError(f"OpenRouter API key environment variable '{api_key_env}' is not set")
+        
+        self._api_url = openrouter_config.get('api_url', 'https://openrouter.ai/api/v1')
+        
+        # Extract classification configuration
+        classification_config = config.get('classification', {})
+        self._model = classification_config.get('model')
+        if not self._model:
+            raise ConfigError("Classification model not specified in configuration")
+        
+        self._temperature = classification_config.get('temperature', 0.1)
+        self._retry_attempts = classification_config.get('retry_attempts', 3)
+        self._retry_delay_seconds = classification_config.get('retry_delay_seconds', 1)
+        
+        # Store config for max_body_chars access
+        self._config = config
     
     def _format_prompt_for_json(self, email_content: str, user_prompt: Optional[str] = None) -> str:
         """
@@ -150,8 +164,6 @@ class LLMClient:
         Raises:
             LLMAPIError: If API call fails
         """
-        self._load_config()
-        
         url = f"{self._api_url.rstrip('/')}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -363,14 +375,14 @@ class LLMClient:
             LLMAPIError: If all retry attempts fail
             LLMResponseParseError: If response cannot be parsed
         """
-        self._load_config()
-        
         # Truncate email content if needed
+        processing_config = self._config.get('processing', {})
+        default_max_chars = processing_config.get('max_body_chars', 6000)
+        
         if max_chars:
-            max_body_chars = settings.get_max_body_chars()
-            effective_max = min(max_chars, max_body_chars) if max_chars else max_body_chars
+            effective_max = min(max_chars, default_max_chars) if max_chars else default_max_chars
         else:
-            effective_max = settings.get_max_body_chars()
+            effective_max = default_max_chars
         
         if len(email_content) > effective_max:
             logger.info(f"Truncating email content from {len(email_content)} to {effective_max} characters")

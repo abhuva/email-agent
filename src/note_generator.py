@@ -32,7 +32,6 @@ from datetime import datetime, timezone
 from email.utils import parseaddr
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, TemplateError, select_autoescape
 
-from src.settings import settings
 from src.config import ConfigError
 
 logger = logging.getLogger(__name__)
@@ -55,12 +54,21 @@ class TemplateLoader:
     Supports template inheritance and includes. Handles file system errors
     gracefully with appropriate exception handling.
     
-    All configuration access is through the settings.py facade.
+    All configuration access is through the config dictionary passed to __init__.
     """
     
-    def __init__(self):
-        """Initialize template loader with configuration from settings facade."""
-        self._template_file = settings.get_template_file()
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize template loader with configuration from account-specific config.
+        
+        Args:
+            config: Account-specific merged configuration dictionary
+        """
+        # Store config for access by TemplateRenderer
+        self._config = config
+        
+        paths_config = config.get('paths', {})
+        self._template_file = paths_config.get('template_file', 'config/note_template.md.j2')
         self._template_path = Path(self._template_file)
         self._template_dir = self._template_path.parent
         self._template_name = self._template_path.name
@@ -120,7 +128,7 @@ class TemplateRenderer:
     into a format suitable for template rendering. Includes helper functions
     for common formatting tasks (date formatting, URL handling, etc.).
     
-    All configuration access is through the settings.py facade.
+    Configuration is passed via template_loader (which has config).
     """
     
     def __init__(self, template_loader: TemplateLoader):
@@ -386,13 +394,10 @@ class TemplateRenderer:
             })
         
         # Add configuration values for template use
-        try:
-            context['importance_threshold'] = settings.get_importance_threshold()
-            context['spam_threshold'] = settings.get_spam_threshold()
-        except (ConfigError, AttributeError):
-            # Settings not initialized, use defaults
-            context['importance_threshold'] = 8
-            context['spam_threshold'] = 5
+        # Get thresholds from config (stored in TemplateLoader which has config)
+        processing_config = self._loader._config.get('processing', {}) if hasattr(self._loader, '_config') else {}
+        context['importance_threshold'] = processing_config.get('importance_threshold', 7)
+        context['spam_threshold'] = processing_config.get('spam_threshold', 5)
             logger.warning("Settings not initialized, using default thresholds")
         
         # Add summary data if available (raw response, no parsing)
@@ -457,12 +462,17 @@ class NoteGenerator:
     data and classification results. Includes comprehensive error handling
     with fallback templates.
     
-    All configuration access is through the settings.py facade.
+    All configuration access is through the config dictionary passed to __init__.
     """
     
-    def __init__(self):
-        """Initialize note generator with template loader and renderer."""
-        self._loader = TemplateLoader()
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize note generator with template loader and renderer.
+        
+        Args:
+            config: Account-specific merged configuration dictionary
+        """
+        self._loader = TemplateLoader(config)
         self._renderer = None
         self._fallback_template = self._create_fallback_template()
         

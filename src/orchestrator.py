@@ -325,8 +325,8 @@ class Pipeline:
             logger.info("EMAIL PROCESSING SUMMARY")
             logger.info("=" * 60)
             logger.info(f"Total emails processed: {summary.total_emails}")
-            logger.info(f"  ✓ Successful: {summary.successful}")
-            logger.info(f"  ✗ Failed: {summary.failed}")
+            logger.info(f"  [OK] Successful: {summary.successful}")
+            logger.info(f"  [FAILED] Failed: {summary.failed}")
             logger.info(f"Total pipeline time: {summary.total_time:.2f}s")
             logger.info(f"Average time per email: {summary.average_time:.2f}s")
             logger.info(f"Average processing time (per email): {avg_processing_time:.2f}s")
@@ -353,7 +353,7 @@ class Pipeline:
                     f"exceeds requirement (< 1s). Consider optimization."
                 )
             else:
-                logger.debug(f"✓ Performance requirement met: {avg_processing_time:.2f}s < 1s")
+                logger.debug(f"[OK] Performance requirement met: {avg_processing_time:.2f}s < 1s")
             
             logger.info("=" * 60)
             
@@ -1294,11 +1294,8 @@ class MasterOrchestrator:
         # Account selection (set during run)
         self.accounts_to_process: List[str] = []
         
-        # Shared services (can be safely shared across accounts)
-        # These are stateless or thread-safe services
-        self.llm_client: Optional[LLMClient] = None
-        self.note_generator: Optional[NoteGenerator] = None
-        self.decision_logic: Optional[DecisionLogic] = None
+        # Note: Components are now created per-account with account-specific config
+        # No longer using shared instances to support per-account configuration
         
         self.logger.info(f"MasterOrchestrator initialized with config_base_dir={self.config_base_dir}")
     
@@ -1509,17 +1506,9 @@ Examples:
         Note:
             Services are initialized lazily on first use if not already initialized.
         """
-        if self.llm_client is None:
-            self.llm_client = LLMClient()
-            self.logger.debug("Initialized shared LLMClient")
-        
-        if self.note_generator is None:
-            self.note_generator = NoteGenerator()
-            self.logger.debug("Initialized shared NoteGenerator")
-        
-        if self.decision_logic is None:
-            self.decision_logic = DecisionLogic()
-            self.logger.debug("Initialized shared DecisionLogic")
+        # Components are now created per-account with account-specific config
+        # This method is kept for compatibility but does nothing
+        pass
     
     def create_account_processor(self, account_id: str) -> AccountProcessor:
         """
@@ -1552,11 +1541,14 @@ Examples:
                 f"Failed to load configuration for account '{account_id}': {e}"
             ) from e
         
-        # Initialize shared services if needed
-        self._initialize_shared_services()
-        
         # Create account-specific logger
         account_logger = logging.getLogger(f"{__name__}.AccountProcessor.{account_id}")
+        
+        # Create components with account-specific configuration
+        # Each account gets its own instances with account-specific config
+        llm_client = LLMClient(account_config)
+        note_generator = NoteGenerator(account_config)
+        decision_logic = DecisionLogic(account_config)
         
         # Create AccountProcessor with isolated configuration and dependencies
         # All dependencies are injected to ensure testability and isolation
@@ -1564,12 +1556,12 @@ Examples:
             account_id=account_id,
             account_config=account_config,
             imap_client_factory=create_imap_client_from_config,
-            llm_client=self.llm_client,
+            llm_client=llm_client,
             blacklist_service=load_blacklist_rules,
             whitelist_service=load_whitelist_rules,
-            note_generator=self.note_generator,
+            note_generator=note_generator,
             parser=parse_html_content,
-            decision_logic=self.decision_logic,
+            decision_logic=decision_logic,
             logger=account_logger
         )
         
@@ -1731,8 +1723,8 @@ Examples:
             self.logger.info("V4 Master Orchestrator: Processing complete")
             self.logger.info("=" * 60)
             self.logger.info(f"Total accounts: {result.total_accounts}")
-            self.logger.info(f"  ✓ Successful: {result.successful_accounts}")
-            self.logger.info(f"  ✗ Failed: {result.failed_accounts}")
+            self.logger.info(f"  [OK] Successful: {result.successful_accounts}")
+            self.logger.info(f"  [FAILED] Failed: {result.failed_accounts}")
             self.logger.info(f"Total time: {result.total_time:.2f}s")
             
             if result.failed_accounts > 0:
