@@ -1817,7 +1817,7 @@
             9
           ],
           "details": "Implementation steps:\n1. Delete config_v3_loader.py\n2. Delete config_v3_schema.py\n3. Delete settings.py (V3 settings facade)\n4. Delete v3_logger.py\n5. Delete error_handling_v3.py\n6. Delete cli_v3.py\n7. Perform a comprehensive search for any remaining V3 imports or references\n8. Remove any V3-specific comments or documentation\n9. Verify that all imports have been updated to use V4 components\n10. Confirm that no V3 modules are referenced in configuration files or setup scripts\n\nTesting approach: Use file system and code search tools to verify that all V3 modules have been deleted and no V3 references remain.",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 22
         },
         {
@@ -1839,7 +1839,7 @@
             12
           ],
           "details": "Implementation steps:\n1. Update user-facing documentation to reflect V4 CLI commands and options\n2. Update developer documentation to reflect V4 architecture\n3. Update README files and getting started guides\n4. Update any command help text or usage examples\n5. Remove any migration guides or V3 references from documentation\n6. Update API documentation for CLI components\n7. Update any architecture diagrams or design documentation\n8. Perform final verification against the migration plan created in subtask 1\n9. Conduct user acceptance testing with stakeholders\n10. Verify that documentation no longer references V3 or backward compatibility\n\nTesting approach: Verify that all documentation accurately reflects the V4-only CLI implementation and conduct a final review of all functionality against the original requirements.",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 22
         }
       ]
