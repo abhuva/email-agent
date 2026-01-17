@@ -1498,7 +1498,7 @@
       "id": 20,
       "title": "Create Documentation and Migration Guide",
       "description": "Develop comprehensive documentation for the V4 upgrade",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         19
       ],
@@ -1510,7 +1510,7 @@
           "id": 1,
           "title": "Define documentation structure, audience, and tooling for V4 docs",
           "description": "Design the overall documentation information architecture for the V4 upgrade, clarify target audiences (new users vs. existing V3 users), and set up the documentation tooling and style guidelines.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1) Identify the primary audiences: e.g., operators installing and configuring V4, developers writing rules, and existing V3 users planning migration. 2) Draft a documentation outline that includes the required sections: Installation & Setup, Configuration Options & Examples, Rule Syntax & Examples, Command-line Usage, Migration Guide V3→V4, Troubleshooting, and Best Practices for Multi-account Setup. 3) Choose and configure the documentation platform (e.g., Markdown in repo, static site generator, or knowledge base), including navigation structure and versioning strategy that clearly distinguishes V3 vs V4 content. 4) Create or update a documentation style guide (tone, terminology, code snippet conventions, example formatting) so all subsequent docs are consistent and user-focused. 5) Create initial stub pages for each major section so later subtasks can fill them with detailed content."
         },
@@ -1518,7 +1518,7 @@
           "id": 2,
           "title": "Document installation, setup, and core configuration for V4",
           "description": "Produce complete installation and initial setup documentation for V4, including basic configuration options, minimal working examples, and environment prerequisites.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1528,7 +1528,7 @@
           "id": 3,
           "title": "Create detailed configuration, rule syntax, and CLI usage reference",
           "description": "Develop comprehensive reference and example-driven documentation for configuration options, rule syntax, and command-line usage for V4.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -1539,7 +1539,7 @@
           "id": 4,
           "title": "Develop V3→V4 migration guide and multi-account best practices",
           "description": "Create a dedicated migration guide for existing V3 users and document best practices for multi-account setups under V4.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -1550,7 +1550,7 @@
           "id": 5,
           "title": "Review, validate, and refine V4 documentation set",
           "description": "Perform technical and usability review of all V4 documentation, refine content based on feedback, and ensure consistency and completeness across all sections.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
@@ -1562,7 +1562,7 @@
           "id": 6,
           "title": "Final stage: Validate tests, update documentation, review rules, mark done, and commit",
           "description": "MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -1584,6 +1584,89 @@
       "dependencies": [
         19
       ],
+      "priority": "high",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set Up Sandboxed Test Environment for V4 Email Pipeline",
+          "description": "Create a production-like test environment that mirrors the V4 email processing pipeline for safe user testing without affecting production data.",
+          "dependencies": [],
+          "details": "Implementation details:\n1. Configure a separate deployment environment with identical infrastructure to production\n2. Set up database isolation to prevent test data from affecting production\n3. Implement configuration toggles to enable/disable test features\n4. Create test user accounts with various permission levels (admin, regular user, limited access)\n5. Configure comprehensive logging specifically for the test environment\n6. Implement monitoring dashboards to track system performance during tests\n7. Create a data reset mechanism to restore the environment to a clean state between test sessions\n\nTesting approach:\n- Verify environment isolation through data separation tests\n- Confirm all V4 pipeline components are functioning correctly\n- Validate that test emails process through the entire pipeline without affecting production\n- Test user account creation and access controls",
+          "status": "pending",
+          "parentTaskId": 21
+        },
+        {
+          "id": 2,
+          "title": "Develop Feedback Collection Mechanisms",
+          "description": "Design and implement multiple channels for collecting user feedback during testing sessions, including in-app surveys, usage logging, and structured interviews.",
+          "dependencies": [
+            1
+          ],
+          "details": "Implementation details:\n1. Create an in-app survey system with customizable question templates\n   - Implement rating scales (1-5) for usability, performance, and satisfaction\n   - Add open-ended questions for qualitative feedback\n   - Include feature-specific questions based on user interactions\n2. Develop automated usage logging\n   - Track user paths through the application\n   - Record time spent on different features\n   - Log errors and exceptions encountered\n3. Create a structured interview protocol document\n   - Design question sets for different user roles\n   - Include probing questions for pain points\n4. Build a feedback portal accessible from the test environment\n   - Allow screenshot uploads with annotations\n   - Implement categorization of feedback (bug, feature request, usability issue)\n\nTesting approach:\n- Pilot test surveys with internal team members\n- Verify all feedback data is properly stored and retrievable\n- Test the feedback portal across different browsers and devices",
+          "status": "pending",
+          "parentTaskId": 21
+        },
+        {
+          "id": 3,
+          "title": "Define Success Metrics and Acceptance Criteria",
+          "description": "Establish quantitative and qualitative metrics to evaluate the V4 email pipeline's performance, along with baseline expectations and improvement targets.",
+          "dependencies": [
+            1,
+            2
+          ],
+          "details": "Implementation details:\n1. Define key performance indicators (KPIs):\n   - Email processing time (average, p95, p99)\n   - Error rates by processing stage\n   - Task completion rates for common workflows\n   - System resource utilization under load\n2. Create qualitative evaluation framework:\n   - User satisfaction scoring system (NPS or similar)\n   - Feature completeness assessment matrix\n   - Usability rating scale\n3. Establish baseline performance expectations:\n   - Document current V3 pipeline metrics as comparison baseline\n   - Set minimum acceptable thresholds for V4 performance\n4. Develop a scoring system:\n   - Create weighted scoring algorithm combining all metrics\n   - Define pass/fail thresholds for overall system readiness\n   - Implement automated calculation of scores from collected data\n\nTesting approach:\n- Validate metrics collection accuracy with controlled test scenarios\n- Verify scoring system produces expected results with sample data\n- Review metrics with stakeholders to ensure alignment with business goals",
+          "status": "pending",
+          "parentTaskId": 21
+        },
+        {
+          "id": 4,
+          "title": "Implement Feedback Processing and Iteration Loop",
+          "description": "Create a systematic process for triaging, categorizing, and addressing user feedback to drive iterative improvements to the V4 pipeline.",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "Implementation details:\n1. Develop a feedback triage system:\n   - Create a database schema for storing and categorizing feedback\n   - Implement priority scoring algorithm based on impact and frequency\n   - Build dashboards to visualize feedback patterns\n2. Create routing workflows:\n   - Develop automated assignment rules to route issues to appropriate teams\n   - Implement notification system for new high-priority feedback\n   - Create integration with existing issue tracking system\n3. Build feedback status tracking:\n   - Implement status change notifications for feedback submitters\n   - Create progress tracking for addressing feedback items\n   - Develop metrics on feedback resolution time\n4. Establish review process:\n   - Create templates for weekly feedback review meetings\n   - Implement decision tracking for feature adjustments based on feedback\n   - Develop changelog generation for communicating improvements to testers\n\nTesting approach:\n- Test the entire feedback loop with simulated user feedback\n- Verify correct routing of different feedback types\n- Validate that high-priority issues are properly flagged and escalated",
+          "status": "pending",
+          "parentTaskId": 21
+        },
+        {
+          "id": 5,
+          "title": "Create Comprehensive Testing Documentation",
+          "description": "Develop detailed documentation for the user testing process, including test scripts, feedback templates, and reporting formats.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "Implementation details:\n1. Create test script templates:\n   - Develop step-by-step guides for common email processing scenarios\n   - Create role-specific test paths (admin vs. regular user)\n   - Include expected outcomes and validation points\n2. Design feedback collection templates:\n   - Create standardized forms for different feedback types\n   - Develop analysis templates for aggregating feedback\n   - Create visualization templates for presenting feedback patterns\n3. Document the testing methodology:\n   - Create a comprehensive guide to the entire testing process\n   - Include environment setup instructions\n   - Document roles and responsibilities during testing\n4. Develop reporting templates:\n   - Create executive summary template for test results\n   - Design detailed technical report format\n   - Implement recommendation tracking template\n\nTesting approach:\n- Conduct a dry run of the testing process using the documentation\n- Have team members review documentation for clarity and completeness\n- Verify all templates work with sample data",
+          "status": "pending",
+          "parentTaskId": 21
+        },
+        {
+          "id": 6,
+          "title": "Conduct Validation Testing and Finalize Framework",
+          "description": "Execute a complete validation cycle of the testing framework with a pilot user group, make final adjustments, and prepare for full deployment.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "Implementation details:\n1. Recruit a diverse pilot user group:\n   - Select users representing different roles and use cases\n   - Schedule testing sessions with clear objectives\n   - Prepare users with necessary context and instructions\n2. Execute pilot testing:\n   - Run full testing cycles with the pilot group\n   - Collect feedback on both the V4 pipeline and the testing framework itself\n   - Monitor all systems during testing to ensure proper data collection\n3. Analyze results and refine framework:\n   - Identify gaps or issues in the testing methodology\n   - Make adjustments to feedback collection mechanisms as needed\n   - Refine metrics based on initial findings\n4. Prepare final deployment package:\n   - Document all components of the testing framework\n   - Create an onboarding guide for new test participants\n   - Develop a schedule for ongoing testing cycles\n   - Prepare communication materials for full rollout\n\nTesting approach:\n- Verify all components of the framework function together as expected\n- Validate that collected data provides actionable insights\n- Confirm the framework can scale to accommodate larger test groups",
+          "status": "pending",
+          "parentTaskId": 21
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Migrate CLI from V3 to V4 and Remove Dual-Mode Routing",
+      "description": "Replace cli_v3.py with a V4-only CLI implementation that uses MasterOrchestrator and remove all V3/V4 routing logic from the main entry point.",
+      "details": "This task focuses on migrating the command-line interface from V3 to V4 architecture and eliminating the dual-mode routing system:\n\n1. CLI Migration:\n   - Remove cli_v3.py completely\n   - Create or update the V4 CLI to use MasterOrchestrator exclusively\n   - Ensure all commands previously available in V3 CLI are implemented in the V4 CLI\n   - Update command signatures to match V4 patterns and naming conventions\n   - Implement any missing functionality from V3 CLI in the V4 version\n   - Update help text and documentation strings to reflect V4 architecture\n\n2. Main Entry Point Changes:\n   - Identify the main entry point file(s) that currently contain V3/V4 routing logic\n   - Remove all conditional code that checks for V3 vs V4 mode\n   - Remove any version detection or compatibility flags\n   - Update the entry point to initialize only V4 components\n   - Ensure the entry point directly calls the V4 CLI and MasterOrchestrator\n   - Remove any imports of V3-specific modules\n\n3. Configuration Updates:\n   - Update CLI to use ConfigLoader instead of V3 settings facade\n   - Ensure all configuration options are properly mapped to V4 equivalents\n   - Update any command-line arguments that were specific to V3\n\n4. Error Handling:\n   - Update error handling to use V4 error handling mechanisms\n   - Ensure proper error messages are displayed to users\n\nThe implementation should maintain all existing functionality but through the V4 architecture only. Any V3-specific code paths, backward compatibility layers, and dual-mode routing should be completely removed.",
+      "testStrategy": "Testing should verify that the CLI functions correctly with the V4 architecture and that all V3 code has been removed:\n\n1. Functional Testing:\n   - Execute each CLI command that existed in V3 using the new V4 CLI\n   - Verify all commands produce the expected output and behavior\n   - Test with various input parameters to ensure proper handling\n   - Verify help text and documentation are accurate\n\n2. Integration Testing:\n   - Test the CLI with the MasterOrchestrator to ensure proper integration\n   - Verify that configuration is correctly passed from CLI to orchestrator\n   - Test error scenarios to ensure proper error handling and reporting\n\n3. Code Review:\n   - Perform a thorough code review to ensure no V3 imports remain\n   - Verify all V3/V4 routing logic has been removed\n   - Check for any remaining backward compatibility code\n\n4. Regression Testing:\n   - Run the full test suite to ensure no functionality was lost\n   - Compare output of common operations between old and new implementation\n\n5. Edge Cases:\n   - Test with invalid inputs to ensure proper error handling\n   - Test with edge case configurations\n\nAll tests should pass with the V4-only implementation, and there should be no references to V3 code or compatibility layers in the codebase.",
+      "status": "pending",
+      "dependencies": [],
       "priority": "high"
     }
   ],

@@ -31,7 +31,7 @@ summarization:
   retry_attempts: 1
   retry_delay_seconds: 1
 processing:
-  importance_threshold: 8
+  importance_threshold: 7
   spam_threshold: 5
   max_body_chars: 6000
   max_emails_per_run: 15

@@ -229,17 +229,28 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Neue Base erstellen": false,
       "switcher:Schnellauswahl öffnen": false,
       "graph:Graph-Ansicht öffnen": false,
       "canvas:Neuen Canvas erstellen": false,
       "daily-notes:Heutige Notiz öffnen": false,
       "templates:Vorlage einfügen": false,
-      "command-palette:Befehlspalette öffnen": false,
-      "bases:Create new base": false
+      "command-palette:Befehlspalette öffnen": false
     }
   },
   "active": "781175daf2565380",
   "lastOpenFiles": [
+    "src/analytics_writer.py",
+    "docs/v3-v4-functionality-gap-analysis.md",
+    "docs/v4-config-migration-strategy.md",
+    "src/__pycache__/cli_v4.cpython-313.pyc",
+    "src/cli_v4.py",
+    "docs/v4-complete-migration-plan.md",
+    "tasks/task_022.txt",
+    "docs/ui-approach-comparison.md",
+    "config/accounts/marc.bielert.nica.yaml",
+    "docs/v3-v4-comparison-analysis.md",
+    "config/accounts/info.nica.yaml",
     "docs/MAIN_DOCS.md",
     "docs/v4-config-schema-reference.md",
     "docs/v4-configuration-reference.md",
@@ -259,22 +270,11 @@
     "tests/integration/__pycache__/test_content_parser_llm.cpython-313-pytest-8.3.5.pyc",
     "tests/integration/test_e2e_scenarios.py",
     "tests/integration/test_content_parser_llm.py",
-    "tests/integration/__pycache__/test_rules_pipeline.cpython-313-pytest-8.3.5.pyc",
-    "tests/integration/test_rules_pipeline.py",
-    "tests/integration/__pycache__/test_config_loader_account_processor.cpython-313-pytest-8.3.5.pyc",
-    "tests/integration/__pycache__/test_utils.cpython-313-pytest-8.3.5.pyc",
-    "tests/integration/__pycache__/__init__.cpython-313.pyc",
     "docs/v4-unit-tests.md",
     "docs/v4-e2e-test-execution.md",
     "docs/v4-e2e-test-scenarios.md",
     "docs/v4-e2e-test-environment.md",
     "docs/v4-e2e-test-setup.md",
-    "docs/v4-progress-bars.md",
-    "docs/v4-logging-system.md",
-    "docs/v4-logging-design.md",
-    "docs/v4-orchestrator.md",
-    "prd-v4.md",
-    "pdd_V4.md",
-    "docs/v4-account-processor.md"
+    "docs/v4-progress-bars.md"
   ]
 }

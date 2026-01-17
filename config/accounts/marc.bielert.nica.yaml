@@ -1,0 +1,5 @@
+imap:
+  server: nica-network.netcup-mail.de
+  port: 143
+  username: marc.bielert@nica.network
+  password_env: IMAP_PASSWORD

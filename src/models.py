@@ -41,6 +41,10 @@ class EmailContext:
         uid: Email UID from IMAP server
         sender: Email sender address
         subject: Email subject line
+        date: Email date from headers (RFC 2822 format)
+        to: List of recipient email addresses
+        cc: List of carbon copy recipient email addresses
+        message_id: Message-ID header value
         raw_html: Raw HTML content of the email (if available)
         raw_text: Raw plain text content of the email (if available)
         parsed_body: Parsed/converted body content (Markdown after HTML conversion)
@@ -55,6 +59,12 @@ class EmailContext:
     uid: str
     sender: str
     subject: str
+    
+    # Email metadata (extracted from IMAP headers)
+    date: Optional[str] = None
+    to: List[str] = field(default_factory=list)
+    cc: List[str] = field(default_factory=list)
+    message_id: Optional[str] = None
     
     # Optional raw content (may not be available at instantiation)
     raw_html: Optional[str] = field(default=None, repr=False)  # Exclude from repr for readability
@@ -72,6 +82,9 @@ class EmailContext:
     whitelist_boost: float = 0.0
     whitelist_tags: List[str] = field(default_factory=list)
     result_action: Optional[str] = None
+    
+    # Summarization (pipeline-populated, optional)
+    summary: Optional[Dict[str, Any]] = None
     
     def add_llm_tag(self, tag: str) -> None:
         """
@@ -122,9 +135,11 @@ def from_imap_dict(email_dict: Dict[str, Any]) -> EmailContext:
     This function converts the dictionary format returned by IMAP client methods
     (get_unprocessed_emails, get_email_by_uid) into an EmailContext instance.
     
+    Extracts all available metadata including date, recipients (to/cc), and message_id.
+    
     Args:
         email_dict: Dictionary with email data from IMAP client.
-                   Expected keys: uid, subject, from/sender, body, html_body
+                   Expected keys: uid, subject, from/sender, body, html_body, date, to, cc, headers
     
     Returns:
         EmailContext instance with required fields populated
@@ -134,12 +149,16 @@ def from_imap_dict(email_dict: Dict[str, Any]) -> EmailContext:
         ...     'uid': '12345',
         ...     'subject': 'Test Email',
         ...     'from': 'sender@example.com',
+        ...     'date': 'Wed, 13 Sep 2023 14:34:53 +0200',
+        ...     'to': ['recipient@example.com'],
         ...     'body': 'Plain text body',
         ...     'html_body': '<p>HTML body</p>'
         ... }
         >>> context = from_imap_dict(email_dict)
         >>> context.uid
         '12345'
+        >>> context.date
+        'Wed, 13 Sep 2023 14:34:53 +0200'
     """
     # Extract required fields
     uid = str(email_dict.get('uid', ''))
@@ -147,6 +166,41 @@ def from_imap_dict(email_dict: Dict[str, Any]) -> EmailContext:
     
     # Handle sender field (can be 'from' or 'sender')
     sender = email_dict.get('sender') or email_dict.get('from', '[Unknown Sender]')
+    
+    # Extract metadata fields
+    date = email_dict.get('date') or None
+    
+    # Extract recipients (to field)
+    to_value = email_dict.get('to', [])
+    if isinstance(to_value, str):
+        # Parse comma-separated addresses
+        to_list = [addr.strip() for addr in to_value.split(',') if addr.strip()]
+    elif isinstance(to_value, list):
+        to_list = [str(addr).strip() for addr in to_value if addr]
+    else:
+        to_list = []
+    
+    # Extract CC recipients
+    cc_value = email_dict.get('cc', [])
+    if isinstance(cc_value, str):
+        cc_list = [addr.strip() for addr in cc_value.split(',') if addr.strip()]
+    elif isinstance(cc_value, list):
+        cc_list = [str(addr).strip() for addr in cc_value if addr]
+    else:
+        cc_list = []
+    
+    # Extract Message-ID from headers if available
+    message_id = None
+    headers = email_dict.get('headers', {})
+    if isinstance(headers, dict):
+        message_id = headers.get('Message-ID') or headers.get('Message-Id') or None
+        if message_id:
+            message_id = str(message_id).strip()
+    # Also check direct message_id field
+    if not message_id:
+        message_id = email_dict.get('message_id') or email_dict.get('source_message_id') or None
+        if message_id:
+            message_id = str(message_id).strip()
     
     # Extract raw content (use get with None default to distinguish empty strings from missing keys)
     raw_html = email_dict.get('html_body') if 'html_body' in email_dict else email_dict.get('raw_html')
@@ -156,6 +210,10 @@ def from_imap_dict(email_dict: Dict[str, Any]) -> EmailContext:
         uid=uid,
         sender=str(sender),
         subject=str(subject),
+        date=date,
+        to=to_list,
+        cc=cc_list,
+        message_id=message_id,
         raw_html=raw_html,
         raw_text=raw_text
     )
