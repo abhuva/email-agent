@@ -188,7 +188,7 @@
           "id": 4,
           "title": "Implement get_valid_token with automatic refresh",
           "description": "Create main public method that returns valid access token, automatically refreshing when needed.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
