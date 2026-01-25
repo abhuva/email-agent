@@ -538,7 +538,7 @@
       "id": 9,
       "title": "Refactor IMAP client to use authenticator strategy",
       "description": "Modify the IMAP client to use the authenticator strategy pattern",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         8
       ],
@@ -550,7 +550,7 @@
           "id": 1,
           "title": "Design and implement authenticator strategy interface",
           "description": "Create an abstract base class or protocol that defines the authenticator strategy pattern. This interface will establish the contract that all authentication mechanisms must follow, enabling pluggable authentication implementations.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Create an `Authenticator` abstract base class in a new module `src/authenticators/base.py` with an abstract method `authenticate(server)` that returns authentication status. Define the method signature to accept an IMAP server connection object and raise appropriate exceptions (e.g., `AuthenticationError`) on failure. Include type hints for all parameters and return values. Document the interface with docstrings explaining the expected behavior, error conditions, and how implementations should handle OAuth 2.0 tokens versus traditional credentials. Consider adding optional methods like `refresh_token()` for token-based authentication. This foundation enables the client refactoring in subsequent subtasks."
         },
@@ -558,7 +558,7 @@
           "id": 2,
           "title": "Implement concrete authenticator strategies (PLAIN, OAuth2, NTLM)",
           "description": "Create concrete implementations of the authenticator interface for different authentication mechanisms, including PLAIN (basic username/password), OAuth 2.0, and NTLM, following RFC 3501 and modern security standards.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -568,7 +568,7 @@
           "id": 3,
           "title": "Refactor IMAPClient.__init__ to accept authenticator parameter",
           "description": "Modify the IMAPClient constructor to accept an optional authenticator parameter while maintaining backward compatibility with existing code that passes credentials directly.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -578,7 +578,7 @@
           "id": 4,
           "title": "Update connect() and authentication flow to use authenticator strategy",
           "description": "Refactor the connect() method to delegate authentication to the authenticator strategy instead of handling credentials directly, implementing proper error handling and security practices.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3
@@ -589,7 +589,7 @@
           "id": 5,
           "title": "Add comprehensive testing and validation for authenticator strategies",
           "description": "Create unit tests and integration tests covering all authenticator implementations, backward compatibility scenarios, error handling, and security edge cases.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2,
             3,
