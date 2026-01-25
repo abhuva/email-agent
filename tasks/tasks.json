@@ -147,7 +147,7 @@
       "id": 4,
       "title": "Implement token management system",
       "description": "Create a token manager to handle storage, loading, and refreshing of OAuth tokens",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2
       ],
@@ -213,7 +213,7 @@
           "id": 6,
           "title": "Write unit tests for all TokenManager functionality",
           "description": "Create comprehensive test suite covering all methods, edge cases, and error conditions.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
