@@ -603,7 +603,7 @@
       "id": 10,
       "title": "Implement CLI authentication command",
       "description": "Add the 'auth' command to the CLI for initiating OAuth flows",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         7,
         8
@@ -616,7 +616,7 @@
           "id": 1,
           "title": "Add auth command structure with --account parameter and help text",
           "description": "Create the basic Typer command structure in src/cli_v4.py with proper help documentation and parameter validation.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Use @app.command() decorator to add 'auth' command. Add typer.Option('--account', required=True, help='Account name from config') parameter. Include comprehensive help text: 'Initiate OAuth 2.0 authentication flow for specified account'. Add validation to ensure account exists in config before proceeding. Follow Typer best practices for CLI consistency[1][3]."
         },
@@ -624,7 +624,7 @@
           "id": 2,
           "title": "Implement account configuration loading and provider detection",
           "description": "Create config loading logic that reads account settings and determines OAuth provider (Google/Microsoft).",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -634,7 +634,7 @@
           "id": 3,
           "title": "Initialize OAuth providers and implement OAuth flow orchestration",
           "description": "Create OAuth provider initialization and flow execution with security best practices.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             2
           ],
@@ -644,7 +644,7 @@
           "id": 4,
           "title": "Add comprehensive success/failure messaging and error handling",
           "description": "Implement user-facing messages and robust error handling for all failure scenarios.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -654,7 +654,7 @@
           "id": 5,
           "title": "Add unit tests for auth command components",
           "description": "Create comprehensive test suite covering command invocation, config loading, provider detection, and error scenarios.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
