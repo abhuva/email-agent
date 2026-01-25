@@ -159,7 +159,7 @@
           "id": 1,
           "title": "Create TokenManager class skeleton with save_tokens and load_tokens methods",
           "description": "Implement the basic TokenManager class structure with token storage and retrieval using JSON files in credentials directory.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1. Create `src/auth/token_manager.py` with `TokenManager` class. 2. Implement `save_tokens(account_name, tokens)`: Create credentials directory if missing (`os.makedirs`), save tokens as JSON with filename `{account_name}.json`, set permissions to 0600 using `os.chmod(0o600)`. 3. Implement `load_tokens(account_name)`: Return tokens dict from JSON file or None if missing. 4. Add file path helper method `_get_token_path(account_name)`. 5. Handle FileNotFoundError and PermissionError with logging."
         },
