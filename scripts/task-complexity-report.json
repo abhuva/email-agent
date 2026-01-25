@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-01-11T01:58:39.450Z",
-    "tasksAnalyzed": 20,
+    "generatedAt": "2026-01-25T20:38:16.011Z",
+    "tasksAnalyzed": 12,
     "thresholdScore": 5,
     "projectName": "Your Project Name",
     "usedResearch": true
@@ -9,163 +9,99 @@
   "complexityAnalysis": [
     {
       "taskId": 1,
-      "taskTitle": "Create Configuration Directory Structure",
-      "complexityScore": 3,
+      "taskTitle": "Set up project structure and dependencies",
+      "complexityScore": 2,
       "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down 'Create Configuration Directory Structure' into 4 concrete engineering subtasks. Include steps for: (1) designing the config directory layout for global vs account-specific files, (2) implementing creation of directories and placeholder YAML files (config.yaml, accounts/, blacklist.yaml, whitelist.yaml), (3) setting and verifying secure filesystem permissions across common OSes (at least Unix-like), and (4) adding basic automation (e.g., a setup script or Make target) plus documentation for how and when this structure is created.",
-      "reasoning": "Low algorithmic complexity but requires attention to filesystem conventions, permissions, and repeatable project setup."
+      "expansionPrompt": "Break down the project setup into granular steps including directory creation verification, file initialization with basic content, dependency installation testing, gitignore validation, and permission setting confirmation with error handling for each operation.",
+      "reasoning": "Straightforward file system operations and dependency management with no algorithmic complexity or external integrations; low cognitive load per complexity metrics like cyclomatic complexity."
     },
     {
       "taskId": 2,
-      "taskTitle": "Implement Configuration Loader with Deep Merge Logic",
-      "complexityScore": 7,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Configuration Loader with Deep Merge Logic' into 6 detailed subtasks. Cover: (1) choosing and integrating a YAML parser and defining file discovery rules for global vs account configs, (2) implementing robust loading of global config.yaml with error handling and helpful messages, (3) implementing account-specific config loading and precedence rules, (4) designing and implementing a deterministic deep-merge algorithm (dicts merged, lists replaced, scalars overwritten) with unit-level examples, (5) adding structured error handling for malformed YAML and missing files, and (6) writing tests and small usage examples for load_merged_config(account_name: str) -> dict including edge cases like empty configs and conflicting keys.",
-      "reasoning": "Moderate-to-high complexity due to deep-merge semantics, precedence rules, and robustness requirements around YAML I/O and error handling."
+      "taskTitle": "Define authentication interfaces and base classes",
+      "complexityScore": 4,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand interface definition into steps covering protocol specification with type hints, abstract base class implementation for each method, type definitions for tokens, SASL utility functions with edge cases, and comprehensive docstring creation with examples.",
+      "reasoning": "Involves abstract design patterns (strategy/protocol) requiring understanding of type systems and IMAP SASL; moderate cognitive complexity from multiple interconnected interfaces."
     },
     {
       "taskId": 3,
-      "taskTitle": "Implement Configuration Schema Validation",
-      "complexityScore": 7,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Configuration Schema Validation' into 6 subtasks. Include: (1) selecting a schema validation approach or library (e.g., JSON Schema-style, pydantic, or custom) and documenting the choice, (2) defining the full configuration schema (required fields, types, allowed values, ranges, nested structures) for both global and account configs, (3) integrating validation into ConfigLoader so it runs after merge but before returning, (4) designing error-reporting behavior (logging, partial failures, which errors are fatal vs non-fatal) per requirements, (5) implementing graceful handling of validation issues while allowing processing to continue when safe, and (6) developing tests that cover valid configs, type errors, missing required fields, and boundary conditions.",
-      "reasoning": "Similar complexity to the loader: non-trivial schema design, library integration, and nuanced error/continuation behavior."
+      "taskTitle": "Update configuration schema for OAuth support",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail schema updates including auth block structure definition, Pydantic discriminated union validation logic, backward compatibility testing scenarios, provider enum validation, and integration tests for mixed auth methods.",
+      "reasoning": "Requires schema validation logic with conditional fields and backward compatibility; moderate complexity from discriminated unions and validation rules increasing cyclomatic paths."
     },
     {
       "taskId": 4,
-      "taskTitle": "Create EmailContext Data Class",
-      "complexityScore": 4,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down 'Create EmailContext Data Class' into 4 subtasks. Address: (1) clarifying and documenting each field’s type, lifecycle, and nullable/default behavior (uid, sender, subject, raw_html, raw_text, parsed_body, is_html_fallback, llm_score, llm_tags, whitelist_boost, whitelist_tags, result_action), (2) implementing the dataclass (or equivalent model) in src/models.py with appropriate defaults and type hints, (3) adding helper methods or enums where useful (e.g., for result_action or tag handling), and (4) writing small tests or usage examples to confirm compatibility with the processing pipeline and serialization/logging needs.",
-      "reasoning": "Structurally simple but important for pipeline correctness and future maintainability, requiring careful field design and typing."
+      "taskTitle": "Implement token management system",
+      "complexityScore": 6,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Decompose token manager into file I/O operations with security, expiry checking logic with buffer, refresh mechanism per provider, exception handling chains, atomic file operations, and validation of token structures before/after operations.",
+      "reasoning": "File I/O with security (permissions), expiry logic, and refresh flows introduce state management and error paths; higher cognitive complexity from concurrent concerns like race conditions."
     },
     {
       "taskId": 5,
-      "taskTitle": "Implement Content Parser with HTML to Markdown Conversion",
-      "complexityScore": 6,
+      "taskTitle": "Implement Google OAuth provider",
+      "complexityScore": 7,
       "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Content Parser with HTML to Markdown Conversion' into 6 subtasks. Include: (1) selecting and integrating the html2text (or equivalent) library and configuring sensible conversion options, (2) designing the parse_html_content(html_body: str, plain_text_body: str) -> (parsed_content: str, is_fallback: bool) API including expectations when inputs are empty or None, (3) implementing HTML-to-Markdown conversion logic with correct is_fallback behavior when conversion fails or HTML is unusable, (4) enforcing the 20,000 character limit with a clear truncation strategy and documenting implications, (5) adding structured error handling and logging for parse failures and unexpected content, and (6) writing tests for typical, malformed, and extreme-size emails to ensure reliability.",
-      "reasoning": "Moderate complexity involving third-party integration, clear API design, edge-case handling, and content-size constraints."
+      "expansionPrompt": "Break Google OAuth into environment validation, auth URL generation with scopes, callback parsing and validation, token exchange error flows, refresh token integration testing, and provider-specific edge case handling like rate limits.",
+      "reasoning": "OAuth library integration with specific scopes, error-prone token exchange, and env var handling; high complexity from external API interactions and state transitions."
     },
     {
       "taskId": 6,
-      "taskTitle": "Implement Rules Engine - Blacklist Rules",
+      "taskTitle": "Implement Microsoft OAuth provider",
       "complexityScore": 7,
       "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Rules Engine - Blacklist Rules' into 6 subtasks. Cover: (1) defining the blacklist rule schema and supported trigger types (sender, subject, domain) including matching semantics (exact, contains, regex, case sensitivity), (2) implementing rule loading/parsing from blacklist.yaml with validation and normalization, (3) implementing check_blacklist(email_obj, rules) -> ActionEnum with clear precedence when multiple rules match, (4) defining and implementing the ActionEnum (DROP, RECORD, PASS) and how it is consumed by the pipeline, (5) adding robust error handling and logging for malformed or unsupported rules while failing safely, and (6) creating unit tests that cover rule parsing, matching behavior across trigger types, and edge cases like conflicting rules.",
-      "reasoning": "Rule engines add notable complexity due to schema design, matching logic, precedence, and resilience to bad configurations."
+      "expansionPrompt": "Detail Microsoft OAuth steps: MSAL configuration with scopes including offline_access, auth URL with state parameter, callback code acquisition, token acquisition flows, refresh token persistence, and Microsoft-specific error code mappings.",
+      "reasoning": "Similar to Google but with MSAL library differences, multiple scopes, and enterprise auth nuances; elevated complexity from provider-specific API behaviors."
     },
     {
       "taskId": 7,
-      "taskTitle": "Implement Rules Engine - Whitelist Rules",
-      "complexityScore": 7,
+      "taskTitle": "Implement OAuth flow for CLI interaction",
+      "complexityScore": 8,
       "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Rules Engine - Whitelist Rules' into 6 subtasks. Include: (1) defining the whitelist rule schema including score_boost and tags fields plus the same trigger types as blacklist, (2) extending rule loading/parsing to support whitelist.yaml with validation of score_boost ranges and tag formats, (3) implementing apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list) with well-defined combination logic when multiple rules match, (4) deciding and documenting precedence and interaction with blacklist results and LLM scores, (5) adding robust error handling and logging for malformed whitelist rules while avoiding crashes, and (6) writing tests for scoring changes, tag aggregation, and invalid or conflicting rules.",
-      "reasoning": "On par with blacklist complexity, with added concerns around numeric boosts, tag handling, and interaction with existing scoring."
+      "expansionPrompt": "Expand CLI OAuth flow into local server setup with port fallback logic, URL display with copy-to-clipboard option, callback parsing with validation, token exchange orchestration, user feedback loops, and cleanup/teardown handling.",
+      "reasoning": "Networking (local HTTP server), port conflict resolution, user interaction flows, and orchestration; high cyclomatic complexity from multiple failure modes and async concerns."
     },
     {
       "taskId": 8,
-      "taskTitle": "Create Account Processor Class",
-      "complexityScore": 8,
-      "recommendedSubtasks": 7,
-      "expansionPrompt": "Break down 'Create Account Processor Class' into 7 detailed subtasks. Address: (1) designing the AccountProcessor API and lifecycle (constructor dependencies, setup(), run(), teardown()) ensuring state isolation per account, (2) implementing IMAP connection management (connect, authenticate, select mailbox, handle timeouts and errors), (3) wiring in configuration loading and per-account settings, (4) implementing the processing pipeline stages: blacklist check, content parsing, LLM processing, whitelist modifiers, and note generation in a composable way, (5) defining error-handling and retry behavior at each pipeline step to avoid failing the whole account unnecessarily, (6) integrating logging and metrics for each major stage, and (7) adding focused unit tests or high-level tests using mocks for IMAP and LLM to validate control flow and isolation.",
-      "reasoning": "High complexity due to orchestration of multiple subsystems, external services, error handling, and lifecycle management for each account."
+      "taskTitle": "Implement authentication strategies",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Decompose strategies into password auth with env var secure loading, OAuth SASL string generation with binary encoding, IMAP XOAUTH2 call with retry logic, unified error classification, and strategy selection factory pattern.",
+      "reasoning": "Dual strategy implementation with SASL protocol details and IMAP integration; complexity from protocol-level string construction and error mapping."
     },
     {
       "taskId": 9,
-      "taskTitle": "Implement Safety Interlock with Cost Estimation",
-      "complexityScore": 7,
+      "taskTitle": "Refactor IMAP client to use authenticator strategy",
+      "complexityScore": 6,
       "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down 'Implement Safety Interlock with Cost Estimation' into 5 subtasks. Include: (1) designing the cost estimation model using IMAP.search counts and per-email model costs from configuration, including assumptions and limits, (2) implementing an efficient pre-fetch IMAP.search to count candidate emails while handling pagination and errors, (3) calculating and formatting a user-facing cost estimate (currency, units, and key assumptions), (4) implementing an interactive confirmation or explicit flag mechanism that must be satisfied before proceeding to fetch/process emails, and (5) adding tests or simulations to verify behavior across small, large, and failing IMAP scenarios and to ensure the interlock cannot be bypassed unintentionally.",
-      "reasoning": "Moderately high complexity due to external dependency (IMAP), user-safety requirements, and the need for robust guardrail behavior."
+      "expansionPrompt": "Break refactoring into constructor signature changes with defaults, credential removal extraction, connect method strategy delegation, backward compatibility conditional logic, and comprehensive type hint updates with tests.",
+      "reasoning": "Refactoring existing code with backward compatibility constraints; moderate-high complexity from change propagation and testing requirements."
     },
     {
       "taskId": 10,
-      "taskTitle": "Create Master Orchestrator Class",
-      "complexityScore": 8,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Create Master Orchestrator Class' into 6 subtasks. Cover: (1) designing the MasterOrchestrator responsibilities and interactions with the CLI and AccountProcessor, including account selection strategies, (2) implementing account discovery and selection based on configuration and CLI arguments, (3) creating isolated AccountProcessor instances per account with correct dependency injection and state isolation, (4) implementing the main orchestration loop over accounts, including sequencing or optional parallelism, (5) defining and implementing robust error-handling and reporting so one account failure does not terminate others, and (6) adding tests for multi-account flows, partial failures, and argument combinations.",
-      "reasoning": "High complexity due to cross-account coordination, error isolation, and tight integration with configuration and CLI concerns."
+      "taskTitle": "Implement CLI authentication command",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail CLI command: argument parsing with validation, config loading and provider resolution, provider instantiation, OAuth flow execution wrapper, result formatting with colors, and help text internationalization.",
+      "reasoning": "CLI integration with config orchestration; moderate complexity from user-facing error messages and flow coordination."
     },
     {
       "taskId": 11,
-      "taskTitle": "Update CLI for Multi-Account Support",
+      "taskTitle": "Update account processor for OAuth support",
       "complexityScore": 6,
       "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down 'Update CLI for Multi-Account Support' into 5 subtasks. Include: (1) designing the CLI UX and argument structure for 'process --account <name>', 'process --all', and 'show-config --account <name>', (2) updating or implementing the argument parser and help text to reflect new commands and options, (3) wiring CLI commands to the MasterOrchestrator and related functions while enforcing argument validation and error messages, (4) handling invalid account names, conflicting arguments, and exit codes consistently, and (5) adding CLI-level tests or smoke tests (e.g., via subprocess or parser-level tests) for common and edge-case invocations.",
-      "reasoning": "Moderate complexity involving CLI design, integration with orchestration, and careful validation/UX around new flags."
+      "expansionPrompt": "Expand processor updates: auth config parsing with fallbacks, strategy factory based on method/provider, authenticator initialization with dependency injection, IMAP client passing, and validation error surfacing.",
+      "reasoning": "Orchestration layer changes with conditional logic and dependency wiring; complexity from config-driven behavior and error propagation."
     },
     {
       "taskId": 12,
-      "taskTitle": "Implement Enhanced Logging System",
+      "taskTitle": "End-to-end testing and documentation",
       "complexityScore": 7,
       "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Enhanced Logging System' into 6 subtasks. Address: (1) designing a centralized logging configuration (formatters, handlers, levels) suitable for multi-account processing, (2) implementing startup-time logging override/initialization that is used across the application, (3) adding structured context (e.g., account name, message identifiers, pipeline stage) to all log messages via adapters, filters, or contextvars, (4) implementing logging of account processing start/end and configuration overrides in a consistent format, (5) updating core modules to use the shared logging approach and removing ad-hoc prints, and (6) creating tests or manual verification scenarios to ensure logs are correctly formatted, contextualized, and usable for troubleshooting.",
-      "reasoning": "Moderately high complexity since logging spans the whole system, must handle contextual data, and must not introduce tight coupling or noise."
-    },
-    {
-      "taskId": 13,
-      "taskTitle": "Add Progress Bars for Processing Steps",
-      "complexityScore": 5,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down 'Add Progress Bars for Processing Steps' into 5 subtasks. Include: (1) selecting and integrating a progress bar library (e.g., tqdm) and deciding global conventions for its use, (2) implementing progress bars for email fetching, content parsing, LLM processing, and note generation within the existing pipeline, (3) ensuring progress bars behave correctly in multi-account scenarios (sequential vs concurrent) and do not interfere with logging, (4) handling edge cases such as unknown total counts or early termination gracefully, and (5) adding basic tests or manual verification scripts to confirm that progress information is accurate and does not degrade UX in non-interactive environments.",
-      "reasoning": "Moderate complexity with UI/UX considerations and integration into multi-step, multi-account processing flows."
-    },
-    {
-      "taskId": 14,
-      "taskTitle": "Create Default Configuration Templates",
-      "complexityScore": 5,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down 'Create Default Configuration Templates' into 4 subtasks. Address: (1) enumerating all relevant configuration options and defaults needed for global and account-level configs based on the current feature set, (2) drafting a comprehensive default global config.yaml with safe, documented defaults for each setting, (3) creating example account config, blacklist.yaml, and whitelist.yaml files that demonstrate common patterns and best practices, and (4) writing clear inline comments and brief external notes that explain each setting, its purpose, and how overrides interact with the global config.",
-      "reasoning": "Conceptually straightforward but requires thorough coverage of options, good defaults, and clear documentation to avoid misconfiguration."
-    },
-    {
-      "taskId": 15,
-      "taskTitle": "Implement Configuration Display Command",
-      "complexityScore": 6,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down 'Implement Configuration Display Command' into 5 subtasks. Include: (1) defining the UX and output format options for 'show-config --account <name>' including YAML and JSON modes, (2) wiring the CLI command to call the configuration loader and merge logic for the specified account, (3) implementing logic to highlight or annotate which values are overridden from the global config versus defaults, (4) formatting and printing the configuration in a readable, paginated, or colorized form where appropriate, and (5) adding tests for different accounts, formats, and failure modes (missing account, malformed config) to ensure reliability.",
-      "reasoning": "Moderate complexity due to integration with config loader, diff-like display of overrides, and multiple output formats."
-    },
-    {
-      "taskId": 16,
-      "taskTitle": "Create Unit Tests for Core Components",
-      "complexityScore": 8,
-      "recommendedSubtasks": 7,
-      "expansionPrompt": "Break down 'Create Unit Tests for Core Components' into 7 subtasks. Cover: (1) defining a test strategy and coverage goals for ConfigLoader, Rules Engine, Content Parser, AccountProcessor, and MasterOrchestrator, (2) setting up the testing framework, fixtures, and directory structure, (3) writing unit tests for ConfigLoader including deep-merge, schema validation, and error handling, (4) writing unit tests for Rules Engine (blacklist and whitelist) covering rule parsing, matching, scoring, and edge cases, (5) writing unit tests for Content Parser including HTML-to-Markdown behavior, fallbacks, and size limits, (6) writing unit tests for AccountProcessor and MasterOrchestrator using mocks for IMAP, LLM, and configuration, and (7) adding CI integration or local scripts to run tests and generate coverage reports.",
-      "reasoning": "High complexity and effort since it spans multiple components, requires mocking external dependencies, and must ensure robust coverage of critical behavior."
-    },
-    {
-      "taskId": 17,
-      "taskTitle": "Implement Integration Tests",
-      "complexityScore": 8,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Implement Integration Tests' into 6 subtasks. Include: (1) defining key integration scenarios across ConfigLoader + AccountProcessor, Rules Engine + pipeline, and Content Parser + LLM processing, (2) setting up a test harness that can spin up the application components wired together while substituting mock IMAP and LLM services, (3) creating realistic test configurations, rules, and sample emails that exercise common and edge-case flows, (4) implementing integration tests that verify end-to-end behavior of each scenario including state propagation via EmailContext, (5) adding assertions around logging, side effects, and safety interlocks where relevant, and (6) documenting how to run integration tests and how they differ from unit tests.",
-      "reasoning": "High complexity because it coordinates multiple components and mocks in realistic workflows, with many possible failure and edge conditions."
-    },
-    {
-      "taskId": 18,
-      "taskTitle": "Update Main Entry Point",
-      "complexityScore": 7,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down 'Update Main Entry Point' into 5 subtasks. Address: (1) refactoring main.py to delegate responsibility to the MasterOrchestrator and new CLI parsing layer, (2) ensuring correct initialization order for logging, configuration, orchestrator, and any global resources, (3) wiring command-line arguments and environment variables into the orchestrator and related components according to the new architecture, (4) implementing a clean shutdown path that handles signals, errors, and resource cleanup (IMAP, network, temp files), and (5) adding smoke tests or manual test scripts to verify typical entry-point flows, including multi-account processing and failure handling.",
-      "reasoning": "Moderately high complexity due to central role in startup, shutdown, and integration of all new architecture elements."
-    },
-    {
-      "taskId": 19,
-      "taskTitle": "Perform End-to-End Testing",
-      "complexityScore": 8,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Perform End-to-End Testing' into 6 subtasks. Include: (1) defining E2E test scenarios and success criteria across single-account and multi-account flows using real test email accounts, (2) setting up or provisioning test IMAP accounts and configuring safe credentials and test data, (3) executing tests that cover email fetching, rules application, HTML parsing, LLM processing, whitelist modifiers, and note generation, (4) capturing and analyzing logs, metrics, and outputs to validate behavior and performance, (5) documenting issues found and feeding them back into bug fixes or configuration updates, and (6) creating a repeatable E2E test procedure that can be re-run before releases.",
-      "reasoning": "High complexity and effort because it exercises the entire stack with real services and must be carefully planned, executed, and repeated."
-    },
-    {
-      "taskId": 20,
-      "taskTitle": "Create Documentation and Migration Guide",
-      "complexityScore": 7,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down 'Create Documentation and Migration Guide' into 6 subtasks. Address: (1) outlining the full documentation structure: installation/setup, configuration options, rule syntax, CLI usage, and V3-to-V4 migration, (2) writing installation and setup instructions including prerequisites, environment configuration, and multi-account setup, (3) documenting configuration options with examples and cross-references to the default templates and show-config behavior, (4) documenting blacklist/whitelist rule syntax with realistic examples and best practices, (5) documenting command-line usage for all key commands with examples and troubleshooting tips, and (6) creating a focused migration guide from V3 to V4 describing architectural changes, config diffs, and step-by-step upgrade instructions.",
-      "reasoning": "Moderately high complexity because it requires synthesizing many system aspects into coherent, accurate, and migration-focused documentation."
+      "expansionPrompt": "Break into test suite creation for each provider, mock server setups for OAuth flows, backward compatibility regression tests, documentation writing for setup guides, example config generation, and troubleshooting FAQ compilation.",
+      "reasoning": "Comprehensive testing across external dependencies plus documentation; high complexity from end-to-end flows, mocks, and external service coordination."
     }
   ]
 }

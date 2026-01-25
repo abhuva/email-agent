@@ -2,7 +2,7 @@
 
 **Status:** Documentation for Task 14.1  
 **Purpose:** Reference document defining all configuration settings, their types, defaults, and relationships  
-**PDD Reference:** [pdd_V4.md](../pdd_V4.md) Section 3.1
+**PDD Reference:** [pdd_V4.md](pdd_V4.md) Section 3.1
 
 ---
 
@@ -347,6 +347,6 @@ Configuration values can be overridden using environment variables:
 ## Related Documentation
 
 - [V4 Configuration Guide](v4-configuration.md) - Complete configuration system documentation
-- [pdd_V4.md](../pdd_V4.md) - V4 Product Design Document Section 3.1
+- [pdd_V4.md](pdd_V4.md) - V4 Product Design Document Section 3.1
 - [src/config_schema.py](../src/config_schema.py) - Schema definition source code
 - [src/config_loader.py](../src/config_loader.py) - Configuration loader implementation

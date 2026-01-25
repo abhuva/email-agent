@@ -1,55 +1,16 @@
 # Task ID: 1
-# Title: Create Configuration Directory Structure
-# Status: done
+# Title: Set up project structure and dependencies
+# Status: pending
 # Dependencies: None
 # Priority: high
-# Description: Set up the directory structure for global and account-specific configurations
+# Description: Create the necessary directory structure and add required dependencies for OAuth integration
 # Details:
-Create the following directory structure: config/ (for global config.yaml), config/accounts/ (for account-specific YAML files), and ensure proper permissions. Create placeholder files for blacklist.yaml and whitelist.yaml. This task establishes the foundation for the configuration system.
+1. Create `src/auth/` directory with files: `__init__.py`, `interfaces.py`, `oauth_flow.py`, `token_manager.py`, `strategies.py`
+2. Create `src/auth/providers/` directory with files: `__init__.py`, `google.py`, `microsoft.py`
+3. Create `credentials/` directory for token storage
+4. Add `credentials/` to `.gitignore`
+5. Add dependencies to `requirements.txt`: `google-auth-oauthlib`, `msal`
+6. Set appropriate file permissions for the credentials directory (chmod 700)
 
 # Test Strategy:
-Verify directory structure exists and is writable. Create test configuration files to ensure proper access.
-
-# Subtasks:
-## 1. Create base configuration directory structure [done]
-### Dependencies: None
-### Description: Create the root configuration directory and the subdirectory for account-specific configurations.
-### Details:
-1) In the project root, create a `config/` directory to hold all configuration files. 2) Inside `config/`, create a subdirectory `accounts/` for account-specific YAML files. 3) If applicable, add these directories to any project scaffolding or setup scripts (e.g., a Makefile target or project bootstrap script) so that they are created automatically on new environments.
-
-## 2. Create global configuration file placeholder [done]
-### Dependencies: 1.1
-### Description: Add a placeholder global config.yaml file in the config directory with minimal valid structure.
-### Details:
-1) Inside `config/`, create an empty but valid YAML file named `config.yaml`. 2) Add a minimal top-level structure, such as comments and example keys, to illustrate intended usage (e.g., `# Global configuration`, `# logging:`, `#   level: info`) without enforcing real values. 3) If using version control, include this file in the repository and consider adding guidance comments about where secrets should NOT be stored (e.g., point to environment variables or separate secrets handling).
-
-## 3. Create account-specific configuration file placeholders [done]
-### Dependencies: 1.1
-### Description: Set up example account-specific YAML files inside config/accounts/ to demonstrate per-account configuration.
-### Details:
-1) Inside `config/accounts/`, create at least one example YAML file, such as `example-account.yaml`, containing a minimal valid structure (e.g., `# Account-specific configuration`, `# account_id: example`). 2) Optionally add comments showing expected keys (e.g., credentials references, feature toggles) without including real secrets. 3) Decide on and document the naming convention for account files (e.g., `<account-id>.yaml` or `<tenant-name>.yaml`) in comments at the top of the example file.
-
-## 4. Create blacklist and whitelist configuration placeholders [done]
-### Dependencies: 1.1
-### Description: Add placeholder YAML files for blacklist and whitelist configuration and place them appropriately in the config hierarchy.
-### Details:
-1) In the `config/` directory, create `blacklist.yaml` and `whitelist.yaml` files. 2) Ensure each file contains valid YAML syntax, even if only comments and empty lists (e.g., `blocked_items: []` in `blacklist.yaml` and `allowed_items: []` in `whitelist.yaml`). 3) Add comments explaining the intended semantics and expected data structures (e.g., list of IDs, patterns, or domains) so that future implementation can parse these files consistently.
-
-## 5. Set and document appropriate filesystem permissions for configuration directories and files [done]
-### Dependencies: 1.1, 1.2, 1.3, 1.4
-### Description: Define, apply, and document the required permissions for the config directory tree and its files.
-### Details:
-1) Decide on the target runtime user/group that should own the configuration (e.g., application service user). 2) Apply directory permissions so that only the owning user (and optionally group) can read/write the configuration (e.g., `chmod 750 config/ config/accounts/` and `chown <app-user>:<app-group> ...` as appropriate for your OS). 3) Apply file permissions to restrict write access and limit read access to the application and administrators (e.g., `chmod 640 config/*.yaml config/accounts/*.yaml`). 4) If using an infrastructure-as-code or deployment script, codify these permission settings in that script. 5) Add a short section to project documentation (e.g., README or ops docs) describing the directory structure, ownership, and permission requirements so that new environments are configured consistently.
-
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
-### Dependencies: 1.1, 1.2, 1.3, 1.4, 1.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
-### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=1 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 1 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 1 - Create Configuration Directory Structure [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
-
+Verify all directories and files are created with correct structure. Confirm dependencies are installed correctly using `pip install -r requirements.txt`. Check that credentials directory has proper permissions.

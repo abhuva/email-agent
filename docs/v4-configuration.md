@@ -2,7 +2,7 @@
 
 **Status:** In Development  
 **Tasks:** Task 1 (Complete), Task 2 (Complete), Task 3 (Complete)  
-**PDD Reference:** [pdd_V4.md](../pdd_V4.md) Section 3.1
+**PDD Reference:** [pdd_V4.md](pdd_V4.md) Section 3.1
 
 ---
 
@@ -532,10 +532,10 @@ ERROR[MISSING_REQUIRED_SECTION] openrouter: Required section 'openrouter' is mis
 ## Related Documentation
 
 - [V3 Configuration Guide](v3-configuration.md) - V3 configuration system (base structure)
-- [pdd_V4.md](../pdd_V4.md) - V4 Product Design Document
-- [prd-v4.md](../prd-v4.md) - V4 Product Requirements Document
+- [pdd_V4.md](pdd_V4.md) - V4 Product Design Document
+- [prd-v4.md](prd-v4.md) - V4 Product Requirements Document
 
 ## References
 
-- **PDD Section:** [pdd_V4.md](../pdd_V4.md) Section 3.1 - Configuration Schema
+- **PDD Section:** [pdd_V4.md](pdd_V4.md) Section 3.1 - Configuration Schema
 - **Task:** Task 1 - Create Configuration Directory Structure

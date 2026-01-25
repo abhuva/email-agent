@@ -4,7 +4,7 @@ This is the top-level guide for all docs, implementation details, and project st
 
 ## Essential System Docs
 - [README.md](../README.md) — The actual starting point and summary of all global system info.
-- [pdd_V4.md](../pdd_V4.md) — Product Design Document V4 (✅ Complete, Current Version), multi-tenant platform with rules engine, multi-account support, and V4-only CLI.
+- [pdd_V4.md](pdd_V4.md) — Product Design Document V4 (✅ Complete, Current Version), multi-tenant platform with rules engine, multi-account support, and V4-only CLI.
 - [pdd.md](../pdd.md) — Product Design Document V3 (✅ Complete, Historical), foundational upgrade with score-based classification, CLI controls, and templating (superseded by V4).
 - [pdd_v2.md](../pdd_v2.md) — Product Design Document V2 (✅ Complete, Historical), outlining Obsidian integration and note creation features.
 - [prd.md](prd.md) — Product Requirements Document
@@ -101,14 +101,14 @@ The following documents provide historical context and implementation decisions:
 
 ## Onboarding / Loading AI Context
 1. Read the [README](../README.md) for system structure and tasking.
-2. Open [pdd_V4.md](../pdd_V4.md) for current V4 requirements and roadmap (we're working on V4 now).
+2. Open [pdd_V4.md](pdd_V4.md) for current V4 requirements and roadmap (we're working on V4 now).
 3. Use Task Master CLI: `task-master list`, `task-master next` for current project todo/context state.
 4. Browse module docs for implementation specifics and quick code/testing examples.
 
 > **For Cursor or AI Agents:**
 > - Always load this file and README.md first!
 > - Then, review the PDD V4 and module docs as needed.
-> - **Current Version:** V4 (Orchestrator) - see [pdd_V4.md](../pdd_V4.md)
+> - **Current Version:** V4 (Orchestrator) - see [pdd_V4.md](pdd_V4.md)
 > - **V4 Status:** ✅ **Complete and Production-Ready** - All features implemented and tested
 >   - Core: Multi-account configuration, Rules Engine, Content Parser, Account Processor, Master Orchestrator, V4 CLI
 >   - Advanced: Multi-account processing, Account isolation, Safety interlock, Progress bars

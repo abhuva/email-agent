@@ -1,78 +1,86 @@
 # Task ID: 11
-# Title: Update CLI for Multi-Account Support
-# Status: done
-# Dependencies: 10
-# Priority: medium
-# Description: Enhance the CLI to support account-specific commands
+# Title: Update account processor for OAuth support
+# Status: pending
+# Dependencies: 3, 9
+# Priority: high
+# Description: Modify the account processor to create the appropriate authenticator based on configuration
 # Details:
-Update the CLI module to support new commands: 'process --account <name>', 'process --all', and 'show-config --account <name>'. Integrate with the MasterOrchestrator for execution. Ensure proper argument validation and help text.
+In `src/account_processor.py`:
+1. Update the code that initializes the IMAP client to:
+   - Read the `auth` block from account configuration
+   - Determine the authentication method (password or OAuth)
+   - Create the appropriate authenticator:
+     - For password: create `PasswordAuthenticator` with email and password
+     - For OAuth: create `OAuthAuthenticator` with email, account name, provider, and TokenManager
+   - Pass the authenticator to the IMAP client
+2. Ensure backward compatibility by defaulting to password authentication if `auth` block is missing
+3. Add appropriate error handling for missing or invalid configurations
 
 # Test Strategy:
-Test each command with various arguments including edge cases like invalid account names. Verify proper integration with the MasterOrchestrator.
+Write unit tests for the account processor with various configurations. Test both password and OAuth authentication methods. Verify backward compatibility with existing configurations. Test error handling for missing or invalid configurations.
 
 # Subtasks:
-## 1. Extend CLI argument parsing to support new multi-account flags [done]
+## 1. Implement configuration parsing for auth block with backward compatibility [pending]
 ### Dependencies: None
-### Description: Add and wire up the new CLI options `process --account <name>`, `process --all`, and `show-config --account <name>` in the existing CLI module.
+### Description: Update the account configuration reader to parse the new `auth` block structure while maintaining backward compatibility for existing password-only configs.
 ### Details:
-Identify where CLI commands and flags are currently defined (e.g., argparse/Click/subcommand registry) and extend the `process` and `show-config` commands to accept the new flags.
-- For `process`, add mutually exclusive options `--account <name>` and `--all` alongside any existing options.
-- For `show-config`, add the `--account <name>` option.
-- Ensure the parsed arguments structure (e.g., options object) includes fields for `accountName`, `allAccounts`, etc., that can be consumed downstream.
-- Update any command routing or dispatch switch statements so that invocations including these options reach the appropriate handler functions without changing behavior of existing commands.
+1. Add `auth` field validation to config schema (email, password OR oauth: {account_name, provider, token_manager})
+2. Implement fallback logic: if `auth` missing, construct legacy password auth from `email`/`password` fields
+3. Add `get_auth_config()` method returning dict with `method` ('password'|'oauth') and auth params
+4. Log deprecation warning for legacy password configs
+5. Add unit tests for: valid password config, valid OAuth config, missing auth block fallback, invalid schema
 
-## 2. Implement argument validation rules for account-related options [done]
+## 2. Create PasswordAuthenticator and OAuthAuthenticator factory classes [pending]
 ### Dependencies: 11.1
-### Description: Define and enforce validation rules for the new account-related flags to ensure correct and unambiguous CLI usage.
+### Description: Implement abstract Authenticator base class and concrete implementations for both authentication methods.
 ### Details:
-Implement validation logic that runs immediately after parsing and before invoking business logic.
-- Enforce that `process` must receive exactly one of: `--account <name>` or `--all`, and fail with a clear error message if neither or both are provided.
-- For `show-config`, require `--account <name>` if that is mandatory, or define precedence with existing options if not.
-- Validate that `<name>` is non-empty and adheres to any existing account naming rules (e.g., allowed characters, length); centralize these checks in a helper function for reuse.
-- Ensure validation errors exit with a non-zero status code and print concise, user-friendly messages that indicate the invalid combination and how to fix it.
-- Add unit tests (or extend existing ones) to cover valid and invalid combinations of the new flags.
+1. Define `Authenticator` abstract base class with `authenticate(imap_client)` method
+2. Implement `PasswordAuthenticator`:
+   - Uses `imap_client.login(email, password)`
+   - Simple error wrapping
+3. Implement `OAuthAuthenticator`:
+   - Uses `imap_client.authenticate('XOAUTH2', self._get_xoauth2_string)` per Microsoft spec[1]
+   - `TokenManager.get_token()` integration for fresh access tokens
+   - SASL XOAUTH2 format: `base64('user={email}\1auth=Bearer {token}\1\1')`[1]
+4. Add `create_authenticator(auth_config)` factory function
+5. Unit test both authenticators with mock IMAPClient
 
-## 3. Integrate account-aware commands with MasterOrchestrator [done]
+## 3. Refactor IMAP client initialization to use dynamic authenticator [pending]
 ### Dependencies: 11.1, 11.2
-### Description: Connect the new CLI command variants to the MasterOrchestrator so that account-specific and all-account processing is executed correctly.
+### Description: Replace hardcoded password login with config-driven authenticator selection and execution.
 ### Details:
-Update the command handlers to call the MasterOrchestrator with the appropriate parameters derived from the parsed and validated arguments.
-- For `process --account <name>`, call a MasterOrchestrator method that processes a single account (e.g., `orchestrator.processAccount(accountName)`), adding such a method if it does not exist yet.
-- For `process --all`, call a method that loops through all known accounts (e.g., `orchestrator.processAllAccounts()`), implemented either directly in MasterOrchestrator or as a helper that enumerates available accounts and invokes the per-account logic.
-- For `show-config --account <name>`, invoke a MasterOrchestrator (or related service) method to fetch and display that account’s configuration.
-- Ensure that orchestration errors are surfaced to the CLI with proper exit codes and messages while not leaking internal stack traces in normal error output.
-- Add tests (or integration-style checks) to verify that the correct MasterOrchestrator methods are invoked for each flag combination.
+1. In `AccountProcessor._connect_imap()`:
+   - Replace `imap.login(email, password)` with `auth_config = self.get_auth_config()`
+   - `authenticator = create_authenticator(auth_config)`
+   - `authenticator.authenticate(self.imap_client)`
+2. Preserve existing IMAPClient instantiation (host, port, ssl config)
+3. Add timeout/retry logic around authentication
+4. Integration test: full IMAP connection flow with both auth types
+5. Verify capabilities check happens AFTER successful authentication
 
-## 4. Update and refine CLI help text and usage documentation [done]
+## 4. Add comprehensive error handling and validation [pending]
 ### Dependencies: 11.1, 11.2, 11.3
-### Description: Improve the CLI help output and related in-tool documentation to clearly describe the new multi-account options and their usage patterns.
+### Description: Implement robust error handling for missing configs, invalid tokens, network issues, and OAuth-specific failures.
 ### Details:
-Modify the help/usage strings associated with the `process` and `show-config` commands.
-- For `process`, document the purpose of `--account <name>` and `--all`, including that they are mutually exclusive and at least one is required, with concrete examples.
-- For `show-config`, document how `--account <name>` works and what information is shown.
-- Ensure the global `--help` output and any command-specific `--help` reflect the new options and validation rules.
-- If there is separate README or CLI reference documentation in the repo, update it to include example invocations and explain common workflows (single account vs all accounts).
+1. Config validation errors: `MissingAuthConfigError`, `InvalidOAuthConfigError`
+2. Authenticator errors: `AuthenticationFailedError` wrapping IMAP exceptions
+3. OAuth-specific: `TokenExpiredError`, `TokenFetchError` from TokenManager
+4. Add `validate_auth_config()` method with specific validation per provider
+5. Graceful degradation: log detailed errors but don't crash processor
+6. Add retry logic for transient OAuth token fetch failures (max 3 attempts)
+7. Integration tests for all error scenarios with pytest.raises()
 
-## 5. Add comprehensive tests and perform regression verification [done]
+## 5. Add end-to-end testing and security validation [pending]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4
-### Description: Create or extend automated tests to cover new behaviors and verify that existing CLI functionality remains unaffected.
+### Description: Create comprehensive integration tests and validate security best practices implementation.
 ### Details:
-Implement test cases for the new multi-account commands using the project’s existing testing framework.
-- Add tests for `process --account <name>` and `process --all`, ensuring correct argument parsing, validation, orchestration calls, and exit codes.
-- Add tests for `show-config --account <name>`, verifying correct parsing and that the configuration for the specified account is retrieved and displayed.
-- Include negative tests for invalid flag combinations and missing required options, asserting the exact error messages and non-zero exit codes.
-- Run the full test suite (and any available CLI integration tests) to confirm no regressions in existing commands.
-- Adjust or add mocks/stubs for MasterOrchestrator as necessary to isolate CLI behavior in the tests.
-
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
-### Dependencies: 11.1, 11.2, 11.3, 11.4, 11.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
-### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=11 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 11 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 11 - Update CLI for Multi-Account Support [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+1. Integration test suite with mock IMAP server (imaplib2 or aiodns mock)
+2. Test scenarios: password auth, OAuth success, OAuth token expiry/refresh, config errors
+3. Security validation:
+   - Verify no passwords/tokens logged in plaintext
+   - TokenManager refresh called only when needed
+   - XOAUTH2 base64 format correctly implemented per spec[1]
+4. Performance tests: connection time < 10s for both auth types
+5. Backward compatibility test: V4 configs continue working unchanged
+6. Add pytest fixtures for TokenManager and config variants
 

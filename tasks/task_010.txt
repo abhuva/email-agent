@@ -1,75 +1,52 @@
 # Task ID: 10
-# Title: Create Master Orchestrator Class
-# Status: done
-# Dependencies: 9
-# Priority: high
-# Description: Implement the MasterOrchestrator to manage multiple accounts
+# Title: Implement CLI authentication command
+# Status: pending
+# Dependencies: 7, 8
+# Priority: medium
+# Description: Add the 'auth' command to the CLI for initiating OAuth flows
 # Details:
-Create src/orchestrator.py with a MasterOrchestrator class that: 1) Handles CLI arguments for account selection, 2) Iterates through selected accounts, 3) Creates isolated AccountProcessor instances for each account, 4) Manages the overall processing flow. Ensure proper error handling if one account fails.
+In `src/cli_v4.py`:
+1. Add a new `auth` command with `--account` parameter
+2. Implement command handler that:
+   - Loads the account configuration
+   - Determines the provider (Google or Microsoft) from the config
+   - Initializes the appropriate OAuth provider
+   - Creates and runs the OAuth flow
+   - Provides clear success/failure messages
+3. Add help text and documentation for the command
+4. Handle error cases gracefully with informative messages
 
 # Test Strategy:
-Test with multiple account configurations. Verify isolation between accounts and proper error handling when one account has issues.
+Write unit tests for the CLI command with mocked OAuth flows. Test with various account configurations. Test error handling for missing or invalid configurations.
 
 # Subtasks:
-## 1. Define MasterOrchestrator class structure and dependencies [done]
+## 1. Add auth command structure with --account parameter and help text [pending]
 ### Dependencies: None
-### Description: Create src/orchestrator.py, define the MasterOrchestrator class skeleton, and wire in required dependencies such as AccountProcessor and logging.
+### Description: Create the basic Typer command structure in src/cli_v4.py with proper help documentation and parameter validation.
 ### Details:
-1) Create the file src/orchestrator.py if it does not exist.
-2) Add necessary imports: argparse (or click/typer depending on project standard) for CLI handling, logging, typing (List, Optional, etc.), and the AccountProcessor class from its module.
-3) Define a MasterOrchestrator class with an __init__ method that accepts configuration needed to discover available accounts (e.g., a list of account identifiers or a config object) and an optional logger instance.
-4) Inside __init__, store configuration and initialize a logger (use the project’s logging convention, falling back to Python’s logging.getLogger(__name__) if none is provided).
-5) Add placeholder methods with clear signatures (and docstrings) for: parse_args, select_accounts, create_account_processor, and run (overall processing flow), leaving implementations as pass for now.
+Use @app.command() decorator to add 'auth' command. Add typer.Option('--account', required=True, help='Account name from config') parameter. Include comprehensive help text: 'Initiate OAuth 2.0 authentication flow for specified account'. Add validation to ensure account exists in config before proceeding. Follow Typer best practices for CLI consistency[1][3].
 
-## 2. Implement CLI argument parsing for account selection [done]
+## 2. Implement account configuration loading and provider detection [pending]
 ### Dependencies: 10.1
-### Description: Implement argument parsing logic in MasterOrchestrator to handle account selection from the command line.
+### Description: Create config loading logic that reads account settings and determines OAuth provider (Google/Microsoft).
 ### Details:
-1) In MasterOrchestrator, implement a parse_args(cls, argv: Optional[List[str]] = None) -> argparse.Namespace classmethod or a standalone function, depending on project style.
-2) Define CLI options for selecting accounts, e.g. --account <id> (repeatable), --accounts <id1,id2,...>, or --all-accounts, aligning with existing CLI conventions in the project.
-3) Validate that at least one form of selection is provided, or define a sensible default (e.g., all accounts) if none is specified.
-4) Normalize parsed arguments into a canonical representation (e.g., a list of account IDs) and expose this to the rest of the orchestrator, either by returning the list directly from a helper (get_selected_accounts_from_args) or by setting an instance attribute like self.selected_accounts.
-5) Ensure helpful error messages and --help text clearly explain how to select accounts.
+Load account config using existing config system (likely configparser or YAML). Extract provider field ('google' or 'microsoft') with validation. Raise typer.Exit(code=1, message='Account not found') for missing accounts. Log provider detection for debugging. Handle config file missing/permissions errors gracefully with user-friendly messages.
 
-## 3. Implement account selection and iteration mechanism [done]
+## 3. Initialize OAuth providers and implement OAuth flow orchestration [pending]
 ### Dependencies: 10.2
-### Description: Convert parsed CLI input into a concrete list of accounts and implement iteration over those accounts within MasterOrchestrator.
+### Description: Create OAuth provider initialization and flow execution with security best practices.
 ### Details:
-1) Implement a select_accounts(self, args) -> List[str] (or appropriate account identifier type) method that uses the parsed CLI arguments to determine which accounts to process.
-2) If accounts are defined in a config file, environment, or database, resolve CLI-specified identifiers to concrete account configurations, raising a clear error if an unknown account is requested.
-3) Store the resulting list on the orchestrator instance (e.g., self.accounts_to_process) to be used by the processing loop.
-4) Implement a private iterator-like helper (e.g., _iter_accounts(self)) that yields each account entry in turn; this encapsulates any future filtering, ordering, or batching logic.
-5) Add basic logging to indicate which accounts have been selected before processing begins.
+Implement provider factory pattern: if provider=='google' → GoogleOAuthProvider(), else MicrosoftOAuthProvider(). Use secure redirect URIs and state parameters to prevent CSRF. Handle both local server callback and manual verification code flows. Store tokens securely (environment vars or encrypted keyring). Implement PKCE for public clients per OAuth 2.0 security best practices.
 
-## 4. Create isolated AccountProcessor instances and per-account execution [done]
+## 4. Add comprehensive success/failure messaging and error handling [pending]
 ### Dependencies: 10.3
-### Description: For each selected account, create a fresh AccountProcessor instance with isolated state and execute its processing logic.
+### Description: Implement user-facing messages and robust error handling for all failure scenarios.
 ### Details:
-1) Implement create_account_processor(self, account) -> AccountProcessor, which instantiates AccountProcessor with only the data/config for that single account (no shared mutable state between accounts).
-2) Ensure that any shared services (e.g., HTTP clients, DB connections) are either safely shared or cleanly encapsulated per AccountProcessor, based on project requirements.
-3) Define a clear interface contract for AccountProcessor (e.g., a run() or process() method that performs all necessary work for that account) and use that consistently in MasterOrchestrator.
-4) In the orchestrator’s main loop (to be implemented in run), call create_account_processor for each account and immediately invoke the processor’s execution method, avoiding reuse of AccountProcessor instances across accounts.
-5) Add logging at the start and end of each account’s processing to make per-account execution traceable.
+Provide clear success: '✅ Authentication successful for {account}! Tokens saved.' Handle specific errors: InvalidClientError, ConsentRequired, NetworkTimeout, etc. Use typer.echo() with emojis for visual clarity. Implement retry logic for transient errors (network timeouts). Gracefully handle Ctrl+C with cleanup. Ensure backward compatibility with V4 error format.
 
-## 5. Implement overall processing flow with robust error handling [done]
-### Dependencies: 10.4
-### Description: Implement the MasterOrchestrator.run method to coordinate the full flow—from argument parsing to per-account processing—while ensuring that failures in one account do not stop others.
+## 5. Add unit tests for auth command components [pending]
+### Dependencies: 10.1, 10.2, 10.3, 10.4
+### Description: Create comprehensive test suite covering command invocation, config loading, provider detection, and error scenarios.
 ### Details:
-1) Implement MasterOrchestrator.run(self, argv: Optional[List[str]] = None) as the main entrypoint: parse CLI args, select accounts, and orchestrate their processing.
-2) Inside run, wrap the per-account processing loop in try/except blocks so that an exception in one account is caught, logged (with stack trace), and recorded, but does not prevent the loop from continuing with remaining accounts.
-3) Decide on and implement an error aggregation strategy (e.g., collect failed account IDs and associated error messages in a list or dict) and return an overall status or raise a summarized exception at the end if required by the project.
-4) Ensure that any necessary cleanup per account (e.g., closing connections) is handled via finally blocks or context managers so cleanup occurs even on failure.
-5) Provide a small top-level integration point (e.g., a main() function in orchestrator.py or usage from the project’s main CLI) that constructs MasterOrchestrator and calls run, to validate end-to-end behavior.
-
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
-### Dependencies: 10.1, 10.2, 10.3, 10.4, 10.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
-### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=10 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 10 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 10 - Create Master Orchestrator Class [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+Use typer.testing.CliRunner() for end-to-end CLI testing[1]. Mock config loader, OAuth providers, and token storage. Test scenarios: valid account success, missing account, invalid provider, network errors, Ctrl+C interrupt. Verify exit codes (0 success, 1 error) and message patterns. Test --help output. Aim for 90%+ coverage of auth command.
 

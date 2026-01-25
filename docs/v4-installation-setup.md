@@ -3,7 +3,7 @@
 **Status:** Complete  
 **Task:** 20.2  
 **Audience:** Operators, System Administrators, New Users  
-**PDD Reference:** [pdd_V4.md](../pdd_V4.md)
+**PDD Reference:** [pdd_V4.md](pdd_V4.md)
 
 ---
 

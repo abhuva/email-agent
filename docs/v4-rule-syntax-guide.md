@@ -3,7 +3,7 @@
 **Status:** Complete  
 **Task:** 20.3  
 **Audience:** Developers, Rule Writers  
-**PDD Reference:** [pdd_V4.md](../pdd_V4.md) Section 3.2
+**PDD Reference:** [pdd_V4.md](pdd_V4.md) Section 3.2
 
 ---
 

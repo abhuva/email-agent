@@ -267,5 +267,5 @@ After completing this structure guide:
 - [V4 Configuration System](v4-configuration.md) - Technical implementation details
 - [V4 Rules Engine](v4-rules-engine.md) - Rules engine implementation
 - [V4 Account Processor](v4-account-processor.md) - Account processing pipeline
-- [PDD V4](../pdd_V4.md) - Product Design Document
+- [PDD V4](pdd_V4.md) - Product Design Document
 - [Main Documentation Index](MAIN_DOCS.md) - Complete documentation index

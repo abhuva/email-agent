@@ -319,5 +319,5 @@ This implementation aligns with PDD V4 Section 2.1 and 4.2.1:
 
 - [V4 Account Processor](v4-account-processor.md) - AccountProcessor documentation
 - [V4 Configuration System](v4-configuration.md) - Configuration loading and merging
-- [PDD V4](../pdd_V4.md) - Product Design Document
+- [PDD V4](pdd_V4.md) - Product Design Document
 - [V3 Orchestrator](v3-orchestrator.md) - V3 Pipeline class (single-account)

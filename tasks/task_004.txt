@@ -1,84 +1,59 @@
 # Task ID: 4
-# Title: Create EmailContext Data Class
-# Status: done
-# Dependencies: 3
+# Title: Implement token management system
+# Status: pending
+# Dependencies: 2
 # Priority: high
-# Description: Implement the EmailContext data class to track email state through the processing pipeline
+# Description: Create a token manager to handle storage, loading, and refreshing of OAuth tokens
 # Details:
-Create a data class in src/models.py that contains all email metadata and state: uid, sender, subject, raw_html, raw_text, parsed_body, is_html_fallback, llm_score, llm_tags, whitelist_boost, whitelist_tags, and result_action. This class will be passed through the processing pipeline and maintain the state of each email.
+In `src/auth/token_manager.py`:
+1. Implement `TokenManager` class with methods:
+   - `save_tokens(account_name, tokens)`: Store tokens in JSON format in credentials directory
+   - `load_tokens(account_name)`: Load tokens from file
+   - `refresh_token(account_name, provider)`: Refresh access token using refresh token
+   - `get_valid_token(account_name, provider)`: Get a valid access token, refreshing if needed
+2. Implement security measures:
+   - Set file permissions to 0600 for token files
+   - Handle file I/O exceptions gracefully
+3. Add token expiry checking with a 5-minute buffer before expiration
+4. Implement token refresh logic that works synchronously
 
 # Test Strategy:
-Create unit tests to verify proper initialization, attribute access, and state transitions of the EmailContext class.
+Write unit tests for token saving, loading, and refreshing. Mock file I/O and token refresh responses. Test expiry checking with various timestamps. Verify file permissions are set correctly.
 
 # Subtasks:
-## 1. Define EmailContext dataclass structure in src/models.py [done]
+## 1. Create TokenManager class skeleton with save_tokens and load_tokens methods [pending]
 ### Dependencies: None
-### Description: Create the EmailContext dataclass with all required fields and type hints inside src/models.py.
+### Description: Implement the basic TokenManager class structure with token storage and retrieval using JSON files in credentials directory.
 ### Details:
-1. Open/create src/models.py.
-2. Import dataclass utilities: `from dataclasses import dataclass, field` and typing primitives like `from typing import Optional, List` (or other containers as appropriate).
-3. Declare `@dataclass` and define `class EmailContext:`.
-4. Add fields with explicit type hints for all required attributes: `uid`, `sender`, `subject`, `raw_html`, `raw_text`, `parsed_body`, `is_html_fallback`, `llm_score`, `llm_tags`, `whitelist_boost`, `whitelist_tags`, and `result_action`.
-5. Use appropriate types, for example: `uid: str`, `sender: str`, `subject: str`, `raw_html: Optional[str]`, `raw_text: Optional[str]`, `parsed_body: Optional[str]` (or a richer type if parser returns a structure), `is_html_fallback: bool`, `llm_score: Optional[float]`, `llm_tags: List[str]`, `whitelist_boost: float`, `whitelist_tags: List[str]`, `result_action: Optional[str]`.
-6. Ensure the file exports EmailContext (e.g., by listing it in `__all__` if that pattern is used in the project).
+1. Create `src/auth/token_manager.py` with `TokenManager` class. 2. Implement `save_tokens(account_name, tokens)`: Create credentials directory if missing (`os.makedirs`), save tokens as JSON with filename `{account_name}.json`, set permissions to 0600 using `os.chmod(0o600)`. 3. Implement `load_tokens(account_name)`: Return tokens dict from JSON file or None if missing. 4. Add file path helper method `_get_token_path(account_name)`. 5. Handle FileNotFoundError and PermissionError with logging.
 
-## 2. Configure sensible defaults and mutability for EmailContext fields [done]
+## 2. Implement token expiry checking logic [pending]
 ### Dependencies: 4.1
-### Description: Add default values and factories so that EmailContext instances can be created safely and predictably throughout the pipeline.
+### Description: Add token validation with 5-minute expiry buffer to determine if tokens need refreshing.
 ### Details:
-1. Decide which fields must be required vs optional at construction; remove defaults from required fields (e.g., `uid`, `sender`, `subject`) so Python enforces them.
-2. For optional or pipeline-populated fields, set defaults:
-   - Use `Optional[...] = None` for values not known at instantiation (e.g., `parsed_body`, `llm_score`, `result_action`).
-   - Use `field(default_factory=list)` for list fields like `llm_tags` and `whitelist_tags` to avoid shared mutable defaults.
-   - Provide reasonable numeric defaults (e.g., `whitelist_boost: float = 0.0`, `is_html_fallback: bool = False`).
-3. Decide whether the dataclass should be mutable; if the pipeline updates the same instance step by step, keep `@dataclass` without `frozen=True`.
-4. Optionally configure `repr`/`eq` behavior (e.g., accept defaults, or exclude large fields like `raw_html` from repr using `field(repr=False)` if necessary for logging readability).
+1. Add `_is_token_expired(tokens)` private method that parses `expires_at` or calculates from `expires_in` + current time. 2. Apply **5-minute buffer**: return True if expiry time <= `time.time() + 300`. 3. Handle missing/invalid expiry fields by treating as expired. 4. Add logging for expiry status. 5. Test edge cases: valid token, expired token, missing expiry, malformed expiry.
 
-## 3. Add documentation and helper methods to EmailContext [done]
-### Dependencies: 4.2
-### Description: Document the purpose of EmailContext and add lightweight helper methods that encapsulate common state transitions or checks.
+## 3. Implement synchronous refresh_token method [pending]
+### Dependencies: 4.1, 4.2
+### Description: Create OAuth 2.0 refresh logic that calls provider token endpoint using refresh_token.
 ### Details:
-1. Add a class docstring explaining that EmailContext tracks an email’s metadata and processing state through the pipeline, and briefly describe each field’s role.
-2. Add small convenience methods where useful, for example:
-   - `def add_llm_tag(self, tag: str) -> None:` to append to `llm_tags` while preventing duplicates if desired.
-   - `def add_whitelist_tag(self, tag: str, boost: float = 0.0) -> None:` to register a whitelist tag and optionally adjust `whitelist_boost`.
-   - `def is_scored(self) -> bool:` returning `self.llm_score is not None`.
-   - `def has_result(self) -> bool:` returning `self.result_action is not None`.
-3. Keep methods minimal and side-effect clear, since this class is primarily a state container used across multiple pipeline stages.
-4. If your codebase uses type checking (mypy/pyright), ensure method signatures match existing conventions (e.g., return types annotated, no unused parameters).
+1. Implement `refresh_token(account_name, provider)`: Load existing tokens, construct refresh request per OAuth 2.0 spec (`grant_type=refresh_token`, `refresh_token`, provider-specific client_id/secret). 2. Use `requests.post()` to provider's token endpoint. 3. Parse response for new `access_token`, `refresh_token`, `expires_in`. 4. Calculate `expires_at = time.time() + expires_in`. 5. Save refreshed tokens via `save_tokens`. 6. Raise custom `TokenRefreshError` on 4xx/5xx responses with provider error details.
 
-## 4. Integrate EmailContext into the processing pipeline [done]
-### Dependencies: 4.3
-### Description: Update pipeline components to construct, pass, and mutate EmailContext instances instead of using ad-hoc dictionaries or parameter sets.
+## 4. Implement get_valid_token with automatic refresh [pending]
+### Dependencies: 4.1, 4.2, 4.3
+### Description: Create main public method that returns valid access token, automatically refreshing when needed.
 ### Details:
-1. Identify all existing pipeline entry points where email data is first available (e.g., IMAP fetchers, webhook handlers) and replace current email-structure representations with `EmailContext` construction.
-2. Ensure all necessary fields are populated at creation time: `uid`, `sender`, `subject`, `raw_html`/`raw_text`, and any other immediately known values.
-3. For each pipeline stage (parsing, scoring, whitelisting, action selection, etc.), update signatures to accept and return `EmailContext` instead of individual parameters or generic containers.
-4. Within each stage, write to the corresponding fields on the `EmailContext` instance (e.g., parser sets `parsed_body` and `is_html_fallback`, LLM step sets `llm_score` and `llm_tags`, whitelist step sets `whitelist_tags` and adjusts `whitelist_boost`, final decision step sets `result_action`).
-5. Ensure that logging and debugging statements use `EmailContext`’s repr or selected attributes, avoiding printing large raw content if that is a concern.
+1. Implement `get_valid_token(account_name, provider)`: Load tokens, check expiry with buffer. 2. If expired/missing → call `refresh_token(account_name, provider)`. 3. Return `tokens['access_token']`. 4. Add retry logic (max 1 retry) for race conditions. 5. Cache valid tokens briefly using instance variable with TTL. 6. Return None if refresh fails after retry.
 
-## 5. Add tests for EmailContext behavior and pipeline usage [done]
-### Dependencies: 4.4
-### Description: Create or extend tests to validate EmailContext structure, defaults, and correct state transitions across pipeline steps.
+## 5. Add comprehensive security and error handling [pending]
+### Dependencies: 4.1, 4.2, 4.3, 4.4
+### Description: Implement production-grade security measures, exception handling, and logging.
 ### Details:
-1. In the test suite (e.g., tests/test_models.py and relevant pipeline test files), add tests that instantiate `EmailContext` with minimal required fields and assert defaults for optional fields (None, empty lists, numeric defaults, etc.).
-2. Test helper methods added to EmailContext (e.g., `add_llm_tag`, `add_whitelist_tag`, `is_scored`, `has_result`) to confirm they behave as expected and mutate state correctly.
-3. Write integration-style tests for key pipeline flows that:
-   - Construct an initial `EmailContext`.
-   - Pass it through the main pipeline stages.
-   - Assert that fields such as `parsed_body`, `llm_score`, `llm_tags`, `whitelist_boost`, `whitelist_tags`, and `result_action` are set/updated as expected.
-4. If type checking or linting is part of CI, run those tools to ensure EmailContext and its usage conform to project standards.
-5. Adjust tests and implementation if any missing or mis-typed fields are discovered during testing.
+1. Wrap all file I/O in try/except for OSError, PermissionError, json.JSONDecodeError. 2. Add request timeout (30s) and SSL verification to refresh requests. 3. Validate tokens dict structure before save/load. 4. Implement atomic file writes using temp files + `os.rename()`. 5. Add structured logging with account_name, provider, operation result. 6. Ensure backward compatibility: handle V4 token formats gracefully.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
+## 6. Write unit tests for all TokenManager functionality [pending]
 ### Dependencies: 4.1, 4.2, 4.3, 4.4, 4.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Description: Create comprehensive test suite covering all methods, edge cases, and error conditions.
 ### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=4 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 4 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 4 - Create EmailContext Data Class [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+1. Create `tests/test_token_manager.py` using pytest. 2. Test save/load roundtrip with valid/invalid tokens. 3. Test expiry logic: future/past expiry, buffer edge cases. 4. Mock `requests.post()` for refresh_token success/failure scenarios. 5. Test get_valid_token: valid→no refresh, expired→refresh, refresh fail→None. 6. Test file permissions (0600), error handling, race conditions. 7. Test coverage >90%.
 

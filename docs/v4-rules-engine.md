@@ -479,4 +479,4 @@ This implementation follows PDD V4 specifications:
 - [V4 Configuration System](v4-configuration.md) - Configuration loading
 - [V4 Models](v4-models.md) - EmailContext data class
 - [V4 Content Parser](v4-content-parser.md) - Content processing
-- [PDD V4](../pdd_V4.md) - Complete product design document
+- [PDD V4](pdd_V4.md) - Complete product design document

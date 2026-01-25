@@ -1,84 +1,59 @@
 # Task ID: 7
-# Title: Implement Rules Engine - Whitelist Rules
-# Status: done
-# Dependencies: 6
-# Priority: high
-# Description: Create the whitelist component of the rules engine
+# Title: Implement OAuth flow for CLI interaction
+# Status: pending
+# Dependencies: 5, 6
+# Priority: medium
+# Description: Create the interactive OAuth flow for CLI-based authentication
 # Details:
-Extend src/rules.py to handle whitelist rules. Implement apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list) that applies score boosts and adds tags based on matching rules. Support the same trigger types as blacklist rules. Ensure proper validation of score_boost values and tags.
+In `src/auth/oauth_flow.py`:
+1. Implement `OAuthFlow` class to orchestrate the OAuth process
+2. Create a local HTTP server to listen for the OAuth callback on port 8080
+3. Implement graceful handling of port conflicts:
+   - Try alternative ports if 8080 is unavailable
+   - Provide clear instructions if no ports are available
+4. Display the authorization URL for the user to open in a browser
+5. Handle the callback to receive the authorization code
+6. Exchange the code for tokens using the appropriate provider
+7. Save the tokens using the TokenManager
+8. Provide clear success/failure messages to the user
 
 # Test Strategy:
-Test with various whitelist rules and verify score adjustments and tag additions. Test edge cases like extremely high score boosts and duplicate tags.
+Write unit tests for the OAuth flow with mocked server and provider responses. Test port conflict handling. Create integration tests that simulate the full flow with mock providers.
 
 # Subtasks:
-## 1. Analyze existing rules engine and blacklist implementation [done]
+## 1. Implement OAuthFlow class skeleton and local HTTP server on port 8080 [pending]
 ### Dependencies: None
-### Description: Review the current rules engine structure in src/rules.py (and any related modules/tests) to understand how blacklist rules are represented, validated, and applied. Document the rule schema, supported trigger types, and the expected return format (score, tags list) to ensure whitelist behavior is consistent.
+### Description: Create the OAuthFlow class with basic structure and implement a simple HTTP server using Python's http.server module to listen for OAuth callbacks on localhost:8080.
 ### Details:
-• Open src/rules.py and locate the existing blacklist handling function(s) and any shared helpers (e.g., apply_blacklist, trigger evaluators, validation utilities).
-• Identify how rules are structured (Python dicts, classes, or configs), what fields a rule contains (e.g., trigger_type, pattern, score_impact, tags), and how trigger types are dispatched.
-• Confirm the contract for rule application functions: input parameters (email_obj, rules, current_score) and output format (new_score, tags_list) as used elsewhere in the codebase.
-• Search for tests or usages of blacklist rules to see real examples of rules and expected behavior; note how errors and invalid rules are currently handled.
-• Summarize findings (schema, trigger types, helper functions, validation patterns) in comments or a short internal doc to use as reference when implementing whitelist logic.
+1. Create OAuthFlow class with __init__ accepting provider config (client_id, client_secret, auth_url, token_url). 2. Implement start_local_server() method using http.server.HTTPServer with a custom OAuthCallbackHandler. 3. Handler should parse query params for 'code' and 'state' parameters. 4. Use ThreadingHTTPServer for non-blocking operation. 5. Server should shut down gracefully after receiving callback. Reference: Local HTTP server pattern from Okta CLI OAuth implementation[2].
 
-## 2. Define whitelist rule schema, validation, and score_boost/tag constraints [done]
+## 2. Add port conflict resolution and automatic port fallback [pending]
 ### Dependencies: 7.1
-### Description: Specify and implement the data schema and validation rules for whitelist entries, ensuring that score_boost and tags fields are well-defined, type-checked, and consistent with or complementary to existing blacklist rules.
+### Description: Implement graceful port conflict handling by trying ports 8080-8099 and providing clear user instructions when no ports are available.
 ### Details:
-• Based on the blacklist schema, define the whitelist rule structure (e.g., {"trigger_type": str, "pattern": str, "score_boost": int|float, "tags": [str], ...}).
-• Decide and document acceptable ranges/types for score_boost (e.g., numeric only, min/max bounds if appropriate) and ensure it represents a positive adjustment (or at least non-negative) distinct from blacklist penalties.
-• Define constraints for tags: must be a list/iterable of non-empty strings; optionally normalize (e.g., lowercasing, trimming whitespace) if that is consistent with existing tagging logic.
-• Implement a whitelist-specific validation function or extend existing rule validation utilities to check: required fields present, correct types, allowed trigger_type values (matching blacklist-supported triggers), and valid score_boost/tags.
-• Ensure validation errors are handled in a consistent way with the rest of the rules engine (e.g., raising a specific exception type or skipping invalid rules with logging).
+1. Create find_available_port() function that tries ports 8080-8099 sequentially using socket testing. 2. Update start_local_server() to accept/use dynamic port. 3. Store detected port in self.callback_port for redirect_uri construction. 4. If no ports available (0/20 success), raise OAuthPortError with message: 'No available ports 8080-8099. Please free a port or use manual code entry.' 5. Log successful port binding: 'Listening for OAuth callback on http://localhost:{port}'.
 
-## 3. Implement trigger evaluation and matching for whitelist rules [done]
+## 3. Implement authorization URL generation and browser opening [pending]
 ### Dependencies: 7.1, 7.2
-### Description: Implement or reuse trigger evaluation logic for whitelist rules so they support the same trigger types as blacklist rules, ensuring that each rule can correctly determine whether it matches a given email_obj.
+### Description: Generate secure OAuth authorization URL with state parameter and automatically open user's default browser.
 ### Details:
-• From the analysis in subtask 1, list all supported trigger types for blacklist (e.g., sender, subject_contains, header_matches, body_regex, domain, etc.).
-• Identify any existing shared trigger evaluation helpers; if they are generic, confirm they can be reused directly for whitelisting. If they are blacklist-specific, refactor them into neutral, reusable functions without changing external behavior.
-• Implement trigger evaluation for each supported trigger_type, ensuring that the same semantics used for blacklist (e.g., case sensitivity, regex flags, partial vs exact match) are preserved.
-• Write a single entry point (e.g., match_whitelist_rule(email_obj, rule) -> bool) or similar abstraction that apply_whitelist can call to determine if an individual whitelist rule matches.
-• Add inline documentation/comments describing each trigger type’s behavior and any assumptions (e.g., what parts of email_obj are required, how missing attributes are handled).
+1. Generate cryptographically secure state parameter using secrets.token_urlsafe(32). 2. Construct auth_url with required params: response_type='code', client_id, redirect_uri='http://localhost:{port}/callback', state, scope. 3. Store state in self._state for validation. 4. Use webbrowser.open(auth_url) to launch browser automatically. 5. Print clear instruction: 'Please authorize this application by visiting: {shortened_url}' with full URL clickable.
 
-## 4. Implement apply_whitelist(email_obj, rules, current_score) [done]
-### Dependencies: 7.2, 7.3
-### Description: Add the apply_whitelist function in src/rules.py that iterates over whitelist rules, applies score boosts, and accumulates tags when rules match, then returns the updated score and tag list while enforcing validation.
+## 4. Implement callback handling, state validation, and token exchange [pending]
+### Dependencies: 7.1, 7.2, 7.3
+### Description: Handle OAuth callback, validate state parameter, extract authorization code, and exchange for access/refresh tokens.
 ### Details:
-• Define the function signature apply_whitelist(email_obj, rules, current_score) -> (new_score, tags_list) as specified.
-• At the start of the function, validate the rules collection: run each rule through the whitelist validation logic; decide whether to raise on invalid rules or skip them with logging, mirroring blacklist behavior.
-• Initialize new_score = current_score and tags_list as an empty list (or existing tags if the engine expects that pattern; verify from blacklist implementation).
-• For each valid whitelist rule:
-  – Use the trigger matching abstraction from subtask 3 to check if the rule matches email_obj.
-  – If matched, apply the rule’s score_boost to new_score (e.g., new_score += rule["score_boost"]).
-  – Merge rule tags into tags_list, ensuring type correctness and optionally avoiding duplicates if that matches existing tag behavior.
-• Decide on and document the rule application strategy (e.g., apply all matching rules vs stop after first match) to mirror blacklist logic or project requirements; implement accordingly.
-• Ensure the function returns (new_score, tags_list) with types and structure consistent with other rule application functions in the module.
+1. In callback handler: validate state matches self._state (reject if mismatch for CSRF protection). 2. Extract 'code' parameter and store in self.auth_code. 3. Implement exchange_tokens() method making POST to token_endpoint with grant_type='authorization_code', code, redirect_uri, client_id, client_secret. 4. Parse JSON response for access_token, refresh_token, expires_in. 5. Implement token validation (check for error responses, validate token format).
 
-## 5. Integrate whitelist rules into engine workflow and add tests [done]
-### Dependencies: 7.4
-### Description: Wire apply_whitelist into the existing rules engine flow (wherever whitelist behavior is expected) and create unit tests to verify correct handling of score_boost, tags, trigger types, and validation edge cases.
+## 5. Integrate TokenManager, user messaging, and error handling [pending]
+### Dependencies: 7.1, 7.2, 7.3, 7.4
+### Description: Save tokens securely using TokenManager, provide clear success/failure messages, and implement comprehensive error handling.
 ### Details:
-• Identify the components or pipeline stages that should call apply_whitelist (e.g., main scoring function, email classification pipeline). Integrate the function in the appropriate order relative to blacklist application (e.g., apply_whitelist before/after blacklist according to project logic).
-• Ensure configuration/loading logic for rules distinguishes and correctly passes whitelist rules into apply_whitelist.
-• Implement unit tests covering:
-  – Single matching whitelist rule (score increased, tags added correctly).
-  – Multiple matching rules and their cumulative effects on score and tags.
-  – Non-matching rules (no score or tag changes).
-  – Validation failures (invalid score_boost values, malformed tags, unsupported trigger_type) and expected behavior (exception or skip with logging).
-  – Behavior consistency across all supported trigger types (each trigger type has at least one passing and failing test case).
-• If an automated test suite exists, run it and adjust implementation to ensure no regressions in blacklist or other rule engine behavior.
-• Add or update inline documentation/docstrings to describe how whitelist rules should be configured and how apply_whitelist interacts with the overall scoring process.
+1. Implement run() orchestrator method calling all steps sequentially. 2. On success: token_manager.save_tokens(access_token, refresh_token, expires_at). Print '✅ Authentication successful! Tokens saved.' 3. Handle all failure modes: AuthError, NetworkError, TokenExchangeError with user-friendly messages. 4. Timeout after 120s if no callback received. 5. Cleanup: always shutdown server on exit. 6. Backward compatibility: support V4 token format if provider specified.
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
+## 6. Add comprehensive testing for OAuth flow components [pending]
 ### Dependencies: 7.1, 7.2, 7.3, 7.4, 7.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Description: Create unit and integration tests covering all OAuth flow scenarios including edge cases and error conditions.
 ### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=7 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 7 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 7 - Implement Rules Engine - Whitelist Rules [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+1. Unit tests: OAuthFlow.__init__, find_available_port(), state generation/validation. 2. Mock HTTP server tests using pytest-httpserver: test callback parsing, state validation, token exchange. 3. Integration tests: full flow with mock OAuth provider. 4. Edge cases: port conflicts (8080-8082 busy), invalid state, expired code, network failures, token manager failures. 5. Test security: verify state parameter prevents CSRF. 6. Coverage target: 90%+ for oauth_flow.py.
 

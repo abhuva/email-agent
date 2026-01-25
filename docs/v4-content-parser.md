@@ -183,10 +183,10 @@ This implementation follows the PDD V4 Section 2.3 specifications:
 
 ## Related Documentation
 
-- [PDD V4](../pdd_V4.md) - Section 2.3 for content parser specifications
+- [PDD V4](pdd_V4.md) - Section 2.3 for content parser specifications
 - [V4 Models](v4-models.md) - EmailContext data class integration
 - [V4 Configuration System](v4-configuration.md) - Configuration structure
-- [V4 Pipeline Architecture](../pdd_V4.md) - Overall pipeline design
+- [V4 Pipeline Architecture](pdd_V4.md) - Overall pipeline design
 
 ## Future Enhancements
 

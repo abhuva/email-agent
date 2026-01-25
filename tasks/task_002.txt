@@ -1,89 +1,71 @@
 # Task ID: 2
-# Title: Implement Configuration Loader with Deep Merge Logic
-# Status: done
+# Title: Define authentication interfaces and base classes
+# Status: pending
 # Dependencies: 1
 # Priority: high
-# Description: Create the ConfigLoader class that handles loading and merging global and account-specific configurations
+# Description: Implement the authenticator protocol and base classes for the strategy pattern
 # Details:
-Create src/config_loader.py with a ConfigLoader class that implements: 1) Loading global config.yaml, 2) Loading account-specific YAML files, 3) Deep merge logic (dictionaries merged, lists replaced, primitives overwritten), 4) Error handling for malformed YAML. The main function should be load_merged_config(account_name: str) -> dict.
+In `src/auth/interfaces.py`:
+1. Define `AuthenticatorProtocol` with `authenticate(imap_connection)` method
+2. Create abstract base classes for providers: `OAuthProvider` with methods for generating auth URLs, handling callbacks, and token exchange
+3. Define common interfaces and types for token management
+4. Create utility functions for SASL string generation for XOAUTH2
+
+Ensure all interfaces use proper type hints and docstrings for clarity.
 
 # Test Strategy:
-Write unit tests with various configuration scenarios: overriding primitives, merging nested dictionaries, replacing lists. Test error handling with malformed YAML files.
+Write unit tests to verify interface definitions. Use static type checking with mypy to ensure protocol adherence.
 
 # Subtasks:
-## 1. Define ConfigLoader interface and file path handling [done]
+## 1. Define AuthenticatorProtocol and core type aliases [pending]
 ### Dependencies: None
-### Description: Create src/config_loader.py with the ConfigLoader class skeleton, constructor, and path resolution for global and account-specific config files.
+### Description: Create the main protocol interface and essential type definitions for token management with proper type hints and docstrings.
 ### Details:
-1) Create src/config_loader.py.
-2) Define a ConfigLoader class with an __init__(self, base_dir: Path | str, global_filename: str = "config.yaml", accounts_dirname: str = "accounts") that stores resolved pathlib.Path instances for the config root, global config path, and accounts directory.
-3) Add a method _get_global_config_path(self) -> Path that returns the global config file path and does basic existence checks (raise FileNotFoundError with a clear message if missing).
-4) Add a method _get_account_config_path(self, account_name: str) -> Path that resolves the account-specific YAML path (e.g., <base_dir>/<accounts_dirname>/<account_name>.yaml) and can raise FileNotFoundError if the file does not exist (or optionally return None if you want global-only configs to be allowed; choose one behavior and document it).
-5) Add the public method signature load_merged_config(self, account_name: str) -> dict with a docstring describing behavior; leave its implementation to later subtasks.
+In `src/auth/interfaces.py`:
+- Define `AuthenticatorProtocol` (Protocol) with `authenticate(imap_connection: IMAP4_SSL) -> bool` method and comprehensive docstring explaining IMAP SASL XOAUTH2 usage.
+- Add `TokenInfo = TypedDict('TokenInfo', {'access_token': str, 'expires_at': Optional[datetime], 'refresh_token': Optional[str]})` for OAuth token structure.
+- Define `OAuthConfig = TypedDict('OAuthConfig', {'client_id': str, 'client_secret': str, 'redirect_uri': str, 'scopes': list[str], 'auth_url': str, 'token_url': str})`.
+- Include validation for required OAuth 2.0 security parameters per RFC 6749.
 
-## 2. Implement YAML loading with error handling [done]
+## 2. Implement OAuthProvider abstract base class [pending]
 ### Dependencies: 2.1
-### Description: Implement helper methods to load YAML files (global and account-specific) into Python dicts with robust error handling for malformed YAML.
+### Description: Create the base ABC for OAuth providers implementing strategy pattern with core OAuth 2.0 Authorization Code Flow methods.
 ### Details:
-1) Import yaml (PyYAML) and use yaml.safe_load for reading configuration files to avoid executing arbitrary code.[1][3][7]
-2) Implement a private method _load_yaml_file(self, path: Path) -> dict:
-   - Open the file in text mode with UTF-8 encoding.
-   - Call yaml.safe_load(file_obj).
-   - If the returned value is None, normalize to an empty dict {}.
-   - If the returned value is not a dict (e.g., list or primitive), raise a ValueError explaining that the config root must be a mapping.
-   - Catch yaml.YAMLError and re-raise as a custom ConfigurationError or ValueError with a message including the file path and original exception text.
-3) Implement load_global_config(self) -> dict using _get_global_config_path and _load_yaml_file.
-4) Implement load_account_config(self, account_name: str) -> dict that uses _get_account_config_path and _load_yaml_file; if you chose to allow missing account config in subtask 1, handle FileNotFoundError here by returning {} instead of raising, and document this behavior.
-5) Add unit-test-friendly behavior: avoid printing; rely on raised exceptions for error signaling.
+Define `OAuthProvider(ABC)` with:
+- `@abstractmethod def get_auth_url(state: str) -> str`: Generates authorization URL with PKCE challenge if supported.
+- `@abstractmethod def handle_callback(code: str, state: str) -> TokenInfo`: Exchanges code for tokens.
+- `@abstractmethod def refresh_token(token_info: TokenInfo) -> TokenInfo`: Handles token refresh.
+- `validate_token(token_info: TokenInfo) -> bool`: Checks expiration with 5min buffer.
+- Include docstrings referencing OAuth 2.0 RFCs and security best practices (state validation, PKCE).
 
-## 3. Implement deep merge utility for configuration dictionaries [done]
+## 3. Add token management utilities and error handling [pending]
+### Dependencies: 2.1, 2.2
+### Description: Implement common token utilities and comprehensive error handling interfaces for robust OAuth implementation.
+### Details:
+Add to `interfaces.py`:
+- `TokenError`, `OAuthError`, `AuthExpiredError` custom exceptions with proper inheritance.
+- `is_token_valid(token_info: TokenInfo, clock_skew: int = 300) -> bool`: Expiration validation utility.
+- `parse_token_response(response: dict) -> TokenInfo`: Safe JSON parsing with validation.
+- `generate_state() -> str` and `generate_pkce_challenge() -> tuple[str, str]`: Security utilities.
+- Define `ProviderFactory = Callable[[OAuthConfig], OAuthProvider]` protocol for dependency injection.
+
+## 4. Implement XOAUTH2 SASL utilities [pending]
 ### Dependencies: 2.1
-### Description: Create a pure function or static method that performs deep merge of two configuration dictionaries according to the specified rules.
+### Description: Create SASL string generation functions specifically for IMAP XOAUTH2 authentication per RFC 7628.
 ### Details:
-1) Define a function deep_merge(base: dict, override: dict) -> dict (either as a @staticmethod on ConfigLoader or a module-level helper) that returns a new merged dict without mutating the input arguments.
-2) Implement merge rules:
-   - When both values for a key are dicts, recursively deep merge them.
-   - When both values are lists, the override list fully replaces the base list (no concatenation).
-   - For all other types (including mismatched types), the override value replaces the base value.
-3) Implement the logic using isinstance checks and recursion; ensure you copy nested dicts/lists (e.g., via dict comprehensions and list slicing) to avoid mutation of arguments.
-4) Ensure that keys present only in base are preserved, keys present only in override are added, and overlapping keys follow the rules above.
-5) Add minimal inline tests or docstring examples to clarify expected behavior, especially for nested structures and list replacement.
+Add SASL utilities:
+- `generate_xoauth2_sasl(user: str, access_token: str) -> bytes`: Implements base64('user=' + user + '^Aauth=Bearer ' + token + '^A^A').
+- `validate_sasl_components(user: str, token: str) -> None`: Input validation.
+- Include unit test functions: `test_sasl_base64_encoding()`, `test_sasl_format_rfc7628()`.
+- Docstrings must reference RFC 7628 XOAUTH2 specification and include example SASL strings.
 
-## 4. Wire loading and deep merge in load_merged_config [done]
-### Dependencies: 2.2, 2.3
-### Description: Use the YAML loading helpers and deep merge utility to implement the main load_merged_config(account_name) -> dict method.
+## 5. Add comprehensive docstrings and type validation tests [pending]
+### Dependencies: 2.1, 2.2, 2.3, 2.4
+### Description: Complete interfaces with full documentation, backward compatibility checks, and interface compliance tests.
 ### Details:
-1) In ConfigLoader.load_merged_config(self, account_name: str) -> dict, call load_global_config() to get the base configuration dict.
-2) Call load_account_config(account_name) to get the account-specific configuration dict (which may be empty if missing accounts are allowed).
-3) Pass these to deep_merge, using the global config as base and the account config as override: merged = deep_merge(global_cfg, account_cfg).
-4) Return the merged dict as the final result.
-5) Ensure that any exceptions from loading or malformed YAML propagate clearly to callers; do not silently ignore YAML errors at this layer.
-6) Document in the method docstring that the function applies deep merge with dictionary-merge, list-replace, and primitive-overwrite semantics.
-
-## 5. Add validation, edge-case handling, and tests [done]
-### Dependencies: 2.2, 2.3, 2.4
-### Description: Refine robustness of the ConfigLoader and implement tests for loading, deep merge semantics, and malformed YAML handling.
-### Details:
-1) Add validation for the account_name parameter (e.g., disallow path traversal patterns like '../' and strip whitespace) and raise ValueError on invalid names.
-2) Decide and document the behavior for missing global config (likely fail fast with FileNotFoundError or a custom ConfigurationError) and for missing account configs (either allowed -> global-only; or required -> explicit error).
-3) Implement unit tests (e.g., using pytest) that cover:
-   - Successful loading of a simple global config only.
-   - Loading and merging of global + account configs with nested dictionaries, lists, and primitives to verify deep_merge rules.
-   - Behavior when account config is missing (depending on your chosen semantics).
-   - Handling of malformed YAML (e.g., syntax error) verifying that a clear exception is raised.
-   - Type validation at the root level (non-dict root raises error).
-4) Optionally add type hints for all public methods and run a type checker (mypy or similar) to ensure signatures and return types are consistent.
-5) Optionally expose a convenience function at module level, load_merged_config(account_name: str, base_dir: Path | str = DEFAULT_BASE_DIR) -> dict, that internally constructs ConfigLoader and delegates to its method, if this matches the project's expected public API.
-
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
-### Dependencies: 2.1, 2.2, 2.3, 2.4, 2.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
-### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=2 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 2 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 2 - Implement Configuration Loader with Deep Merge Logic [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+Finalize with:
+- Google-style docstrings for all protocols/ABCs with Args, Returns, Raises sections.
+- V4 compatibility: `is_v4_compatible(provider: OAuthProvider) -> bool` utility.
+- Test subtasks: `test_protocol_compliance()`, `test_type_hints_mypy()`, `test_docstring_coverage()`, `test_sasl_roundtrip()`.
+- Add `__all__ = [...]` export list and `version = '1.0.0'` for backward compatibility tracking.
 

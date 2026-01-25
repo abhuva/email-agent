@@ -1,0 +1,1 @@
+"""Microsoft OAuth provider implementation."""

@@ -189,9 +189,9 @@ The `EmailContext` class is designed for the V4 processing pipeline:
 
 ## Related Documentation
 
-- [PDD V4](../pdd_V4.md) - Section 5.1 for API contract specification
+- [PDD V4](pdd_V4.md) - Section 5.1 for API contract specification
 - [V4 Configuration System](v4-configuration.md) - Configuration structure
-- [V4 Pipeline Architecture](../pdd_V4.md) - Overall pipeline design
+- [V4 Pipeline Architecture](pdd_V4.md) - Overall pipeline design
 
 ## Future Enhancements
 

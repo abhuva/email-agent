@@ -1,75 +1,59 @@
 # Task ID: 12
-# Title: Implement Enhanced Logging System
-# Status: done
-# Dependencies: 10
+# Title: End-to-end testing and documentation
+# Status: pending
+# Dependencies: 10, 11
 # Priority: medium
-# Description: Create a comprehensive logging system for multi-account processing
+# Description: Perform comprehensive testing and create documentation for the OAuth integration
 # Details:
-Implement an enhanced logging system that: 1) Overrides logging on startup, 2) Logs account processing start/end, 3) Logs configuration overrides, 4) Includes context in all log messages. Create a centralized logging configuration that can be used throughout the application.
+1. Create end-to-end tests for the OAuth integration:
+   - Test with Google accounts
+   - Test with Microsoft accounts
+   - Test backward compatibility with password accounts
+2. Create documentation for users:
+   - How to set up OAuth credentials in Google and Microsoft developer consoles
+   - How to configure the application with client IDs and secrets
+   - How to authenticate accounts using the CLI
+   - Troubleshooting common issues
+3. Update README.md with information about the OAuth integration
+4. Create example configuration files for Google and Microsoft accounts
 
 # Test Strategy:
-Verify log output for various processing scenarios. Check that account context is properly included in logs and that configuration overrides are clearly logged.
+Perform manual testing with real Google and Microsoft accounts. Verify the entire flow works as expected. Test backward compatibility with existing password accounts. Gather feedback on documentation clarity and completeness.
 
 # Subtasks:
-## 1. Design centralized logging configuration and context schema [done]
+## 1. Create end-to-end tests for OAuth 2.0 flows with Google and Microsoft accounts [pending]
 ### Dependencies: None
-### Description: Define a unified logging configuration and the standard context fields that will be attached to all log messages across the multi-account processing application.
+### Description: Develop integration tests covering Authorization Code flow with PKCE for Google and Microsoft providers, including token acquisition, refresh, scope validation, and error handling for invalid/expired tokens. Use live test credentials in a staging environment with environment-specific configurations.
 ### Details:
-• Choose the logging framework (e.g., language-standard logging library plus any structured logging/JSON formatter) and decide on log format (JSON vs plain text), log levels, and handlers/appenders (console, file, remote).
-• Design a common log context schema including fields such as correlation_id, account_id, job_id, component/module, environment, and request_id so every log line can be tied back to a specific account and processing run.
-• Define logger naming conventions (e.g., per module/component) and how child loggers inherit configuration from a root logger.
-• Document expectations for log level usage (DEBUG/INFO/WARN/ERROR) and what should/should not be logged (e.g., no secrets, PII handling rules).
-• Output of this subtask should be a short spec/config document and, if applicable, a base logging config file/template (e.g., logging.yaml/logging.json or equivalent) that will be referenced by the implementation subtasks.
+Follow OAuth 2.0 best practices: test correct parameters, failed authorizations, revoked credentials, and protected resource access. Use real provider calls (not mocks) for accurate token validation, rate limits, and edge cases. Structure tests to run across environments with swappable configs[1][2].
 
-## 2. Implement startup-time logging override and centralized configuration loader [done]
+## 2. Create end-to-end tests for backward compatibility with password accounts (V4) [pending]
 ### Dependencies: 12.1
-### Description: Create a centralized mechanism that initializes and overrides the application’s logging configuration on startup so that all components use the same enhanced logging settings.
+### Description: Implement tests verifying seamless fallback to legacy password authentication, mixed OAuth/password sessions, and no regressions in V4 user data access or CLI commands when OAuth is unavailable.
 ### Details:
-• Implement a logging bootstrap module (e.g., logging_config.py or LoggingInitializer class) that reads the configuration defined in subtask 1 (file, env vars, or code) and applies it to the root logger as the first step of application startup.
-• Ensure this initializer can be invoked from the main entrypoint(s) so that any pre-existing/default logging configuration is overridden (e.g., reset existing handlers and reconfigure with the centralized config).
-• Provide a single public function (e.g., init_logging(config_path=None, overrides=None)) that other parts of the app can call to set up logging, allowing runtime overrides such as log level, output destination, or format.
-• Verify that all modules obtain loggers via the standard framework (e.g., `logging.getLogger(__name__)`) after the initializer runs, ensuring they inherit the centralized configuration.
-• Add minimal tests or a small test harness to confirm that startup logs follow the new format and settings and that changing configuration is reflected globally.
+Test token equivalence between OAuth and password flows, ensure backward-compatible session handling, and validate error messages don't expose OAuth internals to V4 users. Include security checks for no unintended scope escalations[1][3].
 
-## 3. Implement contextual logging utilities for multi-account processing [done]
-### Dependencies: 12.1, 12.2
-### Description: Create helper utilities to attach and propagate contextual information (account, correlation IDs, etc.) so that all log messages include the required context automatically.
+## 3. Create user documentation for OAuth setup and CLI authentication [pending]
+### Dependencies: 12.1
+### Description: Write comprehensive guides covering Google/Microsoft developer console setup, application configuration with client IDs/secrets, CLI authentication commands, and security best practices like PKCE and token binding.
 ### Details:
-• Implement a context mechanism appropriate for the stack (e.g., MDC/logging filters, thread-local/contextvars storage, or a wrapper logger) that can store fields like account_id, job_id, correlation_id, and environment and inject them into all log records.
-• Create lightweight helper functions or classes (e.g., `with_account_context(account_id)`, `set_correlation_id(id)`) that set/clear context for the current execution scope (thread, async task, request, or batch run).
-• Configure the logging formatter to include these context fields in every log line (for JSON, add them as keys; for text, add them to the pattern).
-• Ensure that context propagates correctly across internal calls and, if applicable, across async boundaries or worker threads.
-• Add unit tests or small integration checks to validate that when context is set, any log emitted from that flow includes the correct context fields and that context is cleared or replaced between different accounts/runs.
+Include step-by-step instructions with screenshots, environment variable examples, and warnings about secret management. Cover OAuth 2.0 flows used and CLI syntax for `login --provider google` etc. Emphasize RFC 6819 threat mitigations[3][4].
 
-## 4. Add structured logging for account processing lifecycle and configuration overrides [done]
-### Dependencies: 12.2, 12.3
-### Description: Integrate logging into the multi-account processing flows to record processing start/end for each account and to log configuration overrides in a structured, consistent way.
+## 4. Create troubleshooting documentation and example configuration files [pending]
+### Dependencies: 12.3
+### Description: Document common issues (redirect URI mismatches, scope errors, token expiration) with solutions, and provide sample config files for Google/Microsoft OAuth with secure defaults.
 ### Details:
-• Identify the entrypoints for multi-account processing (e.g., account processing loop, worker, or job orchestrator) and wrap each account’s run with logs at INFO level for start and end, using the contextual logging utilities to include account_id and correlation_id.
-• Ensure that errors/exceptions during account processing are logged with ERROR level and include the same contextual fields, plus any relevant diagnostic data (stack trace, failing step).
-• Implement structured logging of configuration overrides: whenever runtime configuration differs from defaults (CLI flags, env vars, DB settings), log a single well-structured record containing which options were overridden, their effective values, scope (global vs per-account), and source.
-• Make sure these lifecycle and configuration logs use the centralized logging configuration (no ad-hoc print statements or local logger setups) and follow naming/level conventions.
-• Add tests or a test run script that simulates processing multiple accounts and verifies that logs clearly show per-account start/end and configuration overrides, with correct context and format.
+Configs should demonstrate client ID/secret placement, required scopes, and PKCE parameters. Troubleshooting section includes logs to check, API error codes, and recovery steps. Use YAML/JSON formats matching app expectations[1][4].
 
-## 5. Refactor application components to adopt centralized logging and validate end-to-end behavior [done]
-### Dependencies: 12.2, 12.3, 12.4
-### Description: Update existing modules to use the new centralized and contextual logging system exclusively, and verify that logging works correctly across the entire multi-account processing flow.
+## 5. Update README.md with OAuth integration information [pending]
+### Dependencies: 12.3, 12.4
+### Description: Add dedicated OAuth section to README.md summarizing quickstart, supported providers, backward compatibility notes, security considerations, and links to full documentation.
 ### Details:
-• Search the codebase for all direct logging usages (ad-hoc configurations, print statements, custom loggers) and refactor them to use the centralized initializer and contextual logging utilities created in previous subtasks.
-• Remove or disable any module-level logging configuration that conflicts with the centralized configuration, ensuring there is exactly one place where logging is configured on startup.
-• Standardize log messages to be concise, level-appropriate, and context-rich; avoid logging sensitive data while preserving enough information for debugging multi-account runs.
-• Execute an end-to-end test or staging run that processes multiple accounts, then inspect the logs to confirm: startup configuration is applied, every message includes context, account start/end are logged, configuration overrides appear as designed, and log volume/noise is acceptable.
-• Based on findings, make minor tuning adjustments (e.g., log levels, additional context fields, throttling of very verbose sections) and update documentation so future developers know how to use the enhanced logging system.
+Keep concise: installation prerequisites, one-command setup, migration guide from V4, and security warnings (rotate secrets, use HTTPS). Include badges for tested providers and version compatibility matrix[3].
 
-## 6. Final stage: Validate tests, update documentation, review rules, mark done, and commit [done]
+## 6. Run comprehensive test suite and validate all documentation [pending]
 ### Dependencies: 12.1, 12.2, 12.3, 12.4, 12.5
-### Description: MANDATORY final stage: Run tests, update documentation, review for rule learnings, mark task done in Task Master, and commit all changes.
+### Description: Execute full end-to-end test suite across all providers/environments, fix any failures, then review all documentation for accuracy against test results and best practices.
 ### Details:
-1) Run full test suite: pytest -v and ensure all tests pass (new and existing). Fix any failing tests before proceeding.
-2) Update/create module documentation in docs/ directory following documentation.mdc guidelines. Update docs/MAIN_DOCS.md if adding new documentation. Reference relevant PDD sections.
-3) Review code for patterns that should be captured in rules (see .cursor/rules/self_improve.mdc). Add new rules if: new technology/pattern used in 3+ files, common bugs could be prevented, or new best practices emerged. Update existing rules if better examples exist.
-4) Mark task done in Task Master: task-master set-status --id=12 --status=done
-5) Commit tasks.json: git add tasks/tasks.json && git commit -m "chore(tasks): Mark task 12 complete"
-6) Commit all changes: git add . && git commit -m "feat(module): Task 12 - Implement Enhanced Logging System [docs]"
-This workflow is MANDATORY and must not be skipped. See .cursor/rules/task_completion_workflow.mdc for details.
+Verify tests pass in CI pipeline with observability (log requests/responses safely). Cross-check docs against real flows, update with any new edge cases found. Confirm security: RS256/ES256 signing, no hardcoded secrets[1][2][3][4].
 

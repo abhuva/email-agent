@@ -1,0 +1,196 @@
+# Product Requirements Document: V5 OAuth Integration
+
+**Document Status:** Approved for Development
+**Author:** User & Strata (AI Strategist)
+**Version:** 5.0
+
+## 1. Overview & Strategy
+
+**Executive Summary:** This project integrates OAuth 2.0 authentication for Google and Microsoft accounts. It replaces the legacy `app-password` method (which is being deprecated) with a secure, token-based flow.
+
+**Problem Statement:** The Developer cannot currently use personal Google/Microsoft accounts because they require modern authentication. The current V4 system only supports Basic Auth (User/Pass), locking high-value personal data out of the system.
+
+**Strategic Alignment:** Ensures the long-term viability of the tool by adopting modern security standards. It unblocks the use of the tool for personal email management without compromising the existing V4 architecture.
+
+## 2. The User & The Goal
+
+**Target Audience:** The Developer (Primary).
+
+**Goals & Metrics:**
+- **Success:** Google and Microsoft accounts can be authenticated once via CLI, and run indefinitely via background token refreshing.
+- **Stability:** The `process` command works identically for OAuth and Password accounts.
+- **Metric:** 0% regression for existing IMAP-password accounts (Backward Compatibility).
+
+## 3. Scope & Requirements
+
+### 3.1 Scope Limitations
+**In-Scope:** Google & Microsoft providers, CLI-based Token generation, Token storage, `XOAUTH2` IMAP authentication, Automatic Token Refreshing.
+**Out-of-Scope:** Custom OAuth providers, GUI, Web-based management interfaces.
+
+### 3.2 User Stories
+
+**Story 1: The "Identity Configuration"**
+- **As a** Developer, **I want** to define my App Credentials (Client ID/Secret) in environment variables/global config, **so that** I don't accidentally commit secrets or duplicate them across account files.
+- **Acceptance Criteria:**
+  - System reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from `.env`.
+  - System reads `MS_CLIENT_ID` / `MS_CLIENT_SECRET` from `.env`.
+
+**Story 2: The Authentication Handshake (CLI)**
+- **As a** User, **I want** to run `python main.py auth --account personal_gmail`, **so that** I can interactively authorize the application.
+- **Acceptance Criteria:**
+  - CLI generates the correct Authorization URL ensuring the correct **Scopes** are requested (see Tech Logic).
+  - CLI listens (localhost) or accepts code paste for the callback.
+  - Tokens (Access + Refresh) are saved to `credentials/<account_name>.json`.
+
+**Story 3: Backward Compatible Execution**
+- **As a** System, **I want** to default to `password` mode if no auth method is defined, **so that** existing V4 account configurations do not break.
+- **Acceptance Criteria:**
+  - If `auth:` block is missing in YAML -> Default to Password logic.
+  - If `auth.method: password` -> use Password logic.
+  - If `auth.method: oauth` -> use Token logic.
+
+## 4. Design: Configuration & Interface
+
+### 4.1 Configuration Schema Updates
+**A. Global Config (implicit/env):**
+No changes to `config.yaml` file structure; strict reliance on `.env` for Client IDs to differentiate "Code" from "Credentials."
+
+**B. Account Config (`accounts/personal.yaml`):**
+```yaml
+# EXISTING V4
+email: "my.email@gmail.com" 
+
+# NEW V5 SECTION
+auth:
+  method: "oauth"         # OPTIONS: 'password' (default), 'oauth'
+  provider: "google"      # OPTIONS: 'google', 'microsoft'
+  # Note: 'password_env' is ignored if method is 'oauth'
+```
+
+### 4.2 CLI Interaction
+```bash
+$ python main.py auth --account personal_google
+
+[INFO] Initiating OAuth flow for provider: Google
+[INFO] Please open this URL to authorize: https://accounts.google.com/o/oauth2/...
+[INFO] Waiting for callback on port 8080...
+[SUCCESS] Authenticated! Credentials saved to credentials/personal_google.json
+```
+
+## 5. Technical Architecture
+
+### 5.1 Directory & File Structure
+To maintain modularity and avoid "monolithic" classes, we will introduce a `src/auth/` module.
+
+```
+email-agent/
+├── credentials/                 # NEW: Git-ignored folder for JSON tokens
+├── .env                         # Updated with Client IDs
+├── src/
+│   ├── auth/                    # NEW MODULE
+│   │   ├── __init__.py
+│   │   ├── oauth_flow.py        # Handles the CLI browser interaction (google-auth/msal)
+│   │   ├── token_manager.py     # Handles loading, saving, and refreshing tokens
+│   │   ├── interfaces.py        # Authenticator Protocol definition
+│   │   ├── strategies.py        # Strategy Pattern Classes (PasswordAuthenticator, OAuthAuthenticator)
+│   │   └── providers/           # Provider-specific implementations
+│   │       ├── __init__.py
+│   │       ├── google.py
+│   │       └── microsoft.py
+│   ├── imap_client.py           # Modified to use Authenticator Strategy
+│   ├── config_schema.py         # Updated to validate auth block
+│   └── cli_v4.py                # Add auth command
+```
+
+### 5.2 The "Authenticator" Strategy Pattern
+Do not put `if/else` logic inside `IMAPClient`. Use a generic interface.
+
+1. **Interface:** `AuthenticatorProtocol` (Must deliver a simpler `authenticate(imap_connection)` method).
+2. **Concrete Class A:** `PasswordAuthenticator` (Legacy logic).
+   - Uses `user` and `password` from config.
+   - Calls `imap.login(user, password)`.
+3. **Concrete Class B:** `OAuthAuthenticator` (New logic).
+   - Uses `TokenManager` to get a valid Access Token (refreshing if needed).
+   - Generates SASL string: `user={email}\x01auth=Bearer {token}\x01\x01`.
+   - Calls `imap.authenticate('XOAUTH2', sasl_string)`.
+
+**Refactoring `src/imap_client.py`:**
+- The `IMAPClient` should accept an `authenticator` instance during initialization or connection.
+- `IMAPClient.connect()` simply calls `self.authenticator.authenticate(self.server)`.
+
+### 5.3 OAuth Scopes (The Permission Keys)
+The coding agent **must** use these specific strings:
+- **Google:** `https://mail.google.com/`
+- **Microsoft:** `https://outlook.office.com/IMAP.AccessAsUser.All`, `https://outlook.office.com/User.Read`, `offline_access`
+
+### 5.4 Security Constraints
+- **Gitignore:** The directory `credentials/` must be added to `.gitignore` **immediately**.
+- **Environment:** Client Secrets must never be hardcoded. Use `os.getenv()`.
+- **File Permissions:** Token files must be created with 0600 permissions (read/write for owner only).
+
+## 6. Implementation Plan
+
+### Phase 1: Dependencies & Skeleton
+- **Files:** `src/auth/__init__.py`, `src/auth/interfaces.py`.
+- **Deps:** Add `google-auth-oauthlib`, `msal` to `requirements.txt`.
+- **Security:** Update `.gitignore` to include `credentials/`.
+
+### Phase 2: Configuration & CLI
+- **Schema:** Update `src/config_schema.py` to validate the new `auth` block.
+- **CLI:** Add `auth` command stub to `src/cli_v4.py`.
+
+### Phase 3: The OAuth Engine (`src/auth/`)
+- **Providers:** Create `src/auth/providers/google.py` and `microsoft.py`.
+  - *Note:* Keep provider logic separate. MSAL and Google Auth Lib are very different.
+- **Flow:** Implement `src/auth/oauth_flow.py` to orchestrate the local server and token exchange.
+- **Storage:** Implement `src/auth/token_manager.py` for saving/loading/refreshing JSON.
+
+### Phase 4: Strategy Implementation & Refactor
+- **Authenticators:** Implement `PasswordAuthenticator` and `OAuthAuthenticator` in `src/auth/strategies.py`.
+- **Refactor IMAP:** Modify `src/imap_client.py`.
+  - Change `__init__` to accept an `Authenticator` object.
+  - Remove legacy `login()` logic.
+  - Add `XOAUTH2` SASL string generation utility if not provided by libraries.
+- **Wiring:** Update `src/account_processor.py` to instantiate the correct authenticator based on config and pass it to `IMAPClient`.
+
+## 7. Technical Red-Teaming & NFRs
+
+### 7.1 Reliability
+- **Token Refresh:** The `OAuthAuthenticator` must check `expires_at` (minus a 5-minute buffer) before every connection attempt. If expired, it must validly refresh the token using the `refresh_token` **synchronously** before returning the auth string.
+- **Microsoft "Offline Access":** Ensure the scope `offline_access` is requested, otherwise MS tokens will expire after 1 hour with no refresh capability.
+- **Port Conflict:** The `OAuthFlow` must attempt port 8080, but fail gracefully or allow configuration if occupied.
+
+### 7.2 Security
+- **Sanitization:** The `credentials/` folder functions as a keystore. The application must attempt to `chmod 600` on created JSON files to prevent other local users from reading secrets.
+- **Scopes:**
+  - Google: `https://mail.google.com/`
+  - Microsoft: `https://outlook.office.com/IMAP.AccessAsUser.All`, `https://outlook.office.com/User.Read`, `offline_access`
+
+### 7.3 Backward Compatibility
+- **Test Case:** Run the `E2E V4` pipeline with a *Password* based account. It must pass exactly as it does today.
+- **Test Case:** If `auth` block is missing from YAML, `config_loader` must inject the default `method: password` struct to avoid breaking old configs.
+
+## 8. Critical Technical Considerations
+
+1. **The "Port Conflict" Risk**: The PRD specifies listening on port 8080 for the OAuth callback. If a developer has another service running there (common), the auth flow will crash. *Solution:* The `OAuthFlow` must attempt port 8080, but fail gracefully or allow configuration if occupied.
+
+2. **Dependency Isolation**: Google and Microsoft Libraries (`google-auth-oauthlib` vs `msal`) operate differently. `google-auth` abstracts the HTTP server callback; `msal` often requires manual handling or different flows. *Solution:* We will abstract these differences behind a `AuthProvider` adapter pattern within the auth module.
+
+3. **Config Schema Integrity**: The existing `ConfigLoader` uses Pydantic. We must ensure the new schema uses **Discriminator Unions**. If `method="oauth"`, then `provider` is mandatory and `password_env` is forbidden/ignored. If `method="password"`, `password_env` is mandatory.
+
+## 9. Development Prompts (For AI Coding)
+
+**For `src/auth/strategies.py`:**
+> "Implement the Strategy pattern for IMAP authentication. Define a Protocol `Authenticator` with an `authenticate(imap_conn)` method. Create `PasswordAuthenticator` (uses env var password) and `OAuthAuthenticator` (uses TokenManager). The OAuth strategy should handle token refreshing transparently."
+
+**For `src/imap_client.py` refactor:**
+> "Refactor IMAPClient to remove direct credential handling. detailed in PDD Section 2.2. Inject the `Authenticator` strategy via `__init__`. In the `connect` method, replace the explicit login call with `self.authenticator.authenticate(self.server)`."
+
+**For `Microsoft` specific logic:**
+> "Implement the Microsoft OAuth flow using `msal`. Use `PublicClientApplication`. Ensure the `device_flow` or `localhost` redirection is handled correctly for a CLI environment without a public callback URL."
+
+## 10. Risks & Mitigations
+- **Risk:** Token Refresh fails during a long batch process.
+- **Mitigation:** `OAuthAuthenticator` should check `token.expiry` *before* returning the auth string. If expired, refresh immediately.
+- **Risk:** Microsoft Azure App registration is complex.
+- **Mitigation:** Document exactly which "Redirect URI" (`http://localhost:8080`) is required in the App Registration.

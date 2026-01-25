@@ -1,0 +1,1 @@
+"""Google OAuth provider implementation."""

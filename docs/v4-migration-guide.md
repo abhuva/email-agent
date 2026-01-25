@@ -3,7 +3,7 @@
 **Status:** Complete  
 **Task:** 20.4  
 **Audience:** Existing V3 Users  
-**PDD Reference:** [pdd_V4.md](../pdd_V4.md)
+**PDD Reference:** [pdd_V4.md](pdd_V4.md)
 
 ---
 
