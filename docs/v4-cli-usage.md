@@ -152,6 +152,67 @@ python main.py show-config --account work --with-sources
 - Highlights overridden values (if highlighting enabled)
 - Validates configuration on load (errors shown if invalid)
 
+### Auth Command (V5 OAuth)
+
+The `auth` command initiates OAuth 2.0 authentication flow for accounts configured with OAuth authentication.
+
+**Command:**
+```bash
+python main.py auth --account <name>
+```
+
+**Options:**
+- `--account <name>`: Required. Account name to authenticate
+
+**Prerequisites:**
+- Account must be configured with `auth.method='oauth'` in `config/accounts/<name>.yaml`
+- Account must specify `auth.provider='google'` or `auth.provider='microsoft'`
+- Required environment variables must be set:
+  - For Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+  - For Microsoft: `MS_CLIENT_ID`, `MS_CLIENT_SECRET`
+
+**Examples:**
+```bash
+# Authenticate 'work' account with Google OAuth
+python main.py auth --account work
+
+# Authenticate 'personal' account with Microsoft OAuth
+python main.py auth --account personal
+```
+
+**Flow:**
+1. Loads account configuration
+2. Validates OAuth configuration (method and provider)
+3. Checks for existing tokens (prompts to overwrite if found)
+4. Initializes OAuth provider (Google or Microsoft)
+5. Starts local HTTP server for OAuth callback (port 8080, auto-detects if unavailable)
+6. Opens browser to authorization URL
+7. Waits for user authorization
+8. Exchanges authorization code for tokens
+9. Saves tokens securely to `credentials/<account>.json`
+
+**Features:**
+- **Automatic port detection:** If port 8080 is unavailable, automatically tries ports 8081-8099
+- **Existing token handling:** Prompts before overwriting existing tokens
+- **Clear error messages:** Provides specific guidance for common errors
+- **Secure token storage:** Tokens saved with restricted file permissions (0600)
+- **Provider support:** Google and Microsoft OAuth providers
+
+**Error Handling:**
+- **Account not found:** Clear error message with path to account config
+- **Not OAuth method:** Explains current auth method and how to enable OAuth
+- **Missing provider:** Shows how to configure provider in account config
+- **Invalid provider:** Lists supported providers
+- **Missing credentials:** Shows which environment variables are required
+- **Port conflicts:** Suggests freeing ports or closing other applications
+- **Timeout:** Suggests retrying and completing authorization in browser
+- **Keyboard interrupt (Ctrl+C):** Gracefully cancels and cleans up
+
+**See Also:**
+- [V5 OAuth Flow](v5-oauth-flow.md) - OAuth flow implementation details
+- [V5 Google Provider](v5-google-provider.md) - Google OAuth provider details
+- [V5 Token Manager](v5-token-manager.md) - Token storage and refresh
+
 ### Cleanup-Flags Command
 
 The `cleanup-flags` command removes application-specific IMAP flags from emails.
@@ -519,6 +580,15 @@ python main.py cleanup-flags
 python main.py backfill --start-date 2024-01-01 --max-emails 50
 ```
 
+**OAuth Authentication:**
+```bash
+# Authenticate account with OAuth
+python main.py auth --account work
+
+# Check if tokens exist (auth command will prompt if they do)
+ls credentials/work.json
+```
+
 ---
 
 ## CLI Troubleshooting
@@ -592,3 +662,5 @@ For more troubleshooting, see [V4 Troubleshooting Guide](v4-troubleshooting.md).
 - [V3 CLI](v3-cli.md) - V3 CLI reference (for comparison)
 - [V4 Configuration Reference](v4-configuration-reference.md) - Configuration context
 - [V4 Troubleshooting](v4-troubleshooting.md) - Common issues
+- [V5 OAuth Flow](v5-oauth-flow.md) - OAuth authentication flow details
+- [V5 Token Manager](v5-token-manager.md) - Token management and refresh
