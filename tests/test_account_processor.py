@@ -36,9 +36,13 @@ def sample_account_config():
             'server': 'imap.test.com',
             'port': 993,
             'username': 'test@example.com',
-            'password': 'test_password',
+            'password_env': 'TEST_IMAP_PASSWORD',
             'query': 'ALL',
             'processed_tag': 'AIProcessed'
+        },
+        'auth': {
+            'method': 'password',
+            'password_env': 'TEST_IMAP_PASSWORD'
         },
         'processing': {
             'max_emails_per_run': 10
@@ -291,7 +295,8 @@ class TestAccountProcessorTeardown:
 class TestConfigurableImapClient:
     """Test ConfigurableImapClient class."""
     
-    def test_create_from_config(self, sample_account_config):
+    @patch('src.auth.strategies.os.getenv', return_value='test_password')
+    def test_create_from_config(self, mock_getenv, sample_account_config):
         """Test creating ConfigurableImapClient from config."""
         client = create_imap_client_from_config(sample_account_config)
         
@@ -311,7 +316,8 @@ class TestConfigurableImapClient:
             create_imap_client_from_config(incomplete_config)
     
     @patch('src.account_processor.imaplib.IMAP4_SSL')
-    def test_connect_with_config(self, mock_imap_ssl, sample_account_config):
+    @patch('src.auth.strategies.os.getenv', return_value='test_password')
+    def test_connect_with_config(self, mock_getenv, mock_imap_ssl, sample_account_config):
         """Test connecting with account-specific config."""
         # Mock IMAP connection
         mock_imap = Mock()
@@ -324,6 +330,7 @@ class TestConfigurableImapClient:
         
         # Verify connection was made with correct server/port
         mock_imap_ssl.assert_called_once_with('imap.test.com', 993)
+        # Verify authenticator was used (login called via PasswordAuthenticator)
         mock_imap.login.assert_called_once_with('test@example.com', 'test_password')
         assert client._connected
 

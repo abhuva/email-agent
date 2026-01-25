@@ -1,6 +1,6 @@
 # Task ID: 9
 # Title: Refactor IMAP client to use authenticator strategy
-# Status: pending
+# Status: done
 # Dependencies: 8
 # Priority: high
 # Description: Modify the IMAP client to use the authenticator strategy pattern
@@ -17,31 +17,31 @@ In `src/imap_client.py`:
 Write unit tests for the refactored IMAP client with mocked authenticators. Test both password and OAuth authentication methods. Verify backward compatibility with existing code. Test error handling for authentication failures.
 
 # Subtasks:
-## 1. Design and implement authenticator strategy interface [pending]
+## 1. Design and implement authenticator strategy interface [done]
 ### Dependencies: None
 ### Description: Create an abstract base class or protocol that defines the authenticator strategy pattern. This interface will establish the contract that all authentication mechanisms must follow, enabling pluggable authentication implementations.
 ### Details:
 Create an `Authenticator` abstract base class in a new module `src/authenticators/base.py` with an abstract method `authenticate(server)` that returns authentication status. Define the method signature to accept an IMAP server connection object and raise appropriate exceptions (e.g., `AuthenticationError`) on failure. Include type hints for all parameters and return values. Document the interface with docstrings explaining the expected behavior, error conditions, and how implementations should handle OAuth 2.0 tokens versus traditional credentials. Consider adding optional methods like `refresh_token()` for token-based authentication. This foundation enables the client refactoring in subsequent subtasks.
 
-## 2. Implement concrete authenticator strategies (PLAIN, OAuth2, NTLM) [pending]
+## 2. Implement concrete authenticator strategies (PLAIN, OAuth2, NTLM) [done]
 ### Dependencies: 9.1
 ### Description: Create concrete implementations of the authenticator interface for different authentication mechanisms, including PLAIN (basic username/password), OAuth 2.0, and NTLM, following RFC 3501 and modern security standards.
 ### Details:
 Implement three authenticator classes in `src/authenticators/`: (1) `PlainAuthenticator` for traditional username/password authentication using SASL PLAIN mechanism as documented in RFC 4616; (2) `OAuth2Authenticator` supporting token-based authentication with token refresh capabilities, aligned with Microsoft's Modern Authentication enforcement (effective April 30, 2026 per search results); (3) `NTLMAuthenticator` for NTLM-based authentication. Each implementation should handle the challenge-response flow appropriately. Include proper error handling with descriptive messages. Add logging for authentication attempts and failures. Implement token caching and refresh logic for OAuth2. Include docstrings with usage examples and security considerations.
 
-## 3. Refactor IMAPClient.__init__ to accept authenticator parameter [pending]
+## 3. Refactor IMAPClient.__init__ to accept authenticator parameter [done]
 ### Dependencies: 9.1
 ### Description: Modify the IMAPClient constructor to accept an optional authenticator parameter while maintaining backward compatibility with existing code that passes credentials directly.
 ### Details:
 Update `src/imap_client.py` IMAPClient.__init__ signature to include an optional `authenticator: Optional[Authenticator] = None` parameter. Implement backward compatibility logic: if `authenticator` is None but username/password are provided, automatically instantiate a `PlainAuthenticator` internally. Store the authenticator as `self.authenticator`. Add comprehensive type hints using `Optional`, `Union`, and `Authenticator` types. Update the docstring to document both the new authenticator parameter and the legacy credential parameters, clearly marking the legacy approach as deprecated. Include a deprecation warning when credentials are passed directly. Add validation to ensure either an authenticator or credentials are provided, raising `ValueError` if neither is supplied.
 
-## 4. Update connect() and authentication flow to use authenticator strategy [pending]
+## 4. Update connect() and authentication flow to use authenticator strategy [done]
 ### Dependencies: 9.2, 9.3
 ### Description: Refactor the connect() method to delegate authentication to the authenticator strategy instead of handling credentials directly, implementing proper error handling and security practices.
 ### Details:
 Modify the `connect()` method in `src/imap_client.py` to call `self.authenticator.authenticate(self.server)` instead of direct `login()` calls. Implement comprehensive error handling with try-except blocks that catch `AuthenticationError` and other exceptions, providing clear error messages distinguishing between authentication failures, network issues, and server errors. Add logging at appropriate levels (debug for successful auth, error for failures). Implement retry logic with exponential backoff for transient failures. Ensure SSL/TLS encryption is enforced on port 993 per security best practices. Add context managers for secure connection handling. Update docstrings to reflect the new authentication flow. Include security considerations in documentation regarding token storage and credential handling.
 
-## 5. Add comprehensive testing and validation for authenticator strategies [pending]
+## 5. Add comprehensive testing and validation for authenticator strategies [done]
 ### Dependencies: 9.2, 9.3, 9.4
 ### Description: Create unit tests and integration tests covering all authenticator implementations, backward compatibility scenarios, error handling, and security edge cases.
 ### Details:

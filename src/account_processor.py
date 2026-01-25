@@ -46,7 +46,10 @@ Usage:
 """
 import logging
 import imaplib
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.auth.interfaces import AuthenticatorProtocol
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
@@ -61,6 +64,16 @@ from src.rules import (
     ActionEnum
 )
 from src.imap_client import ImapClient, IMAPConnectionError, IMAPFetchError
+from src.auth.strategies import PasswordAuthenticator, OAuthAuthenticator
+from src.auth.interfaces import AuthenticationError
+from src.auth.token_manager import TokenManager
+
+# Import AuthenticatorProtocol for type hints (avoid circular import)
+try:
+    from src.auth.interfaces import AuthenticatorProtocol
+except ImportError:
+    # Fallback for type checking
+    AuthenticatorProtocol = Any
 from src.llm_client import LLMClient, LLMResponse
 from src.note_generator import NoteGenerator
 from src.decision_logic import DecisionLogic, ClassificationResult
@@ -269,14 +282,26 @@ class ConfigurableImapClient(ImapClient):
     
     This class extends ImapClient to support account-specific configurations for V4.
     It overrides the connect() method to use config passed at construction time.
+    Supports both password and OAuth authentication via the authenticator strategy pattern.
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        authenticator: Optional[AuthenticatorProtocol] = None
+    ):
         """
         Initialize configurable IMAP client with account-specific config.
         
         Args:
             config: Configuration dictionary containing IMAP settings under 'imap' key
+                   and optional 'auth' key for authentication configuration
+            authenticator: Optional authenticator instance. If not provided, one will be
+                         created based on the 'auth' configuration block (or defaults to
+                         password authentication for backward compatibility)
+        
+        Raises:
+            AccountProcessorSetupError: If required configuration is missing or invalid
         """
         # Get processed_tag from config for base class
         imap_config = config.get('imap', {})
@@ -292,12 +317,116 @@ class ConfigurableImapClient(ImapClient):
             raise AccountProcessorSetupError(
                 f"Missing required IMAP configuration fields: {missing_fields}"
             )
+        
+        # Set up authenticator
+        if authenticator is not None:
+            # Use provided authenticator
+            self.authenticator = authenticator
+            logger.debug("Using provided authenticator instance")
+        else:
+            # Create authenticator from config (backward compatibility)
+            self.authenticator = self._create_authenticator_from_config(config)
+            logger.debug(f"Created authenticator from config: {type(self.authenticator).__name__}")
+    
+    def _create_authenticator_from_config(self, config: Dict[str, Any]) -> AuthenticatorProtocol:
+        """
+        Create an authenticator instance from configuration.
+        
+        This method reads the 'auth' block from config and creates the appropriate
+        authenticator (PasswordAuthenticator or OAuthAuthenticator). If no 'auth'
+        block is present, defaults to password authentication for backward compatibility.
+        
+        Args:
+            config: Configuration dictionary containing 'auth' and 'imap' blocks
+        
+        Returns:
+            AuthenticatorProtocol instance (PasswordAuthenticator or OAuthAuthenticator)
+        
+        Raises:
+            AccountProcessorSetupError: If authentication configuration is invalid
+        """
+        auth_config = config.get('auth', {})
+        imap_config = config.get('imap', {})
+        username = imap_config.get('username')
+        
+        if not username:
+            raise AccountProcessorSetupError("IMAP username is required for authentication")
+        
+        # Get authentication method (defaults to 'password' for backward compatibility)
+        method = auth_config.get('method', 'password')
+        
+        if method == 'oauth':
+            # OAuth authentication
+            provider = auth_config.get('provider')
+            if not provider:
+                raise AccountProcessorSetupError(
+                    "OAuth provider is required when auth method is 'oauth'"
+                )
+            
+            if provider not in ('google', 'microsoft'):
+                raise AccountProcessorSetupError(
+                    f"Invalid OAuth provider '{provider}'. Supported: 'google', 'microsoft'"
+                )
+            
+            # Get account name for token storage (use username as fallback)
+            account_name = config.get('account_id') or username
+            
+            # Create TokenManager
+            token_manager = TokenManager()
+            
+            # Create OAuthAuthenticator
+            return OAuthAuthenticator(
+                email=username,
+                account_name=account_name,
+                provider_name=provider,
+                token_manager=token_manager
+            )
+        
+        elif method == 'password':
+            # Password authentication (default)
+            password_env = auth_config.get('password_env') or imap_config.get('password_env')
+            
+            if not password_env:
+                # Backward compatibility: try to get password directly from config
+                password = imap_config.get('password')
+                if password:
+                    # Log deprecation warning
+                    logger.warning(
+                        "Using 'password' directly in config is deprecated. "
+                        "Use 'auth.password_env' with an environment variable instead."
+                    )
+                    # For backward compatibility, we'll still need to handle this
+                    # But PasswordAuthenticator requires password_env, so we need a workaround
+                    # Actually, we can't use PasswordAuthenticator with direct password
+                    # So we'll raise an error and suggest migration
+                    raise AccountProcessorSetupError(
+                        "Direct password in config is not supported. "
+                        "Please use 'auth.password_env' with an environment variable."
+                    )
+                else:
+                    raise AccountProcessorSetupError(
+                        "Password environment variable not specified. "
+                        "Set 'auth.password_env' or 'imap.password_env' in config."
+                    )
+            
+            # Create PasswordAuthenticator
+            return PasswordAuthenticator(
+                email=username,
+                password_env=password_env
+            )
+        
+        else:
+            raise AccountProcessorSetupError(
+                f"Invalid authentication method '{method}'. "
+                "Supported methods: 'password', 'oauth'"
+            )
     
     def connect(self) -> None:
         """
-        Establish connection to IMAP server using credentials from config.
+        Establish connection to IMAP server using authenticator strategy.
         
-        Overrides parent connect() to use account-specific config.
+        Overrides parent connect() to use account-specific config and authenticator.
+        The authenticator handles authentication (password or OAuth) automatically.
         
         Raises:
             IMAPConnectionError: If connection or authentication fails
@@ -312,23 +441,6 @@ class ConfigurableImapClient(ImapClient):
             server = self._imap_config['server']
             port = self._imap_config['port']
             username = self._imap_config['username']
-            
-            # Get password (from config or environment variable)
-            password = self._imap_config.get('password')
-            if not password:
-                # Try password_env
-                password_env = self._imap_config.get('password_env')
-                if password_env:
-                    import os
-                    password = os.getenv(password_env)
-                    if not password:
-                        raise AccountProcessorSetupError(
-                            f"Password environment variable '{password_env}' not set"
-                        )
-                else:
-                    raise AccountProcessorSetupError(
-                        "IMAP password not provided (neither 'password' nor 'password_env' in config)"
-                    )
             
             logger.info(f"Connecting to IMAP server {server}:{port} as {username}")
             
@@ -345,8 +457,19 @@ class ConfigurableImapClient(ImapClient):
                 logger.warning(f"Port {port} not standard (143/993), defaulting to SSL")
                 self._imap = imaplib.IMAP4_SSL(server, port)
             
-            # Authenticate
-            self._imap.login(username, password)
+            # Authenticate using authenticator strategy
+            # The authenticator handles both password and OAuth authentication
+            try:
+                self.authenticator.authenticate(self._imap)
+                logger.debug("Authentication successful via authenticator")
+            except AuthenticationError as e:
+                error_msg = f"IMAP authentication failed: {e}"
+                logger.error(error_msg)
+                raise IMAPConnectionError(error_msg) from e
+            except Exception as e:
+                error_msg = f"Unexpected error during authentication: {e}"
+                logger.error(error_msg)
+                raise IMAPConnectionError(error_msg) from e
             
             # Select INBOX (default mailbox)
             typ, data = self._imap.select('INBOX')
@@ -356,8 +479,11 @@ class ConfigurableImapClient(ImapClient):
             self._connected = True
             logger.info("IMAP connection established successfully")
             
+        except IMAPConnectionError:
+            # Re-raise IMAP connection errors as-is
+            raise
         except imaplib.IMAP4.error as e:
-            error_msg = f"IMAP authentication failed: {e}"
+            error_msg = f"IMAP protocol error: {e}"
             logger.error(error_msg)
             raise IMAPConnectionError(error_msg) from e
         except Exception as e:

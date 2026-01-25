@@ -1,6 +1,6 @@
 # Task ID: 6
 # Title: Implement Microsoft OAuth provider
-# Status: pending
+# Status: done
 # Dependencies: 2, 4
 # Priority: medium
 # Description: Create the Microsoft-specific OAuth implementation
@@ -21,37 +21,37 @@ In `src/auth/providers/microsoft.py`:
 Write unit tests with mocked Microsoft API responses. Test authorization URL generation, token exchange, and refresh flows. Verify correct scopes are requested. Test error handling with various API error responses.
 
 # Subtasks:
-## 1. Create MicrosoftOAuthProvider class skeleton and configure MSAL app [pending]
+## 1. Create MicrosoftOAuthProvider class skeleton and configure MSAL app [done]
 ### Dependencies: None
 ### Description: Implement the base class structure, load environment variables, and initialize MSAL PublicClientApplication with Microsoft-specific endpoints and scopes.
 ### Details:
 1. Create `MicrosoftOAuthProvider` class inheriting from base OAuth provider interface in `src/auth/providers/microsoft.py`. 2. Load `MS_CLIENT_ID` and `MS_CLIENT_SECRET` from environment variables using `os.getenv()`. 3. Initialize `msal.PublicClientApplication` with authority `https://login.microsoftonline.com/common`, client_id, and client_credential. 4. Define required scopes: `['https://outlook.office.com/IMAP.AccessAsUser.All', 'https://outlook.office.com/User.Read', 'offline_access']`. 5. Add basic error handling for missing environment variables with descriptive messages.
 
-## 2. Implement authorization URL generation [pending]
+## 2. Implement authorization URL generation [done]
 ### Dependencies: 6.1
 ### Description: Create method to generate Microsoft authorization URL using MSAL's `initiate_auth_code_flow()` with correct scopes and state parameter.
 ### Details:
 1. Implement `get_authorization_url()` method that calls `msal_app.initiate_auth_code_flow(scopes=scopes, redirect_uri=self.redirect_uri)`. 2. Generate cryptographically secure state using `secrets.token_urlsafe(32)` or `uuid.uuid4()`. 3. Store flow state in class instance or session for validation. 4. Return auth URL, state, and flow data. 5. Ensure `offline_access` scope is included for refresh token support. 6. Add validation for required scopes presence.
 
-## 3. Implement authorization callback handling and token exchange [pending]
+## 3. Implement authorization callback handling and token exchange [done]
 ### Dependencies: 6.1, 6.2
 ### Description: Create callback handler to process authorization code, validate state, and exchange code for access/refresh tokens using MSAL.
 ### Details:
 1. Implement `handle_callback()` method accepting code and state parameters. 2. Validate state matches stored value from authorization step. 3. Call `msal_app.acquire_token_by_auth_code_flow(flow, {'code': code, 'state': state})`. 4. Extract `access_token`, `refresh_token`, `id_token`, and `expires_in` from result. 5. Handle MSAL errors (`MsalError`) with specific error messages for invalid code, expired code, etc. 6. Return standardized token response matching base provider interface.
 
-## 4. Implement token refresh functionality [pending]
+## 4. Implement token refresh functionality [done]
 ### Dependencies: 6.1, 6.3
 ### Description: Add refresh token method using MSAL's `acquire_token_silent()` and `acquire_token_by_refresh_token()` flows.
 ### Details:
 1. Implement `refresh_tokens()` method accepting current refresh_token. 2. First attempt silent refresh with `acquire_token_silent(scopes=scopes, account=None)`. 3. Fallback to explicit refresh: `acquire_token_by_refresh_token(refresh_token, scopes=scopes)`. 4. Handle token expiration gracefully by checking `expires_on`. 5. Return new access_token, refresh_token, and expiry info. 6. Implement retry logic (max 2 attempts) for transient auth failures.
 
-## 5. Add comprehensive error handling and logging [pending]
+## 5. Add comprehensive error handling and logging [done]
 ### Dependencies: 6.1, 6.2, 6.3, 6.4
 ### Description: Implement robust error handling for all OAuth flows with specific error messages, logging, and security best practices.
 ### Details:
 1. Create custom `MicrosoftOAuthError` exception subclass. 2. Add structured logging using `logging` module for all major operations (auth URL generation, callback, refresh). 3. Handle specific MSAL error codes: `invalid_grant`, `interaction_required`, `consent_required`. 4. Sanitize error responses (never expose client_secret or tokens in logs). 5. Implement request timeout (30s) and connection error handling. 6. Add input validation for code, state, and token parameters.
 
-## 6. Write unit tests for all Microsoft OAuth components [pending]
+## 6. Write unit tests for all Microsoft OAuth components [done]
 ### Dependencies: 6.1, 6.2, 6.3, 6.4, 6.5
 ### Description: Create comprehensive test suite covering authorization flow, token exchange, refresh, and error scenarios using pytest and pytest-mock.
 ### Details:

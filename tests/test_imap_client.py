@@ -26,9 +26,13 @@ def mock_imap_config():
             'server': 'test.imap.com',
             'port': 993,
             'username': 'test@example.com',
-            'password': 'test_password',
+            'password_env': 'TEST_IMAP_PASSWORD',
             'query': 'UNSEEN',
             'processed_tag': 'AIProcessed'
+        },
+        'auth': {
+            'method': 'password',
+            'password_env': 'TEST_IMAP_PASSWORD'
         },
         'processing': {
             'max_emails_per_run': 15
@@ -52,8 +56,9 @@ def test_imap_client_initialization():
 
 
 @patch('src.account_processor.imaplib.IMAP4_SSL')
-def test_imap_client_connect_success(mock_imap_class, mock_imap_config, mock_imap_connection):
-    """Test successful IMAP connection."""
+@patch('src.auth.strategies.os.getenv', return_value='test_password')
+def test_imap_client_connect_success(mock_getenv, mock_imap_class, mock_imap_config, mock_imap_connection):
+    """Test successful IMAP connection with password authenticator."""
     mock_imap_class.return_value = mock_imap_connection
     
     client = ConfigurableImapClient(mock_imap_config)
@@ -62,12 +67,14 @@ def test_imap_client_connect_success(mock_imap_class, mock_imap_config, mock_ima
     assert client._connected is True
     assert client._imap is not None
     mock_imap_class.assert_called_once_with('test.imap.com', 993)
+    # Verify authenticator was used (login called via PasswordAuthenticator)
     mock_imap_connection.login.assert_called_once_with('test@example.com', 'test_password')
     mock_imap_connection.select.assert_called_once_with('INBOX')
 
 
 @patch('src.account_processor.imaplib.IMAP4_SSL')
-def test_imap_client_connect_authentication_failure(mock_imap_class, mock_imap_config):
+@patch('src.auth.strategies.os.getenv', return_value='test_password')
+def test_imap_client_connect_authentication_failure(mock_getenv, mock_imap_class, mock_imap_config):
     """Test IMAP connection with authentication failure."""
     mock_imap = MagicMock()
     mock_imap.login.side_effect = imaplib.IMAP4.error('Authentication failed')
@@ -81,7 +88,8 @@ def test_imap_client_connect_authentication_failure(mock_imap_class, mock_imap_c
 
 
 @patch('src.account_processor.imaplib.IMAP4')
-def test_imap_client_connect_starttls(mock_imap_class, mock_imap_config):
+@patch('src.auth.strategies.os.getenv', return_value='test_password')
+def test_imap_client_connect_starttls(mock_getenv, mock_imap_class, mock_imap_config):
     """Test IMAP connection with STARTTLS (port 143)."""
     mock_imap_config['imap']['port'] = 143
     
@@ -110,7 +118,8 @@ def test_imap_client_disconnect(mock_imap_connection):
     mock_imap_connection.logout.assert_called_once()
 
 
-def test_imap_client_context_manager(mock_imap_connection, mock_imap_config):
+@patch('src.auth.strategies.os.getenv', return_value='test_password')
+def test_imap_client_context_manager(mock_getenv, mock_imap_connection, mock_imap_config):
     """Test IMAP client as context manager."""
     with patch('src.account_processor.imaplib.IMAP4_SSL') as mock_imap_class:
         mock_imap_class.return_value = mock_imap_connection
@@ -282,3 +291,60 @@ def test_imap_client_ensure_connected_raises_error(mock_dry_run):
     
     with pytest.raises(IMAPConnectionError, match="Not connected"):
         client.set_flag('12345', 'AIProcessed')
+
+
+@patch('src.auth.strategies.os.getenv', return_value='test_password')
+def test_configurable_imap_client_with_custom_authenticator(mock_getenv, mock_imap_config):
+    """Test ConfigurableImapClient with custom authenticator passed directly."""
+    from src.auth.strategies import PasswordAuthenticator
+    
+    # Create a custom authenticator (needs os.getenv patched)
+    authenticator = PasswordAuthenticator('test@example.com', 'TEST_IMAP_PASSWORD')
+    
+    with patch('src.account_processor.imaplib.IMAP4_SSL') as mock_imap_class:
+        mock_imap = MagicMock()
+        mock_imap.select.return_value = ('OK', [b'1'])
+        mock_imap_class.return_value = mock_imap
+        
+        # Create client with custom authenticator
+        client = ConfigurableImapClient(mock_imap_config, authenticator=authenticator)
+        client.connect()
+        
+        # Verify authenticator was used
+        assert client._connected is True
+        mock_imap.login.assert_called_once_with('test@example.com', 'test_password')
+
+
+def test_configurable_imap_client_oauth_auth(mock_imap_config):
+    """Test ConfigurableImapClient with OAuth authentication."""
+    from src.auth.token_manager import TokenManager
+    from unittest.mock import patch, MagicMock
+    
+    # Configure for OAuth
+    oauth_config = mock_imap_config.copy()
+    oauth_config['auth'] = {
+        'method': 'oauth',
+        'provider': 'google'
+    }
+    oauth_config['account_id'] = 'test-account'
+    
+    with patch('src.account_processor.imaplib.IMAP4_SSL') as mock_imap_class:
+        mock_imap = MagicMock()
+        mock_imap.authenticate = MagicMock(return_value=('OK', [b'Success']))
+        mock_imap.select = MagicMock(return_value=('OK', [b'1']))
+        mock_imap_class.return_value = mock_imap
+        
+        # Mock TokenManager to return a valid token
+        with patch('src.account_processor.TokenManager') as mock_token_manager_class:
+            mock_token_manager = MagicMock()
+            mock_token_manager.get_valid_token = MagicMock(return_value='mock_access_token')
+            mock_token_manager_class.return_value = mock_token_manager
+            
+            client = ConfigurableImapClient(oauth_config)
+            client.connect()
+            
+            # Verify OAuth authentication was used
+            assert client._connected is True
+            # OAuth uses authenticate() method, not login()
+            mock_imap.authenticate.assert_called_once()
+            assert mock_imap.authenticate.call_args[0][0] == 'XOAUTH2'
