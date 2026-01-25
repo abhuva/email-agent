@@ -307,7 +307,7 @@
       "id": 6,
       "title": "Implement Microsoft OAuth provider",
       "description": "Create the Microsoft-specific OAuth implementation",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         2,
         4
@@ -320,7 +320,7 @@
           "id": 1,
           "title": "Create MicrosoftOAuthProvider class skeleton and configure MSAL app",
           "description": "Implement the base class structure, load environment variables, and initialize MSAL PublicClientApplication with Microsoft-specific endpoints and scopes.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1. Create `MicrosoftOAuthProvider` class inheriting from base OAuth provider interface in `src/auth/providers/microsoft.py`. 2. Load `MS_CLIENT_ID` and `MS_CLIENT_SECRET` from environment variables using `os.getenv()`. 3. Initialize `msal.PublicClientApplication` with authority `https://login.microsoftonline.com/common`, client_id, and client_credential. 4. Define required scopes: `['https://outlook.office.com/IMAP.AccessAsUser.All', 'https://outlook.office.com/User.Read', 'offline_access']`. 5. Add basic error handling for missing environment variables with descriptive messages."
         },
@@ -328,7 +328,7 @@
           "id": 2,
           "title": "Implement authorization URL generation",
           "description": "Create method to generate Microsoft authorization URL using MSAL's `initiate_auth_code_flow()` with correct scopes and state parameter.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -338,7 +338,7 @@
           "id": 3,
           "title": "Implement authorization callback handling and token exchange",
           "description": "Create callback handler to process authorization code, validate state, and exchange code for access/refresh tokens using MSAL.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -349,7 +349,7 @@
           "id": 4,
           "title": "Implement token refresh functionality",
           "description": "Add refresh token method using MSAL's `acquire_token_silent()` and `acquire_token_by_refresh_token()` flows.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             3
@@ -360,7 +360,7 @@
           "id": 5,
           "title": "Add comprehensive error handling and logging",
           "description": "Implement robust error handling for all OAuth flows with specific error messages, logging, and security best practices.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -373,7 +373,7 @@
           "id": 6,
           "title": "Write unit tests for all Microsoft OAuth components",
           "description": "Create comprehensive test suite covering authorization flow, token exchange, refresh, and error scenarios using pytest and pytest-mock.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
