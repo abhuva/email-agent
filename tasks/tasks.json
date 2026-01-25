@@ -80,7 +80,7 @@
       "id": 3,
       "title": "Update configuration schema for OAuth support",
       "description": "Modify the configuration schema to include OAuth authentication options",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         1
       ],
@@ -92,7 +92,7 @@
           "id": 1,
           "title": "Add OAuth auth block to base config schema",
           "description": "Update `src/config_schema.py` to include the new `auth` block with discriminated union structure and default values for backward compatibility.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Define Pydantic BaseModel for `AuthConfig` using discriminated unions with `method: Literal['password', 'oauth'] = 'password'`. Add `provider: Optional[Literal['google', 'microsoft']] = None` and `password_env: Optional[str] = None`. Nest within existing account configuration structure. Ensure existing configs without `auth` block default to `method='password'`."
         },
@@ -100,7 +100,7 @@
           "id": 2,
           "title": "Implement conditional validation logic for auth methods",
           "description": "Add Pydantic validators to enforce conditional field requirements based on `method` value.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -110,7 +110,7 @@
           "id": 3,
           "title": "Add provider enum validation and OAuth 2.0 fields",
           "description": "Restrict `provider` to Google/Microsoft and add OAuth 2.0 specific configuration fields.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -120,7 +120,7 @@
           "id": 4,
           "title": "Ensure V4 backward compatibility and migration handling",
           "description": "Verify existing V4 configurations parse correctly and add migration warnings.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -132,7 +132,7 @@
           "id": 5,
           "title": "Add comprehensive unit tests for auth schema validation",
           "description": "Create test suite covering all validation paths, edge cases, and backward compatibility.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
