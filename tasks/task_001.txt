@@ -1,6 +1,6 @@
 # Task ID: 1
 # Title: Set up project structure and dependencies
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Create the necessary directory structure and add required dependencies for OAuth integration

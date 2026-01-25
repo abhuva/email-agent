@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Define authentication interfaces and base classes
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Implement the authenticator protocol and base classes for the strategy pattern
@@ -17,7 +17,7 @@ Ensure all interfaces use proper type hints and docstrings for clarity.
 Write unit tests to verify interface definitions. Use static type checking with mypy to ensure protocol adherence.
 
 # Subtasks:
-## 1. Define AuthenticatorProtocol and core type aliases [pending]
+## 1. Define AuthenticatorProtocol and core type aliases [done]
 ### Dependencies: None
 ### Description: Create the main protocol interface and essential type definitions for token management with proper type hints and docstrings.
 ### Details:
@@ -27,7 +27,7 @@ In `src/auth/interfaces.py`:
 - Define `OAuthConfig = TypedDict('OAuthConfig', {'client_id': str, 'client_secret': str, 'redirect_uri': str, 'scopes': list[str], 'auth_url': str, 'token_url': str})`.
 - Include validation for required OAuth 2.0 security parameters per RFC 6749.
 
-## 2. Implement OAuthProvider abstract base class [pending]
+## 2. Implement OAuthProvider abstract base class [done]
 ### Dependencies: 2.1
 ### Description: Create the base ABC for OAuth providers implementing strategy pattern with core OAuth 2.0 Authorization Code Flow methods.
 ### Details:
@@ -38,7 +38,7 @@ Define `OAuthProvider(ABC)` with:
 - `validate_token(token_info: TokenInfo) -> bool`: Checks expiration with 5min buffer.
 - Include docstrings referencing OAuth 2.0 RFCs and security best practices (state validation, PKCE).
 
-## 3. Add token management utilities and error handling [pending]
+## 3. Add token management utilities and error handling [done]
 ### Dependencies: 2.1, 2.2
 ### Description: Implement common token utilities and comprehensive error handling interfaces for robust OAuth implementation.
 ### Details:
@@ -49,7 +49,7 @@ Add to `interfaces.py`:
 - `generate_state() -> str` and `generate_pkce_challenge() -> tuple[str, str]`: Security utilities.
 - Define `ProviderFactory = Callable[[OAuthConfig], OAuthProvider]` protocol for dependency injection.
 
-## 4. Implement XOAUTH2 SASL utilities [pending]
+## 4. Implement XOAUTH2 SASL utilities [done]
 ### Dependencies: 2.1
 ### Description: Create SASL string generation functions specifically for IMAP XOAUTH2 authentication per RFC 7628.
 ### Details:
@@ -59,7 +59,7 @@ Add SASL utilities:
 - Include unit test functions: `test_sasl_base64_encoding()`, `test_sasl_format_rfc7628()`.
 - Docstrings must reference RFC 7628 XOAUTH2 specification and include example SASL strings.
 
-## 5. Add comprehensive docstrings and type validation tests [pending]
+## 5. Add comprehensive docstrings and type validation tests [done]
 ### Dependencies: 2.1, 2.2, 2.3, 2.4
 ### Description: Complete interfaces with full documentation, backward compatibility checks, and interface compliance tests.
 ### Details:

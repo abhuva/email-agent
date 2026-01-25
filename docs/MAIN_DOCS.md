@@ -27,6 +27,11 @@ This is the top-level guide for all docs, implementation details, and project st
 - [Live Test Guide](live-test-guide.md) — Guide for manual live testing
 - [Task Master Project Management](../README-task-master.md) — Task management system
 
+## V5 Module Documentation (OAuth Integration - In Development)
+
+### V5 Authentication
+- **[V5 Authentication Interfaces](v5-auth-interfaces.md)** — Authentication protocols, OAuth providers, and utilities (Task 2) ✅
+
 ## V4 Module Documentation (Current Production Version)
 
 ### Core V4 Features
