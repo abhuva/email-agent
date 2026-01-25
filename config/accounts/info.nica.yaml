@@ -2,4 +2,4 @@ imap:
   username: info@nica.network
   password_env: IMAP_PASSWORD_INFO_NICA
 processing:
-  max_emails_per_run: 10
+  max_emails_per_run: 99999

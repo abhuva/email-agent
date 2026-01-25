@@ -17,25 +17,31 @@ from src.llm_client import (
     LLMResponseParseError,
     LLMClientError
 )
-from src.settings import Settings
+# V4: LLMClient now uses config dictionaries, not Settings
 
 
 @pytest.fixture
-def mock_settings(monkeypatch):
-    """Mock settings facade for testing."""
-    settings_mock = Mock(spec=Settings)
-    settings_mock.get_openrouter_api_key.return_value = 'test_api_key'
-    settings_mock.get_openrouter_api_url.return_value = 'https://openrouter.ai/api/v1'
-    settings_mock.get_classification_model.return_value = 'test-model'
-    settings_mock.get_classification_temperature.return_value = 0.2
-    settings_mock.get_classification_retry_attempts.return_value = 3
-    settings_mock.get_classification_retry_delay_seconds.return_value = 1  # Short delay for tests
-    settings_mock.get_max_body_chars.return_value = 4000
+def mock_llm_config():
+    """Mock LLM configuration dictionary for testing."""
+    import os
+    # Set environment variable for API key
+    os.environ['OPENROUTER_API_KEY'] = 'test_api_key'
     
-    # Patch the settings singleton
-    import src.llm_client
-    monkeypatch.setattr(src.llm_client, 'settings', settings_mock)
-    return settings_mock
+    return {
+        'openrouter': {
+            'api_key_env': 'OPENROUTER_API_KEY',
+            'api_url': 'https://openrouter.ai/api/v1'
+        },
+        'classification': {
+            'model': 'test-model',
+            'temperature': 0.2,
+            'retry_attempts': 3,
+            'retry_delay_seconds': 1
+        },
+        'processing': {
+            'max_body_chars': 4000
+        }
+    }
 
 
 def test_llm_response_dataclass():
@@ -46,15 +52,15 @@ def test_llm_response_dataclass():
     assert response.to_dict() == {"spam_score": 2, "importance_score": 8}
 
 
-def test_llm_client_initialization():
+def test_llm_client_initialization(mock_llm_config):
     """Test that LLMClient initializes correctly."""
-    client = LLMClient()
-    assert client._api_key is None
-    assert client._api_url is None
+    client = LLMClient(mock_llm_config)
+    assert client._api_key == 'test_api_key'
+    assert client._api_url == 'https://openrouter.ai/api/v1'
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_classify_email_success(mock_post, mock_settings):
+def test_llm_client_classify_email_success(mock_post, mock_llm_config):
     """Test successful email classification."""
     # Mock API response - return dict directly from json() method
     api_response_dict = {
@@ -73,7 +79,7 @@ def test_llm_client_classify_email_success(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email("Test email content")
     
     assert isinstance(result, LLMResponse)
@@ -90,7 +96,7 @@ def test_llm_client_classify_email_success(mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_classify_email_with_user_prompt(mock_post, mock_settings):
+def test_llm_client_classify_email_with_user_prompt(mock_post, mock_llm_config):
     """Test email classification with custom user prompt."""
     api_response_dict = {
         "choices": [{
@@ -106,7 +112,7 @@ def test_llm_client_classify_email_with_user_prompt(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email(
         "Test email",
         user_prompt="Custom classification prompt"
@@ -122,9 +128,9 @@ def test_llm_client_classify_email_with_user_prompt(mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_classify_email_truncation(mock_post, mock_settings):
+def test_llm_client_classify_email_truncation(mock_post, mock_llm_config):
     """Test that email content is truncated if too long."""
-    mock_settings.get_max_body_chars.return_value = 100
+    mock_llm_config['processing']['max_body_chars'] = 100
     
     api_response_dict = {
         "choices": [{
@@ -140,7 +146,7 @@ def test_llm_client_classify_email_truncation(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     long_content = "x" * 200
     result = client.classify_email(long_content)
     
@@ -151,7 +157,7 @@ def test_llm_client_classify_email_truncation(mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_parse_json_response(mock_post, mock_settings):
+def test_llm_client_parse_json_response(mock_post, mock_llm_config):
     """Test parsing of valid JSON response."""
     api_response_dict = {
         "choices": [{
@@ -167,7 +173,7 @@ def test_llm_client_parse_json_response(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email("Test")
     
     assert result.spam_score == 5
@@ -175,7 +181,7 @@ def test_llm_client_parse_json_response(mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
+def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_llm_config):
     """Test parsing JSON wrapped in markdown code blocks."""
     api_response_dict = {
         "choices": [{
@@ -191,7 +197,7 @@ def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email("Test")
     
     assert result.spam_score == 4
@@ -200,7 +206,7 @@ def test_llm_client_parse_markdown_wrapped_json(mock_post, mock_settings):
 
 @patch('src.llm_client.requests.post')
 @patch('src.llm_client.time.sleep')
-def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
+def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_llm_config):
     """Test handling of invalid JSON response (triggers retries, then raises LLMAPIError)."""
     api_response_dict = {
         "choices": [{
@@ -216,7 +222,7 @@ def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     # Parse errors trigger retries, then raise LLMAPIError after all retries exhausted
     with pytest.raises(LLMAPIError, match="Failed after 3 attempts"):
         client.classify_email("Test")
@@ -227,7 +233,7 @@ def test_llm_client_parse_invalid_json(mock_sleep, mock_post, mock_settings):
 
 @patch('src.llm_client.requests.post')
 @patch('src.llm_client.time.sleep')
-def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
+def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_llm_config):
     """Test handling of response with missing required fields (triggers retries)."""
     api_response_dict = {
         "choices": [{
@@ -243,7 +249,7 @@ def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     # Missing fields trigger retries, then raise LLMAPIError after all retries exhausted
     with pytest.raises(LLMAPIError, match="Failed after 3 attempts"):
         client.classify_email("Test")
@@ -253,7 +259,7 @@ def test_llm_client_parse_missing_fields(mock_sleep, mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_parse_out_of_range_scores(mock_post, mock_settings):
+def test_llm_client_parse_out_of_range_scores(mock_post, mock_llm_config):
     """Test that out-of-range scores are clamped."""
     api_response_dict = {
         "choices": [{
@@ -269,7 +275,7 @@ def test_llm_client_parse_out_of_range_scores(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email("Test")
     
     # Scores should be clamped to 0-10
@@ -278,7 +284,7 @@ def test_llm_client_parse_out_of_range_scores(mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_http_error(mock_post, mock_settings):
+def test_llm_client_http_error(mock_post, mock_llm_config):
     """Test handling of HTTP errors."""
     mock_response = MagicMock()
     mock_response.status_code = 429
@@ -287,14 +293,14 @@ def test_llm_client_http_error(mock_post, mock_settings):
     mock_response.raise_for_status.side_effect = http_error
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     with pytest.raises(LLMAPIError, match="HTTP 429"):
         client.classify_email("Test")
 
 
 @patch('src.llm_client.requests.post')
 @patch('src.llm_client.time.sleep')
-def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
+def test_llm_client_retry_logic(mock_sleep, mock_post, mock_llm_config):
     """Test that retry logic works correctly."""
     # First two attempts fail, third succeeds
     mock_response_fail = MagicMock()
@@ -318,7 +324,7 @@ def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
     
     mock_post.side_effect = [mock_response_fail, mock_response_fail, mock_response_success]
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     result = client.classify_email("Test")
     
     # Should have retried 3 times (2 failures + 1 success)
@@ -330,7 +336,7 @@ def test_llm_client_retry_logic(mock_sleep, mock_post, mock_settings):
 
 @patch('src.llm_client.requests.post')
 @patch('src.llm_client.time.sleep')
-def test_llm_client_retry_exhaustion(mock_sleep, mock_post, mock_settings):
+def test_llm_client_retry_exhaustion(mock_sleep, mock_post, mock_llm_config):
     """Test that all retries are exhausted before raising error."""
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -339,7 +345,7 @@ def test_llm_client_retry_exhaustion(mock_sleep, mock_post, mock_settings):
     mock_response.raise_for_status.side_effect = http_error
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     with pytest.raises(LLMAPIError, match="Failed after 3 attempts"):
         client.classify_email("Test")
     
@@ -349,27 +355,27 @@ def test_llm_client_retry_exhaustion(mock_sleep, mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_network_error(mock_post, mock_settings):
+def test_llm_client_network_error(mock_post, mock_llm_config):
     """Test handling of network errors."""
     mock_post.side_effect = RequestException("Network connection failed")
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     with pytest.raises(LLMAPIError, match="Network error"):
         client.classify_email("Test")
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_timeout_error(mock_post, mock_settings):
+def test_llm_client_timeout_error(mock_post, mock_llm_config):
     """Test handling of timeout errors."""
     mock_post.side_effect = Timeout("Request timed out")
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     with pytest.raises(LLMAPIError, match="Network error"):
         client.classify_email("Test")
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_invalid_json_response(mock_post, mock_settings):
+def test_llm_client_invalid_json_response(mock_post, mock_llm_config):
     """Test handling of invalid JSON in API response."""
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
@@ -378,14 +384,14 @@ def test_llm_client_invalid_json_response(mock_post, mock_settings):
     mock_response.json = raise_json_error
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     with pytest.raises(LLMAPIError, match="Invalid JSON in API response"):
         client.classify_email("Test")
 
 
 @patch('src.llm_client.requests.post')
 @patch('src.llm_client.time.sleep')
-def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
+def test_llm_client_empty_response(mock_sleep, mock_post, mock_llm_config):
     """Test handling of empty response content (triggers retries)."""
     api_response_dict = {
         "choices": [{
@@ -401,7 +407,7 @@ def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     # Empty response triggers retries, then raises LLMAPIError after all retries exhausted
     with pytest.raises(LLMAPIError, match="Failed after 3 attempts"):
         client.classify_email("Test")
@@ -411,7 +417,7 @@ def test_llm_client_empty_response(mock_sleep, mock_post, mock_settings):
 
 
 @patch('src.llm_client.requests.post')
-def test_llm_client_response_format_instructions(mock_post, mock_settings):
+def test_llm_client_response_format_instructions(mock_post, mock_llm_config):
     """Test that prompt includes JSON format instructions."""
     api_response_dict = {
         "choices": [{
@@ -427,7 +433,7 @@ def test_llm_client_response_format_instructions(mock_post, mock_settings):
     mock_response.raise_for_status = MagicMock(return_value=None)
     mock_post.return_value = mock_response
     
-    client = LLMClient()
+    client = LLMClient(mock_llm_config)
     client.classify_email("Test email")
     
     # Verify prompt includes JSON format instructions

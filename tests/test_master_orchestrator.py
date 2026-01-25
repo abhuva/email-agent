@@ -19,6 +19,24 @@ from unittest.mock import Mock, MagicMock, patch, call
 from pathlib import Path
 from typing import List, Dict, Any
 
+
+def create_test_args(**kwargs):
+    """Helper to create test argparse.Namespace with all required fields."""
+    defaults = {
+        'account_list': None,
+        'accounts': None,
+        'all_accounts': False,
+        'config_dir': None,
+        'log_level': None,
+        'dry_run': False,
+        'force_reprocess': False,
+        'uid': None,
+        'max_emails': None,
+        'debug_prompt': False
+    }
+    defaults.update(kwargs)
+    return argparse.Namespace(**defaults)
+
 from src.orchestrator import (
     MasterOrchestrator,
     OrchestrationResult,
@@ -100,9 +118,7 @@ class TestMasterOrchestratorInitialization:
         orchestrator = MasterOrchestrator()
         assert orchestrator.config_base_dir == Path("config").resolve()
         assert orchestrator.config_loader is not None
-        assert orchestrator.llm_client is None
-        assert orchestrator.note_generator is None
-        assert orchestrator.decision_logic is None
+        # Note: V4 no longer has shared services - components are created per-account
     
     def test_initialization_with_custom_config_dir(self, temp_config_dir):
         """Test initialization with custom config directory."""
@@ -330,7 +346,22 @@ class TestAccountProcessorCreation:
     
     def test_create_account_processor(self, master_orchestrator, mock_config_loader):
         """Test creating an AccountProcessor instance."""
-        master_orchestrator._initialize_shared_services = Mock()
+        # Mock the config to include classification model
+        mock_config = {
+            'classification': {
+                'model': 'test-model'
+            },
+            'imap': {
+                'server': 'test.imap.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'paths': {
+                'obsidian_vault': '/tmp/vault',
+                'template_file': '/tmp/template.md.j2'
+            }
+        }
+        mock_config_loader.load_merged_config.return_value = mock_config
         
         with patch('src.orchestrator.AccountProcessor') as mock_processor_class:
             mock_processor = Mock()
@@ -349,57 +380,40 @@ class TestAccountProcessorCreation:
         with pytest.raises(ConfigurationError, match="Failed to load configuration"):
             master_orchestrator.create_account_processor('work')
     
-    def test_create_account_processor_initializes_services(self, master_orchestrator):
-        """Test that shared services are initialized."""
-        master_orchestrator._initialize_shared_services = Mock()
+    def test_create_account_processor_initializes_services(self, master_orchestrator, mock_config_loader):
+        """Test that account processor is created with proper config."""
+        # Mock the config to include classification model
+        mock_config = {
+            'classification': {
+                'model': 'test-model'
+            },
+            'imap': {
+                'server': 'test.imap.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'paths': {
+                'obsidian_vault': '/tmp/vault',
+                'template_file': '/tmp/template.md.j2'
+            }
+        }
+        mock_config_loader.load_merged_config.return_value = mock_config
         
-        with patch('src.orchestrator.AccountProcessor'):
-            master_orchestrator.create_account_processor('work')
-            master_orchestrator._initialize_shared_services.assert_called_once()
+        with patch('src.orchestrator.AccountProcessor') as mock_processor_class:
+            mock_processor = Mock()
+            mock_processor_class.return_value = mock_processor
+            
+            processor = master_orchestrator.create_account_processor('work')
+            
+            assert processor is not None
+            mock_config_loader.load_merged_config.assert_called_once_with('work')
 
 
 # ============================================================================
 # Shared Services Initialization Tests
 # ============================================================================
 
-class TestSharedServicesInitialization:
-    """Test shared services initialization."""
-    
-    def test_initialize_shared_services(self, master_orchestrator):
-        """Test that shared services are initialized."""
-        with patch('src.orchestrator.LLMClient') as mock_llm, \
-             patch('src.orchestrator.NoteGenerator') as mock_note, \
-             patch('src.orchestrator.DecisionLogic') as mock_decision:
-            
-            mock_llm.return_value = Mock()
-            mock_note.return_value = Mock()
-            mock_decision.return_value = Mock()
-            
-            master_orchestrator._initialize_shared_services()
-            
-            assert master_orchestrator.llm_client is not None
-            assert master_orchestrator.note_generator is not None
-            assert master_orchestrator.decision_logic is not None
-    
-    def test_initialize_shared_services_idempotent(self, master_orchestrator):
-        """Test that initialization is idempotent."""
-        with patch('src.orchestrator.LLMClient') as mock_llm, \
-             patch('src.orchestrator.NoteGenerator') as mock_note, \
-             patch('src.orchestrator.DecisionLogic') as mock_decision:
-            
-            mock_llm.return_value = Mock()
-            mock_note.return_value = Mock()
-            mock_decision.return_value = Mock()
-            
-            # Initialize twice
-            master_orchestrator._initialize_shared_services()
-            first_llm = master_orchestrator.llm_client
-            
-            master_orchestrator._initialize_shared_services()
-            second_llm = master_orchestrator.llm_client
-            
-            # Should be the same instance
-            assert first_llm is second_llm
+# V3 shared services tests removed - V4 creates components per-account, not as shared services
 
 
 # ============================================================================
@@ -412,14 +426,7 @@ class TestOrchestrationRun:
     def test_run_single_account_success(self, master_orchestrator, mock_account_processor):
         """Test successful processing of a single account."""
         # Setup mocks
-        args = argparse.Namespace(
-            account_list=['work'],
-            accounts=None,
-            all_accounts=False,
-            config_dir=None,
-            log_level=None,
-            dry_run=False
-        )
+        args = create_test_args(account_list=['work'])
         master_orchestrator.parse_args = Mock(return_value=args)
         
         def select_accounts_side_effect(args):
@@ -459,14 +466,7 @@ class TestOrchestrationRun:
         personal_processor.run = Mock()
         personal_processor.teardown = Mock()
         
-        args = argparse.Namespace(
-            account_list=None,
-            accounts=None,
-            all_accounts=True,
-            config_dir=None,
-            log_level=None,
-            dry_run=False
-        )
+        args = create_test_args(all_accounts=True)
         master_orchestrator.parse_args = Mock(return_value=args)
         
         def select_accounts_side_effect(args):
@@ -539,14 +539,7 @@ class TestOrchestrationRun:
         mock_account_processor.setup = Mock()
         mock_account_processor.run.side_effect = AccountProcessorRunError("Processing failed")
         
-        args = argparse.Namespace(
-            account_list=['work'],
-            accounts=None,
-            all_accounts=False,
-            config_dir=None,
-            log_level=None,
-            dry_run=False
-        )
+        args = create_test_args(account_list=['work'])
         master_orchestrator.parse_args = Mock(return_value=args)
         
         def select_accounts_side_effect(args):
@@ -581,14 +574,7 @@ class TestOrchestrationRun:
         personal_processor.run.side_effect = AccountProcessorRunError("Failed")
         personal_processor.teardown = Mock()
         
-        args = argparse.Namespace(
-            account_list=None,
-            accounts=None,
-            all_accounts=True,
-            config_dir=None,
-            log_level=None,
-            dry_run=False
-        )
+        args = create_test_args(all_accounts=True)
         master_orchestrator.parse_args = Mock(return_value=args)
         
         def select_accounts_side_effect(args):

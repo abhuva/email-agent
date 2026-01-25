@@ -6,6 +6,7 @@ import os
 import pytest
 from pathlib import Path
 from datetime import datetime
+from unittest.mock import patch
 from src.obsidian_utils import (
     sanitize_filename,
     generate_unique_filename,
@@ -185,7 +186,8 @@ class TestHasWritePermission:
 class TestSafeWriteFile:
     """Tests for safe_write_file function."""
     
-    def test_basic_write(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_basic_write(self, mock_dry_run, tmp_path):
         """Test basic file writing."""
         file_path = str(tmp_path / "test.md")
         content = "# Test Note\n\nThis is a test."
@@ -195,7 +197,8 @@ class TestSafeWriteFile:
         assert file_exists(file_path)
         assert Path(file_path).read_text(encoding='utf-8') == content
     
-    def test_write_creates_directory(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_write_creates_directory(self, mock_dry_run, tmp_path):
         """Test that missing directories are created."""
         file_path = str(tmp_path / "subdir" / "test.md")
         content = "# Test"
@@ -215,7 +218,8 @@ class TestSafeWriteFile:
         # Original file should still exist
         assert file_path.read_text() == "existing"
     
-    def test_write_with_overwrite(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_write_with_overwrite(self, mock_dry_run, tmp_path):
         """Test that existing file is overwritten when overwrite=True."""
         file_path = tmp_path / "test.md"
         file_path.write_text("old content")
@@ -224,14 +228,15 @@ class TestSafeWriteFile:
         assert result == str(file_path)
         assert file_path.read_text() == "new content"
     
-    def test_invalid_path_raises_error(self):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_invalid_path_raises_error(self, mock_dry_run):
         """Test that invalid path raises InvalidPathError."""
-        # This might not raise on all systems, but we test the structure
+        # Empty path should raise InvalidPathError
         with pytest.raises((InvalidPathError, FileWriteError)):
-            # Try with a path that might be invalid
             safe_write_file("content", "")
     
-    def test_unicode_content(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_unicode_content(self, mock_dry_run, tmp_path):
         """Test writing unicode content."""
         file_path = str(tmp_path / "unicode.md")
         content = "# Test with émojis 🎉 and ünicode"
@@ -240,7 +245,8 @@ class TestSafeWriteFile:
         assert file_exists(result)
         assert Path(result).read_text(encoding='utf-8') == content
     
-    def test_large_content(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_large_content(self, mock_dry_run, tmp_path):
         """Test writing large content."""
         file_path = str(tmp_path / "large.md")
         content = "A" * 10000
@@ -253,7 +259,8 @@ class TestSafeWriteFile:
 class TestIntegration:
     """Integration tests for complete workflows."""
     
-    def test_complete_workflow(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_complete_workflow(self, mock_dry_run, tmp_path):
         """Test complete workflow: sanitize -> generate -> write."""
         subject = "Project Update: Q4 Results / Important"
         base_path = str(tmp_path)
@@ -274,7 +281,8 @@ class TestIntegration:
         assert file_exists(result_path)
         assert Path(result_path).read_text(encoding='utf-8') == content
     
-    def test_multiple_writes_same_subject(self, tmp_path):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_multiple_writes_same_subject(self, mock_dry_run, tmp_path):
         """Test writing multiple files with same subject."""
         subject = "Test Subject"
         base_path = str(tmp_path)

@@ -243,7 +243,8 @@ def parse_summary_response(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
 def generate_email_summary(
     email: Dict[str, Any],
     client: OpenRouterClient,
-    summarization_result: Optional[Dict[str, Any]] = None
+    summarization_result: Optional[Dict[str, Any]] = None,
+    config: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Main function to generate email summary using LLM.
@@ -256,6 +257,8 @@ def generate_email_summary(
         client: OpenRouterClient instance
         summarization_result: Optional result from check_summarization_required()
                              If None, will check if summarization is needed
+        config: Optional configuration dict containing summarization settings
+               Should have 'summarization' key with 'model', 'temperature', etc.
     
     Returns:
         Dict with keys:
@@ -334,10 +337,19 @@ def generate_email_summary(
         )
         
         # Get model and settings from summarization config
-        # Note: These should be passed as parameters or retrieved from config dict
-        # For now, use defaults if not available
-        model = 'openai/gpt-4o-mini'  # Default model
-        temperature = 0.7  # Default temperature
+        summarization_config = config.get('summarization', {}) if config else {}
+        model = summarization_config.get('model')
+        if not model:
+            logger.error("Summarization model not configured. Please set 'summarization.model' in config.")
+            return {
+                'success': False,
+                'summary': '',
+                'action_items': [],
+                'priority': 'medium',
+                'error': 'model_not_configured'
+            }
+        
+        temperature = summarization_config.get('temperature', 0.3)
         max_tokens = 300  # Can be made configurable later if needed
         
         # Call LLM API

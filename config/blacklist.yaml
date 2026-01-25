@@ -110,4 +110,31 @@
 
 # Empty list - no active rules
 # Uncomment and customize the examples above, or add your own rules here:
-[]
+
+- trigger: "sender"
+  value: "reminders@facebookmail.com"
+  action: "drop"
+- trigger: "sender"
+  value: "infobyjhbwq@supsaleshop.ru"
+  action: "drop"
+- trigger: "sender"
+  value: "tf1g1us5@fgs.io"
+  action: "drop"
+- trigger: "sender"
+  value: "t6lx920r@hjr.io"
+  action: "drop"
+- trigger: "sender"
+  value: "ronak@smartseostrategist.com"
+  action: "drop"
+- trigger: "sender"
+  value: "support@healthandbeauty1.com"
+  action: "drop"
+- trigger: "sender"
+  value: "support@glartent.com"
+  action: "drop"
+- trigger: "sender"
+  value: "support@findhealthclinics.com"
+  action: "drop"
+- trigger: "sender"
+  value: "no-reply@karburatore.com"
+  action: "drop"

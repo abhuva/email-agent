@@ -378,8 +378,8 @@ def run_email_processing_loop(
                                                 summary_result = generate_email_summary(
                                                     email,
                                                     client,
-                                                    config,
-                                                    summarization_result
+                                                    summarization_result,
+                                                    config=config
                                                 )
                                                 
                                                 # Store summary result in email dict for note creation (Task 8)

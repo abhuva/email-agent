@@ -309,7 +309,8 @@ class MockImapClient(ImapClient):
         self,
         max_emails: Optional[int] = None,
         force_reprocess: bool = False,
-        uids: Optional[List[str]] = None
+        uids: Optional[List[str]] = None,
+        min_uid: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Get unprocessed emails from mock inbox.
@@ -318,6 +319,7 @@ class MockImapClient(ImapClient):
             max_emails: Maximum number of emails to return
             force_reprocess: If True, ignore processed flags
             uids: Optional list of UIDs to fetch (if provided, only fetch these)
+            min_uid: Optional minimum UID to filter by (only process emails with UID > min_uid)
             
         Returns:
             List of email dictionaries
@@ -330,6 +332,10 @@ class MockImapClient(ImapClient):
         
         # If UIDs provided, fetch only those
         if uids:
+            # Filter by min_uid if provided
+            if min_uid is not None:
+                uids = [uid for uid in uids if int(uid) > min_uid]
+            
             emails = []
             for uid in uids:
                 if uid in self._emails:
@@ -345,6 +351,13 @@ class MockImapClient(ImapClient):
             unprocessed = [
                 email for email in self._emails.values()
                 if 'AIProcessed' not in email.flags
+            ]
+        
+        # Filter by min_uid if provided
+        if min_uid is not None:
+            unprocessed = [
+                email for email in unprocessed
+                if int(email.uid) > min_uid
             ]
         
         if max_emails:
@@ -377,8 +390,54 @@ class MockLLMClient(LLMClient):
         Args:
             config: Optional configuration dictionary (for compatibility with real client)
         """
-        super().__init__()
-        self.config = config or {}
+        # Create default config if none provided
+        if config is None:
+            import os
+            # Set a test API key if not already set
+            if 'OPENROUTER_API_KEY' not in os.environ:
+                os.environ['OPENROUTER_API_KEY'] = 'test_api_key'
+            
+            config = {
+                'openrouter': {
+                    'api_key_env': 'OPENROUTER_API_KEY',
+                    'api_url': 'https://openrouter.ai/api/v1'
+                },
+                'classification': {
+                    'model': 'test-model',
+                    'temperature': 0.2,
+                    'retry_attempts': 3,
+                    'retry_delay_seconds': 1
+                },
+                'processing': {
+                    'max_body_chars': 6000
+                }
+            }
+        
+        # Ensure required config sections exist
+        if 'openrouter' not in config:
+            config['openrouter'] = {
+                'api_key_env': 'OPENROUTER_API_KEY',
+                'api_url': 'https://openrouter.ai/api/v1'
+            }
+        if 'classification' not in config:
+            config['classification'] = {
+                'model': 'test-model',
+                'temperature': 0.2
+            }
+        if 'processing' not in config:
+            config['processing'] = {
+                'max_body_chars': 6000
+            }
+        
+        # Ensure API key is set in environment
+        import os
+        api_key_env = config['openrouter'].get('api_key_env', 'OPENROUTER_API_KEY')
+        if api_key_env not in os.environ:
+            os.environ[api_key_env] = 'test_api_key'
+        
+        # Call parent with valid config
+        super().__init__(config)
+        self.config = config
         self._scenario_responses: Dict[str, Dict[str, int]] = {}
         self._default_spam_score = 2
         self._default_importance_score = 7
@@ -433,7 +492,9 @@ class MockLLMClient(LLMClient):
         self,
         email_content: str,
         user_prompt: Optional[str] = None,
-        max_chars: Optional[int] = None
+        max_chars: Optional[int] = None,
+        debug_prompt: bool = False,
+        debug_uid: Optional[str] = None
     ) -> LLMResponse:
         """
         Classify email with mock response.
@@ -442,6 +503,8 @@ class MockLLMClient(LLMClient):
             email_content: Email content to classify
             user_prompt: Optional user prompt
             max_chars: Optional maximum characters (ignored in mock)
+            debug_prompt: If True, write the formatted prompt to a debug file (ignored in mock)
+            debug_uid: Optional email UID for debug filename (ignored in mock)
             
         Returns:
             LLMResponse with scores

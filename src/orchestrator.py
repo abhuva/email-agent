@@ -273,6 +273,21 @@ Examples:
             action='store_true',
             help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
         )
+        parser.add_argument(
+            '--after',
+            type=str,
+            help='Only process emails sent/received after this date. Supports formats: DD.MM.YYYY, YYYY-MM-DD, DD/MM/YYYY, or natural language (e.g., "2 Feb 2022")'
+        )
+        parser.add_argument(
+            '--before',
+            type=str,
+            help='Only process emails sent/received before this date. Supports formats: DD.MM.YYYY, YYYY-MM-DD, DD/MM/YYYY, or natural language (e.g., "2 Feb 2022")'
+        )
+        parser.add_argument(
+            '--min-uid',
+            type=int,
+            help='Only process emails with UID greater than this value. Useful for incremental processing.'
+        )
         
         return parser.parse_args(argv)
     
@@ -559,12 +574,37 @@ Examples:
                         # Set up account (IMAP connection, etc.)
                         processor.setup()
                         
+                        # Parse date strings if provided
+                        from src.date_query_builder import parse_date_string
+                        from datetime import datetime
+                        after_date = None
+                        before_date = None
+                        
+                        if hasattr(args, 'after') and args.after:
+                            try:
+                                after_date = parse_date_string(args.after)
+                                self.logger.info(f"Date filter --after: {after_date}")
+                            except ValueError as e:
+                                self.logger.error(f"Invalid --after date format: {e}")
+                                raise ValueError(f"Invalid --after date format: {e}")
+                        
+                        if hasattr(args, 'before') and args.before:
+                            try:
+                                before_date = parse_date_string(args.before)
+                                self.logger.info(f"Date filter --before: {before_date}")
+                            except ValueError as e:
+                                self.logger.error(f"Invalid --before date format: {e}")
+                                raise ValueError(f"Invalid --before date format: {e}")
+                        
                         # Run processing with options from CLI
                         processor.run(
                             force_reprocess=args.force_reprocess,
                             uid=args.uid,
                             max_emails=args.max_emails,
-                            debug_prompt=args.debug_prompt
+                            debug_prompt=args.debug_prompt,
+                            min_uid=getattr(args, 'min_uid', None),
+                            after_date=after_date,
+                            before_date=before_date
                         )
                         
                         # Teardown (cleanup, close connections)

@@ -4,7 +4,7 @@ You are an AI assistant helping to summarize important emails for a knowledge ma
 
 ## Task
 
-Analyze the following email and provide a concise, actionable summary.
+Analyze the following email and provide a concise, actionable summary in german language.
 
 ## Instructions
 
@@ -14,7 +14,7 @@ Analyze the following email and provide a concise, actionable summary.
 
 ## Output Format
 
-Provide your response in the following format:
+Provide your response in the following format (translated into german):
 
 **Summary:**
 [Your summary here]

@@ -109,27 +109,29 @@ class TestWriteObsidianNote:
     
     def test_writes_note_to_disk(self):
         """Test writing note to disk."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            note_content = "---\n---\n\n# Original Content\n\nTest content\n"
-            
-            note_path = write_obsidian_note(
-                note_content,
-                "Test Email",
-                temp_dir
-            )
-            
-            assert os.path.exists(note_path)
-            assert note_path.endswith('.md')
-            # Filename is sanitized, so "Test Email" becomes "Test-Email"
-            filename = os.path.basename(note_path)
-            assert 'Test' in filename and 'Email' in filename
-            
-            # Verify content
-            with open(note_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                assert 'Test content' in content
+        with patch('src.dry_run.is_dry_run', return_value=False):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                note_content = "---\n---\n\n# Original Content\n\nTest content\n"
+                
+                note_path = write_obsidian_note(
+                    note_content,
+                    "Test Email",
+                    temp_dir
+                )
+                
+                assert os.path.exists(note_path)
+                assert note_path.endswith('.md')
+                # Filename is sanitized, so "Test Email" becomes "Test-Email"
+                filename = os.path.basename(note_path)
+                assert 'Test' in filename and 'Email' in filename
+                
+                # Verify content
+                with open(note_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    assert 'Test content' in content
     
-    def test_generates_unique_filename(self):
+    @patch('src.dry_run.is_dry_run', return_value=False)
+    def test_generates_unique_filename(self, mock_dry_run):
         """Test that unique filenames are generated."""
         with tempfile.TemporaryDirectory() as temp_dir:
             note_content = "---\n---\n\n# Original Content\n\nContent\n"
@@ -244,15 +246,16 @@ class TestCreateObsidianNoteForEmail:
         config = Mock()
         config.obsidian_vault_path = None
         
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config.obsidian_vault_path = temp_dir
-            
-            result = create_obsidian_note_for_email(email, config)
-            
-            assert result['success'] is True
-            assert result['note_path'] is not None
-            assert result['error'] is None
-            assert os.path.exists(result['note_path'])
+        with patch('src.dry_run.is_dry_run', return_value=False):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                config.obsidian_vault_path = temp_dir
+                
+                result = create_obsidian_note_for_email(email, config)
+                
+                assert result['success'] is True
+                assert result['note_path'] is not None
+                assert result['error'] is None
+                assert os.path.exists(result['note_path'])
     
     def test_returns_error_when_vault_not_configured(self):
         """Test that error is returned when vault path not configured."""
@@ -302,17 +305,18 @@ class TestCreateObsidianNoteForEmail:
         }
         config = Mock()
         
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config.obsidian_vault_path = temp_dir
-            
-            result = create_obsidian_note_for_email(email, config, summary_result)
-            
-            assert result['success'] is True
-            # Verify summary is in the note
-            with open(result['note_path'], 'r', encoding='utf-8') as f:
-                content = f.read()
-                assert '[!summary]' in content
-                assert 'This is a summary' in content
+        with patch('src.dry_run.is_dry_run', return_value=False):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                config.obsidian_vault_path = temp_dir
+                
+                result = create_obsidian_note_for_email(email, config, summary_result)
+                
+                assert result['success'] is True
+                # Verify summary is in the note
+                with open(result['note_path'], 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    assert '[!summary]' in content
+                    assert 'This is a summary' in content
     
     def test_handles_write_permission_error(self):
         """Test handling of write permission errors."""

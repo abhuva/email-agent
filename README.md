@@ -44,10 +44,6 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
 - **V1 (Email Tagging)**: Basic IMAP email fetching and AI classification
 
-### Historical Versions
-- **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
-- **V1 (Email Tagging)**: Basic IMAP email fetching and AI classification
-
 ---
 
 ## Installation

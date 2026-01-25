@@ -1,18 +1,12 @@
 """
-Test fixtures and helpers for V3 email agent tests.
+Test fixtures and helpers for V4 email agent tests.
 
 This module provides comprehensive test infrastructure including:
-- Test isolation fixtures (Settings singleton reset)
-- V3 configuration fixtures
+- V4 configuration fixtures
 - Mock IMAP server fixtures
 - Mock LLM API fixtures
 - Test email data fixtures
 - Dry-run test helpers
-
-Test Isolation:
-    The `reset_settings_singleton` fixture automatically resets the Settings
-    singleton before and after each test to prevent state leakage between tests.
-    This ensures proper test isolation and consistent test results.
 """
 import pytest
 import imaplib
@@ -25,32 +19,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
 # ============================================================================
-# Test Isolation Fixtures (must be first)
-# ============================================================================
-
-@pytest.fixture(autouse=True)
-def reset_settings_singleton():
-    """
-    Automatically reset Settings singleton between tests to prevent state leakage.
-    
-    This fixture runs before and after every test to ensure test isolation.
-    """
-    from src.settings import Settings
-    
-    # Reset before test
-    if Settings._instance is not None:
-        Settings._instance._config = None
-    Settings._instance = None
-    
-    yield
-    
-    # Reset after test
-    if Settings._instance is not None:
-        Settings._instance._config = None
-    Settings._instance = None
-
-# ============================================================================
-# V3 Configuration Fixtures
+# V4 Configuration Fixtures
 # ============================================================================
 
 @pytest.fixture
@@ -100,8 +69,8 @@ def v3_config_dict():
 
 
 @pytest.fixture
-def v3_config_file(tmp_path, v3_config_dict):
-    """Create a temporary V3 config.yaml file with all required files."""
+def v4_config_file(tmp_path, v4_config_dict):
+    """Create a temporary V4 config.yaml file with all required files."""
     # Create directory structure
     test_dir = tmp_path / "test_config"
     test_dir.mkdir()
@@ -119,22 +88,22 @@ def v3_config_file(tmp_path, v3_config_dict):
     # Create config file
     config_file = test_dir / "config.yaml"
     # Update paths to be relative to test_dir
-    v3_config_dict['paths']['obsidian_vault'] = str(test_dir / "vault")
-    v3_config_dict['paths']['template_file'] = str(template_file)
-    v3_config_dict['paths']['prompt_file'] = str(prompt_file)
-    v3_config_dict['paths']['log_file'] = str(test_dir / "logs" / "agent.log")
-    v3_config_dict['paths']['analytics_file'] = str(test_dir / "logs" / "analytics.jsonl")
-    v3_config_dict['paths']['changelog_path'] = str(test_dir / "logs" / "email_changelog.md")
+    v4_config_dict['paths']['obsidian_vault'] = str(test_dir / "vault")
+    v4_config_dict['paths']['template_file'] = str(template_file)
+    v4_config_dict['paths']['prompt_file'] = str(prompt_file)
+    v4_config_dict['paths']['log_file'] = str(test_dir / "logs" / "agent.log")
+    v4_config_dict['paths']['analytics_file'] = str(test_dir / "logs" / "analytics.jsonl")
+    v4_config_dict['paths']['changelog_path'] = str(test_dir / "logs" / "email_changelog.md")
     
     with open(config_file, 'w') as f:
-        yaml.dump(v3_config_dict, f)
+        yaml.dump(v4_config_dict, f)
     
     return str(config_file)
 
 
 @pytest.fixture
-def v3_config_file_minimal(tmp_path):
-    """Create a minimal V3 config file for testing validation errors."""
+def v4_config_file_minimal(tmp_path):
+    """Create a minimal V4 config file for testing validation errors."""
     test_dir = tmp_path / "test_config"
     test_dir.mkdir()
     (test_dir / "config").mkdir()
@@ -181,61 +150,32 @@ def valid_env_file(tmp_path):
 
 
 @pytest.fixture
-def mock_settings(monkeypatch, v3_config_dict):
-    """Mock Settings facade for testing."""
-    settings_mock = Mock()
+def mock_config_loader(monkeypatch, v4_config_dict):
+    """Mock ConfigLoader for testing."""
+    from src.config_loader import ConfigLoader
     
-    # IMAP settings
-    settings_mock.get_imap_server.return_value = v3_config_dict['imap']['server']
-    settings_mock.get_imap_port.return_value = v3_config_dict['imap']['port']
-    settings_mock.get_imap_username.return_value = v3_config_dict['imap']['username']
-    settings_mock.get_imap_password.return_value = 'test_password'
-    settings_mock.get_imap_query.return_value = v3_config_dict['imap']['query']
-    settings_mock.get_imap_processed_tag.return_value = v3_config_dict['imap']['processed_tag']
-    settings_mock.get_imap_application_flags.return_value = v3_config_dict['imap']['application_flags']
+    config_loader_mock = Mock(spec=ConfigLoader)
+    config_loader_mock.load.return_value = v4_config_dict
+    config_loader_mock.get.return_value = None  # Default get behavior
     
-    # Paths settings
-    settings_mock.get_template_file.return_value = v3_config_dict['paths']['template_file']
-    settings_mock.get_obsidian_vault.return_value = v3_config_dict['paths']['obsidian_vault']
-    settings_mock.get_log_file.return_value = v3_config_dict['paths']['log_file']
-    settings_mock.get_analytics_file.return_value = v3_config_dict['paths']['analytics_file']
-    settings_mock.get_changelog_path.return_value = v3_config_dict['paths']['changelog_path']
-    settings_mock.get_prompt_file.return_value = v3_config_dict['paths']['prompt_file']
+    # Mock get method to access nested config values
+    def mock_get(key, default=None):
+        keys = key.split('.')
+        value = v4_config_dict
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                return default
+        return value
     
-    # OpenRouter settings
-    settings_mock.get_openrouter_api_key.return_value = 'test_api_key'
-    settings_mock.get_openrouter_api_url.return_value = v3_config_dict['openrouter']['api_url']
-    # Classification settings (get_openrouter_model is deprecated alias)
-    settings_mock.get_classification_model.return_value = v3_config_dict['classification']['model']
-    settings_mock.get_classification_temperature.return_value = v3_config_dict['classification']['temperature']
-    settings_mock.get_classification_retry_attempts.return_value = v3_config_dict['classification']['retry_attempts']
-    settings_mock.get_classification_retry_delay_seconds.return_value = v3_config_dict['classification']['retry_delay_seconds']
-    # Deprecated aliases (for backward compatibility)
-    settings_mock.get_openrouter_model.return_value = v3_config_dict['classification']['model']
-    settings_mock.get_openrouter_temperature.return_value = v3_config_dict['classification']['temperature']
-    settings_mock.get_openrouter_retry_attempts.return_value = v3_config_dict['classification']['retry_attempts']
-    settings_mock.get_openrouter_retry_delay_seconds.return_value = v3_config_dict['classification']['retry_delay_seconds']
-    # Summarization settings
-    settings_mock.get_summarization_model.return_value = v3_config_dict['summarization']['model']
-    settings_mock.get_summarization_temperature.return_value = v3_config_dict['summarization']['temperature']
-    settings_mock.get_summarization_retry_attempts.return_value = v3_config_dict['summarization']['retry_attempts']
-    settings_mock.get_summarization_retry_delay_seconds.return_value = v3_config_dict['summarization']['retry_delay_seconds']
+    config_loader_mock.get.side_effect = mock_get
     
-    # Processing settings
-    settings_mock.get_importance_threshold.return_value = v3_config_dict['processing']['importance_threshold']
-    settings_mock.get_spam_threshold.return_value = v3_config_dict['processing']['spam_threshold']
-    settings_mock.get_max_body_chars.return_value = v3_config_dict['processing']['max_body_chars']
-    settings_mock.get_max_emails_per_run.return_value = v3_config_dict['processing']['max_emails_per_run']
-    
-    settings_mock._initialized = True
-    settings_mock._config = Mock()  # Mock config object to prevent initialization
-    settings_mock._ensure_initialized = Mock()  # Mock to prevent actual initialization
-    
-    return settings_mock
+    return config_loader_mock
 
 
 # ============================================================================
-# Legacy V2 Config Fixtures (for backward compatibility)
+# Legacy Config Fixtures (for backward compatibility)
 # ============================================================================
 
 @pytest.fixture

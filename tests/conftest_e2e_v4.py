@@ -336,25 +336,34 @@ def e2e_test_isolation(e2e_test_vault):
 # Marker-based Fixtures (for conditional test execution)
 # ============================================================================
 
-@pytest.fixture(scope="session", autouse=True)
-def check_e2e_requirements():
+def pytest_collection_modifyitems(config, items):
     """
-    Check that E2E test requirements are met.
+    Skip E2E tests if requirements are not met.
     
-    This fixture runs once per test session and checks:
-    - At least one test account has credentials
-    - Test accounts are properly configured
-    
-    Skips all E2E tests if requirements are not met.
+    This hook runs during test collection and skips only tests marked with e2e_v4
+    if test account credentials/config are not available. Other tests are unaffected.
     """
+    # Check if any E2E tests are being collected
+    e2e_tests = [item for item in items if item.get_closest_marker("e2e_v4")]
+    
+    if not e2e_tests:
+        # No E2E tests in this collection, nothing to check
+        return
+    
     # Check for test account credentials
     if not has_any_test_account_credentials():
-        pytest.skip("E2E test requirements not met: No test account credentials available")
+        skip_marker = pytest.mark.skip(reason="E2E test requirements not met: No test account credentials available")
+        for item in e2e_tests:
+            item.add_marker(skip_marker)
+        return
     
     # Check for account configs
     accounts = get_test_accounts()
     if not accounts:
-        pytest.skip("E2E test requirements not met: No test accounts configured")
+        skip_marker = pytest.mark.skip(reason="E2E test requirements not met: No test accounts configured")
+        for item in e2e_tests:
+            item.add_marker(skip_marker)
+        return
     
     # Check that at least one account has both credentials and config
     has_valid_account = False
@@ -366,7 +375,9 @@ def check_e2e_requirements():
                 break
     
     if not has_valid_account:
-        pytest.skip("E2E test requirements not met: No valid test accounts (credentials + config)")
+        skip_marker = pytest.mark.skip(reason="E2E test requirements not met: No valid test accounts (credentials + config)")
+        for item in e2e_tests:
+            item.add_marker(skip_marker)
 
 
 # ============================================================================

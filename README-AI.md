@@ -14,13 +14,11 @@
 5. Generates structured Obsidian notes using Jinja2 templates
 
 **Current Status:** 
-- **V3** (Foundational Upgrade) - ✅ Complete and production-ready on `main` branch
-- **V4** (Orchestrator) - 🚧 In Development on `v4-orchestrator` branch - Multi-tenant platform with rules engine
-  - **Progress:** Tasks 1-9 complete (45% of tasks, 47% of subtasks)
-  - **Completed:** Configuration system, EmailContext, Content parser, Rules engine, Account Processor, Safety interlock
+- **V4** (Orchestrator) - ✅ Complete and production-ready - Multi-tenant platform with rules engine, multi-account support, and V4-only CLI
+- **V3** (Foundational Upgrade) - Historical version (superseded by V4)
 - **V1 and V2** - Historical versions
 
-**Working Branch:** `v4-orchestrator` (separate from V3 main branch)
+**Working Branch:** `v4-orchestrator` (current production branch)
 
 ---
 
@@ -34,38 +32,30 @@ email-agent/
 ├── README.md                  # Human-facing documentation
 ├── README-AI.md              # This file - AI agent entry point
 ├── README-task-master.md      # Task Master workflow docs
-├── pdd.md                     # Product Design Doc V3 (current, complete)
+├── pdd_V4.md                  # Product Design Doc V4 (current, complete)
+├── pdd.md                     # Product Design Doc V3 (historical, superseded by V4)
 ├── pdd_v2.md                  # Product Design Doc V2 (historical)
 │
-├── src/                       # Source code modules
+├── src/                       # Source code modules (V4)
 │   ├── __init__.py
-│   ├── cli_v3.py              # V3 CLI interface (click-based)
-│   ├── settings.py            # V3 configuration facade
-│   ├── config_v3_loader.py    # V3 configuration loading
-│   ├── config_v3_schema.py    # V3 configuration schema
-│   ├── orchestrator.py        # V3 pipeline orchestration
-│   ├── imap_client.py         # V3 IMAP operations
-│   ├── llm_client.py          # V3 LLM API client with retry logic
-│   ├── decision_logic.py      # V3 threshold-based classification
-│   ├── note_generator.py      # V3 Jinja2 note generation
-│   ├── prompt_renderer.py     # V3 prompt rendering
-│   ├── v3_logger.py           # V3 logging system
-│   ├── error_handling_v3.py   # V3 error handling
-│   ├── dry_run.py             # V3 dry-run mode
-│   ├── dry_run_processor.py   # V3 dry-run processing
-│   ├── dry_run_output.py      # V3 dry-run output
-│   ├── backfill.py            # V3 backfill functionality
-│   ├── cleanup_flags.py       # V3 cleanup flags command
-│   │
-│   # V4 Modules (v4-orchestrator branch)
-│   ├── config_loader.py        # V4 configuration loader with deep merge (Task 2) ✅
-│   ├── config_schema.py        # V4 configuration schema validation (Task 3) ✅
-│   ├── config_validator.py    # V4 configuration validator (Task 3) ✅
-│   ├── models.py              # V4 EmailContext data class (Task 4) ✅
-│   ├── content_parser.py      # V4 HTML to Markdown parser (Task 5) ✅
-│   ├── rules.py               # V4 Rules engine (blacklist/whitelist) (Tasks 6-7) ✅
-│   ├── account_processor.py   # V4 Account Processor with safety interlock (Tasks 8-9) ✅
-│   └── ...                    # Additional V3/V4 modules
+│   ├── cli_v4.py              # V4 CLI interface (click-based) - Current production CLI
+│   ├── orchestrator.py        # V4 MasterOrchestrator (multi-account orchestration)
+│   ├── account_processor.py   # V4 Account Processor (per-account pipeline with safety interlock)
+│   ├── config_loader.py       # V4 configuration loader with deep merge
+│   ├── config_schema.py       # V4 configuration schema validation
+│   ├── config_validator.py    # V4 configuration validator
+│   ├── models.py              # V4 EmailContext data class
+│   ├── content_parser.py      # V4 HTML to Markdown parser
+│   ├── rules.py               # V4 Rules engine (blacklist/whitelist)
+│   ├── imap_client.py         # IMAP operations (shared)
+│   ├── llm_client.py          # LLM API client with retry logic (shared)
+│   ├── decision_logic.py      # Threshold-based classification (shared)
+│   ├── note_generator.py      # Jinja2 note generation (shared)
+│   ├── prompt_renderer.py     # Prompt rendering (shared)
+│   ├── dry_run.py             # Dry-run mode (shared)
+│   ├── dry_run_output.py      # Dry-run output formatting (shared)
+│   ├── logging_config.py      # V4 centralized logging configuration
+│   └── ...                    # Additional modules
 │
 ├── tests/                     # Test suite
 │   ├── conftest.py            # Pytest fixtures
@@ -79,21 +69,19 @@ email-agent/
 │   ├── test_email_summarization.py
 │   ├── test_summarization.py
 │   ├── test_obsidian_*.py      # Obsidian integration tests
-│   ├── test_integration_v3_workflow.py  # End-to-end V3 tests
+│   ├── test_e2e_v4_pipeline.py  # V4 end-to-end tests with real email accounts
 │   └── ...                    # Additional module tests
 │
 ├── config/                    # Configuration files
 │   ├── config.yaml            # Main config (user-created, gitignored)
-│   ├── config.yaml.example    # Example config template (V3 + V4 safety_interlock)
+│   ├── config.yaml.example    # Example global configuration template
 │   ├── prompt.md.example      # Example AI prompt template
-│   ├── note_template.md.j2     # Jinja2 note template (V3)
-│   ├── prompt.md                # LLM classification prompt (V3)
-│   │
-│   # V4 Configuration (v4-orchestrator branch)
-│   ├── accounts/              # Account-specific configurations (Task 1) ✅
-│   │   └── *.yaml             # Account-specific config files
-│   ├── blacklist.yaml         # Global blacklist rules (Task 1) ✅
-│   └── whitelist.yaml         # Global whitelist rules (Task 1) ✅
+│   ├── note_template.md.j2    # Jinja2 note template
+│   ├── prompt.md              # LLM classification prompt
+│   ├── accounts/              # Account-specific configurations
+│   │   └── *.yaml             # Account-specific config files (e.g., example-account.yaml)
+│   ├── blacklist.yaml         # Global blacklist rules
+│   └── whitelist.yaml         # Global whitelist rules
 │
 ├── docs/                      # Documentation
 │   ├── MAIN_DOCS.md           # Documentation index (developer-focused)
@@ -103,18 +91,25 @@ email-agent/
 │   ├── imap-keywords-vs-flags.md
 │   ├── logging-system.md      # Logging architecture
 │   ├── prompts.md             # Prompt management
-│   ├── v3-*.md                 # V3 module documentation
+│   ├── v4-configuration.md    # V4 configuration system
+│   ├── v4-configuration-reference.md # Complete V4 configuration reference
+│   ├── v4-cli-usage.md        # V4 CLI usage guide
+│   ├── v4-models.md           # V4 EmailContext data model
+│   ├── v4-content-parser.md   # V4 HTML to Markdown parser
+│   ├── v4-rules-engine.md     # V4 Rules engine
+│   ├── v4-account-processor.md # V4 Account Processor
+│   ├── v4-orchestrator.md     # V4 MasterOrchestrator
+│   ├── v4-migration-guide.md   # Migration guide from V3 to V4
+│   ├── v4-installation-setup.md # V4 installation and setup
+│   ├── v4-quick-start.md       # V4 quick start guide
+│   ├── v4-troubleshooting.md   # V4 troubleshooting guide
+│   ├── v4-e2e-test-setup.md   # V4 E2E test account setup
+│   ├── v4-e2e-test-environment.md # V4 E2E test environment
+│   ├── v4-e2e-test-scenarios.md # V4 E2E test scenarios
+│   ├── v4-e2e-test-execution.md # V4 E2E test execution guide
 │   │
-│   # V4 Documentation (v4-orchestrator branch)
-│   ├── v4-configuration.md    # V4 configuration system (Tasks 1-3) ✅
-│   ├── v4-models.md           # V4 EmailContext data model (Task 4) ✅
-│   ├── v4-content-parser.md   # V4 HTML to Markdown parser (Task 5) ✅
-│   ├── v4-rules-engine.md     # V4 Rules engine (Tasks 6-7) ✅
-│   ├── v4-account-processor.md # V4 Account Processor (Tasks 8-9) ✅
-│   ├── v4-e2e-test-setup.md  # V4 E2E test account setup (Task 19.1) ✅
-│   ├── v4-e2e-test-environment.md # V4 E2E test environment (Task 19.2) ✅
-│   ├── v4-e2e-test-scenarios.md # V4 E2E test scenarios (Task 19.3) ✅
-│   └── v4-e2e-test-execution.md # V4 E2E test execution guide (Task 19.5) ✅
+│   # Historical Documentation
+│   ├── v3-*.md                 # V3 module documentation (historical)
 │   │
 │   ├── live-test-guide.md    # Live testing guide
 │   ├── CODE_REVIEW_2026-01.md
@@ -149,29 +144,63 @@ email-agent/
 
 ## Key Architecture Concepts
 
-### V3 Architecture (Current)
-1. **Configuration Loading** → Load V3 config via `settings.py` facade
-2. **IMAP Connection** → Fetch emails based on configured query
-3. **LLM Classification** → Get granular scores (importance_score, spam_score)
-4. **Decision Logic** → Apply threshold-based classification
-5. **Note Generation** → Render Jinja2 template with email data and scores
-6. **File Creation** → Save to Obsidian vault
-7. **Tagging** → Tag email with `AIProcessed` flag
-8. **Logging** → Record to operational log and structured analytics
-9. **Changelog** → Append entry to changelog file
+### V4 Architecture (Current Production)
+1. **Configuration Loading** → Load global config + account-specific overrides via `ConfigLoader`
+2. **Account Discovery** → Discover accounts from `config/accounts/` directory
+3. **Account Processing** (per account with isolated state):
+   a. **Blacklist Rules** → Pre-processing rules to filter emails
+   b. **IMAP Connection** → Fetch emails based on configured query (excluding processed)
+   c. **Content Parsing** → Convert HTML emails to Markdown using `html2text`
+   d. **LLM Classification** → Get granular scores (importance_score, spam_score)
+   e. **Whitelist Rules** → Post-LLM modifiers to boost scores and add tags
+   f. **Decision Logic** → Apply threshold-based classification
+   g. **Note Generation** → Render Jinja2 template with email data and scores
+   h. **File Creation** → Save to Obsidian vault (account-specific path)
+   i. **Tagging** → Tag email with `AIProcessed` flag
+   j. **Logging** → Record to operational log with structured context and account lifecycle tracking
+4. **Summary** → Display processing summary for all accounts
 
 ### Historical Architectures
+- **V3**: Single-account processing with settings facade (superseded by V4)
 - **V2**: Keyword-based classification (urgent/neutral/spam) with conditional summarization
 - **V1**: Basic email tagging with simple AI classification
 
 ### Core Modules
 
-**`src/orchestrator.py`** - V3 pipeline orchestration
-- `process_emails()` - Main processing entry point
-- `process_single_email()` - Process individual email
-- Orchestrates: IMAP → LLM → Decision Logic → Note Generation → Tagging → Logging
+**`src/orchestrator.py`** - V4 MasterOrchestrator (multi-account orchestration)
+- `MasterOrchestrator` - Main orchestrator class
+- `process_account()` - Process a single account
+- `process_all_accounts()` - Process all configured accounts
+- `discover_accounts()` - Discover accounts from config/accounts/ directory
+- Orchestrates: Account discovery → Account processing → Summary
 
-**`src/imap_client.py`** - V3 IMAP operations
+**`src/account_processor.py`** - V4 Account Processor (per-account pipeline)
+- `AccountProcessor` - Isolated per-account processing pipeline
+- `process_emails()` - Process emails for a single account
+- `process_single_email()` - Process individual email
+- Orchestrates: Blacklist Rules → IMAP → Content Parsing → LLM → Whitelist Rules → Decision Logic → Note Generation → Tagging → Logging
+- Includes safety interlock with cost estimation
+
+**`src/cli_v4.py`** - V4 CLI interface
+- `cli` - Click command group
+- `process` - Process emails command (--account or --all)
+- `cleanup-flags` - Cleanup IMAP flags command
+- `show-config` - Display merged configuration
+- Uses `MasterOrchestrator` and `ConfigLoader` exclusively
+
+**`src/config_loader.py`** - V4 configuration loader
+- `ConfigLoader` - Configuration loader with deep merge
+- `load()` - Load global config + account-specific overrides
+- Deep merge logic for configuration hierarchy
+- Environment variable support
+
+**`src/rules.py`** - V4 Rules engine
+- `RulesEngine` - Rules engine class
+- `apply_blacklist()` - Pre-processing blacklist rules
+- `apply_whitelist()` - Post-LLM whitelist rules
+- Supports drop, record, boost_score, and add_tag actions
+
+**`src/imap_client.py`** - IMAP operations (shared)
 - `IMAPClient` - IMAP client class
 - `connect()` - Connection management
 - `fetch_emails()` - Email fetching with query support
@@ -179,24 +208,18 @@ email-agent/
 - `tag_email()` - Flag/tag application
 - `remove_flags()` - Flag removal (for cleanup)
 
-**`src/settings.py`** - V3 configuration facade
-- `settings` - Singleton facade instance
-- `initialize()` - Initialize with config and env paths
-- `get_imap_server()`, `get_openrouter_api_key()`, etc. - Getter methods
-- Single source of truth for all configuration
-
-**`src/llm_client.py`** - V3 LLM API client
+**`src/llm_client.py`** - LLM API client (shared)
 - `LLMClient` - LLM client class
 - `classify_email()` - Classification API call with retry logic
 - Returns JSON with `importance_score` and `spam_score` (0-10)
 - Exponential backoff retry on failures
 
-**`src/decision_logic.py`** - V3 classification logic
+**`src/decision_logic.py`** - Threshold-based classification (shared)
 - `classify_email()` - Threshold-based classification
 - `is_important()` - Check if importance_score >= threshold
 - `is_spam()` - Check if spam_score >= threshold
 
-**`src/note_generator.py`** - V3 note generation
+**`src/note_generator.py`** - Jinja2 note generation (shared)
 - `generate_note()` - Render Jinja2 template
 - `load_template()` - Load template file
 - Generates Markdown with YAML frontmatter
@@ -205,26 +228,40 @@ email-agent/
 
 ## Key Configuration
 
-### Settings Facade (`src/settings.py`)
-- Loads V3 `config/config.yaml` and `.env`
-- Validates configuration structure
-- Provides getter methods for all configuration values
-- Single source of truth for configuration access
+### V4 Configuration System (`src/config_loader.py`)
+- **Multi-Account Configuration**: Global defaults + account-specific overrides
+- **Deep Merge**: Account configs override global config with deep merging
+- **Configuration Files**:
+  - `config/config.yaml` - Global default configuration
+  - `config/accounts/<account-name>.yaml` - Account-specific overrides
+  - `.env` - Environment variables (IMAP passwords, API keys)
+- **ConfigLoader**: Loads and merges configurations with validation
+- **Schema Validation**: Validates configuration structure using Pydantic models
 
-### V3 Configuration Structure
-- `imap` - IMAP server configuration (server, port, username, query, processed_tag)
-- `paths` - File and directory paths (template_file, obsidian_vault, log_file, etc.)
-- `openrouter` - OpenRouter API configuration (api_key_env, api_url)
-- `classification` - Classification settings (model, temperature, retry settings)
-- `processing` - Processing thresholds and limits (importance_threshold, spam_threshold, max_emails_per_run)
+### V4 Configuration Structure
+- **Global Config** (`config/config.yaml`):
+  - `imap` - IMAP server defaults (port, query, processed_tag, application_flags)
+  - `paths` - File and directory paths (template_file, obsidian_vault, log_file, etc.)
+  - `openrouter` - OpenRouter API configuration (api_key_env, api_url)
+  - `classification` - Classification settings (model, temperature, retry settings)
+  - `summarization` - Summarization settings (optional)
+  - `processing` - Processing thresholds and limits (importance_threshold, spam_threshold, max_emails_per_run)
+- **Account Config** (`config/accounts/<account-name>.yaml`):
+  - `imap` - Account-specific IMAP settings (server, username, password_env) - **required**
+  - `paths` - Account-specific path overrides (e.g., obsidian_vault)
+  - Any other overrides as needed
 
-### V3 Key Features
-- Score-based classification (0-10 scores instead of keywords)
+### V4 Key Features
+- Multi-account support with isolated state and configuration
+- Score-based classification (0-10 scores)
+- Rules engine (blacklist/whitelist)
+- HTML content parsing to Markdown
 - Threshold-based decision logic
 - Jinja2 templating for note generation
-- CLI commands: `process`, `cleanup-flags`, `backfill`
+- CLI commands: `process`, `cleanup-flags`, `show-config`
 - Dry-run mode for preview
 - Force-reprocess capability
+- Safety interlock with cost estimation
 
 ---
 
@@ -325,24 +362,28 @@ email-agent/
 ## File Dependencies
 
 ### Critical Entry Points
-- `main.py` → `src/cli_v3.py` → `src/orchestrator.py`
-- `src/orchestrator.py` coordinates: `imap_client`, `llm_client`, `decision_logic`, `note_generator`, `v3_logger`
+- `main.py` → `src/cli_v4.py` → `src/orchestrator.py` (MasterOrchestrator)
+- `src/orchestrator.py` (MasterOrchestrator) creates: `AccountProcessor` instances
+- `AccountProcessor` coordinates: `config_loader`, `rules`, `imap_client`, `content_parser`, `llm_client`, `decision_logic`, `note_generator`, `logging_config`
 
 ### Module Dependencies
-- `orchestrator.py` depends on: `settings`, `imap_client`, `llm_client`, `decision_logic`, `note_generator`, `v3_logger`, `error_handling_v3`
-- `note_generator.py` depends on: `settings`, `prompt_renderer` (for template rendering)
-- `imap_client.py` depends on: `settings`, `error_handling_v3`
-- `llm_client.py` depends on: `settings`, `error_handling_v3`
+- `cli_v4.py` depends on: `orchestrator` (MasterOrchestrator), `config_loader`, `logging_config`, `dry_run_output`
+- `orchestrator.py` (MasterOrchestrator) depends on: `config_loader`, `account_processor`, `logging_config`
+- `account_processor.py` depends on: `config_loader`, `rules`, `imap_client`, `content_parser`, `llm_client`, `decision_logic`, `note_generator`, `models`, `logging_config`
+- `config_loader.py` depends on: `config_schema`, `config_validator`
+- `rules.py` depends on: `config_loader`, `models`
+- `note_generator.py` depends on: `config_loader`, `prompt_renderer` (for template rendering)
+- `imap_client.py` depends on: `config_loader`, `logging_config`
+- `llm_client.py` depends on: `config_loader`, `logging_config`
 
 ---
 
 ## Testing Strategy
 
 ### Test Organization
-- **Unit tests:** One per V3 module in `tests/` (test_cli_v3.py, test_config_v3.py, test_imap_client.py, etc.)
-- **Integration tests:** `test_integration_v3_workflow.py` - End-to-end V3 workflow tests
-- **E2E tests:** Live tests with real IMAP connections (see `docs/v3-e2e-tests.md`)
-- **V4 E2E tests:** `test_e2e_v4_pipeline.py` - Complete V4 pipeline E2E tests with real email accounts (Task 19) ✅
+- **Unit tests:** One per module in `tests/` (test_config.py, test_imap_client.py, test_llm_client.py, etc.)
+- **Integration tests:** Module integration tests
+- **V4 E2E tests:** `test_e2e_v4_pipeline.py` - Complete V4 pipeline E2E tests with real email accounts
 - **Live tests:** Scripts in `scripts/` directory
 
 ### Mock Strategy
@@ -354,27 +395,27 @@ email-agent/
 
 ## Current Task Status
 
-**V3 Implementation:** ✅ **COMPLETE** (on `main` branch)
-- All V3 tasks (1-18) completed
+**V4 Implementation:** ✅ **COMPLETE** (on `v4-orchestrator` branch)
+- All V4 tasks completed (Tasks 1-22)
+- V3 to V4 migration complete (Task 22) - All V3 code removed, V4-only architecture
 - Comprehensive test suite (unit, integration, E2E)
 - All features implemented and tested
 - Documentation complete
+- **Key Features:**
+  - Multi-account support with isolated state
+  - Configuration system with deep merge
+  - Rules engine (blacklist/whitelist)
+  - HTML content parsing
+  - Account Processor with safety interlock
+  - MasterOrchestrator for multi-account coordination
+  - V4-only CLI (cli_v4.py)
 
-**V4 Implementation:** 🚧 **IN PROGRESS** (on `v4-orchestrator` branch)
-- **Tasks 1-9, 19 Complete (50% of tasks, 52% of subtasks):**
-  - ✅ Task 1: Configuration directory structure
-  - ✅ Task 2: Configuration loader with deep merge logic
-  - ✅ Task 3: Configuration schema validation
-  - ✅ Task 4: EmailContext data class
-  - ✅ Task 5: Content parser (HTML to Markdown)
-  - ✅ Task 6: Rules engine - Blacklist rules
-  - ✅ Task 7: Rules engine - Whitelist rules
-  - ✅ Task 8: Account Processor class
-  - ✅ Task 9: Safety interlock with cost estimation
-  - ✅ Task 19: End-to-end testing with real email accounts
-- **Remaining Tasks:** 10-18, 20 (Master Orchestrator, CLI integration, etc.)
+**V3 Implementation:** Historical (superseded by V4)
+- V3 was the foundational upgrade version
+- All V3 code has been removed in Task 22 migration
+- V3 documentation preserved for historical reference
 
-**Next:** Check `tasks/tasks.json` or run `task-master next` for next task
+**Next:** Check `tasks/tasks.json` or run `task-master next` for current tasks
 
 ---
 
@@ -383,12 +424,12 @@ email-agent/
 ### When Starting Work:
 1. **Read:** `README-AI.md` (this file) - **This is the main entry point**
 2. **Check Branch:** 
-   - V3 work: `main` branch (see `pdd.md`)
-   - V4 work: `v4-orchestrator` branch (see `pdd_V4.md`)
+   - Current work: `v4-orchestrator` branch (see `pdd_V4.md`)
+   - Historical: `main` branch (V3, superseded by V4)
 3. **Check:** `tasks/tasks.json` or run `task-master next` for current task
 4. **Review:** Relevant module docs in `docs/` directory
-   - V3: `docs/v3-*.md`
-   - V4: `docs/v4-*.md` (Tasks 1-9, 19 documented)
+   - V4: `docs/v4-*.md` (current production documentation)
+   - Historical: `docs/v3-*.md` (historical reference)
 5. **Understand:** Current task context from `tasks/task_*.txt`
 6. **Note:** All tasks include a mandatory final stage - see [task_completion_workflow.mdc](.cursor/rules/task_completion_workflow.mdc)
 
@@ -410,10 +451,12 @@ email-agent/
 - `.cursor/rules/imap_fetching.mdc` - IMAP module guidelines
 
 ### Important Patterns:
-- **Error Handling:** Use `log_error_with_context()` from `error_handling.py`
-- **IMAP Operations:** Use `safe_imap_operation()` context manager
-- **Configuration:** Access via `ConfigManager` instance
-- **Logging:** Use module-level `logger = logging.getLogger(__name__)`
+- **Error Handling:** Use structured logging with context
+- **IMAP Operations:** Use `IMAPClient` with proper connection management
+- **Configuration:** Access via `ConfigLoader` instance (V4)
+- **Logging:** Use `logging_config.init_logging()` for centralized logging (V4)
+- **Account Processing:** Use `AccountProcessor` for per-account isolated processing
+- **Orchestration:** Use `MasterOrchestrator` for multi-account coordination
 
 ---
 
@@ -445,18 +488,21 @@ email-agent/
 
 ## Version Information
 
-- **V4:** Orchestrator (in development, `v4-orchestrator` branch)
+- **V4:** Orchestrator (✅ Complete and production-ready, `v4-orchestrator` branch)
   - Multi-account support with state isolation
-  - Configuration system (default + override model)
+  - Configuration system (default + override model with deep merge)
   - Rules engine (blacklist/whitelist)
   - HTML content parsing
   - Account Processor with safety interlock
-  - **Progress:** Tasks 1-9 complete (45% of tasks)
-- **V3:** Foundational Upgrade (complete, `main` branch)
+  - MasterOrchestrator for multi-account coordination
+  - V4-only CLI (cli_v4.py)
+  - All V3 code removed (Task 22 migration complete)
+- **V3:** Foundational Upgrade (historical, superseded by V4)
   - Score-based classification
   - CLI controls
   - Jinja2 templating
   - Modular architecture
+  - **Status:** All V3 code removed in Task 22 migration
 - **V2:** Obsidian integration (historical)
 - **V1:** Email tagging (historical)
 
@@ -466,12 +512,12 @@ email-agent/
 
 1. **README.md** - Human-facing overview
 2. **README-AI.md** - This file (AI agent entry point) ⭐ **START HERE**
-3. **pdd.md** - V3 product requirements (main branch)
-4. **pdd_V4.md** - V4 product requirements (v4-orchestrator branch)
+3. **pdd_V4.md** - V4 product requirements (current production, v4-orchestrator branch)
+4. **pdd.md** - V3 product requirements (historical, superseded by V4)
 5. **docs/MAIN_DOCS.md** - Documentation index
 6. **docs/COMPLETE_GUIDE.md** - Complete user guide
-7. **docs/v3-*.md** - V3 module documentation (main branch)
-8. **docs/v4-*.md** - V4 module documentation (v4-orchestrator branch, Tasks 1-9)
+7. **docs/v4-*.md** - V4 module documentation (current production)
+8. **docs/v3-*.md** - V3 module documentation (historical reference)
 
 ---
 

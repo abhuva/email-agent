@@ -13,9 +13,11 @@ CLI Structure:
 import click
 import sys
 import logging
+import os
 from typing import Optional
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
 
 from src.orchestrator import MasterOrchestrator
 from src.config_loader import ConfigLoader
@@ -32,13 +34,19 @@ from src.dry_run_output import DryRunOutput
     help='Base directory for configuration files (default: config)'
 )
 @click.option(
+    '--env-file',
+    type=click.Path(path_type=Path, exists=True, file_okay=True, dir_okay=False),
+    default='.env',
+    help='Path to .env file containing secrets (default: .env)'
+)
+@click.option(
     '--log-level',
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR'], case_sensitive=False),
     default='INFO',
     help='Set logging level (default: INFO)'
 )
 @click.pass_context
-def cli(ctx: click.Context, config_dir: Path, log_level: str):
+def cli(ctx: click.Context, config_dir: Path, env_file: Path, log_level: str):
     """
     Email-Agent V4: Multi-account email processing CLI
     
@@ -47,6 +55,13 @@ def cli(ctx: click.Context, config_dir: Path, log_level: str):
     """
     # Ensure context object exists
     ctx.ensure_object(dict)
+    
+    # Load environment variables from .env file (if it exists)
+    # This must happen before any components try to access os.environ
+    env_path = env_file.resolve() if env_file.exists() else Path('.env')
+    if env_path.exists():
+        load_dotenv(env_path, override=False)  # Don't override existing env vars
+    # Note: .env file is optional - if it doesn't exist, use system environment variables
     
     # Store config directory in context
     ctx.obj['config_dir'] = str(config_dir.resolve())
@@ -57,6 +72,12 @@ def cli(ctx: click.Context, config_dir: Path, log_level: str):
     try:
         log_overrides = {'level': log_level.upper()}
         init_logging(overrides=log_overrides)
+        # Log that .env was loaded (after logging is initialized)
+        logger = logging.getLogger('email_agent')
+        if env_path.exists():
+            logger.debug(f"Loaded environment variables from: {env_path}")
+        else:
+            logger.debug(f"Environment file not found: {env_path} (using system environment variables)")
     except Exception as e:
         click.echo(f"Warning: Could not initialize logging: {e}", err=True)
 
@@ -186,6 +207,16 @@ def _format_orchestration_result(result, use_formatted_output: bool = True) -> N
     default=False,
     help='Write the formatted classification prompt to a debug file in logs/ directory. Useful for debugging prompt construction.'
 )
+@click.option(
+    '--after',
+    type=str,
+    help='Only process emails sent/received after this date. Supports formats: DD.MM.YYYY, YYYY-MM-DD, DD/MM/YYYY, or natural language (e.g., "2 Feb 2022")'
+)
+@click.option(
+    '--before',
+    type=str,
+    help='Only process emails sent/received before this date. Supports formats: DD.MM.YYYY, YYYY-MM-DD, DD/MM/YYYY, or natural language (e.g., "2 Feb 2022")'
+)
 @click.pass_context
 def process(
     ctx: click.Context,
@@ -195,7 +226,9 @@ def process(
     uid: Optional[str],
     force_reprocess: bool,
     max_emails: Optional[int],
-    debug_prompt: bool
+    debug_prompt: bool,
+    after: Optional[str],
+    before: Optional[str]
 ):
     """
     Main command for email processing.
@@ -209,6 +242,8 @@ def process(
         python main.py process --account work --dry-run    # Preview processing
         python main.py process --account work --uid 12345  # Process specific email
         python main.py process --account work --force-reprocess  # Reprocess all emails
+        python main.py process --account work --after 02.02.2022  # Process emails after date
+        python main.py process --account work --before 2022-12-31  # Process emails before date
     """
     # Validate account selection
     if account and all_accounts:
@@ -251,6 +286,10 @@ def process(
         argv.extend(['--max-emails', str(max_emails)])
     if debug_prompt:
         argv.append('--debug-prompt')
+    if after:
+        argv.extend(['--after', after])
+    if before:
+        argv.extend(['--before', before])
     
     try:
         # Get orchestrator from context
@@ -486,6 +525,100 @@ def backfill(
     click.echo("This command will be available in a future update.", err=True)
     sys.exit(1)
     # Note: Once backfill.py is migrated to V4, implement here using AccountProcessor
+
+
+@cli.command()
+@click.option(
+    '--account',
+    type=str,
+    required=True,
+    help='Account name to scan UIDs for (required)'
+)
+@click.option(
+    '--format',
+    type=click.Choice(['simple', 'detailed'], case_sensitive=False),
+    default='simple',
+    help='Output format: simple (just max UID) or detailed (full statistics)'
+)
+@click.pass_context
+def scan_uids(
+    ctx: click.Context,
+    account: str,
+    format: str
+):
+    """
+    Scan Obsidian vault for the highest UID in markdown frontmatter.
+    
+    This command scans all markdown files in the account-specific vault directory
+    and finds the highest UID value stored in YAML frontmatter. This is useful
+    for incremental processing - you can use the max UID to only process emails
+    with higher UIDs.
+    
+    The account-specific vault directory is determined by converting the account_id
+    to a subdirectory name (e.g., 'info.nica' -> 'info-nica').
+    
+    Examples:
+        python main.py scan-uids --account work
+        python main.py scan-uids --account work --format detailed
+    """
+    try:
+        from src.vault_utils import get_max_uid_from_vault, scan_vault_stats
+        from src.config_loader import ConfigurationError
+        
+        # Get config loader from context
+        config_loader = _get_config_loader(ctx)
+        
+        # Load account configuration to get vault path
+        try:
+            account_config = config_loader.load_merged_config(account)
+        except (FileNotFoundError, ConfigurationError) as e:
+            click.echo(f"Error: Failed to load configuration for account '{account}': {e}", err=True)
+            sys.exit(1)
+        
+        # Get vault path from config
+        vault_path = account_config.get('paths', {}).get('obsidian_vault')
+        if not vault_path:
+            click.echo(f"Error: obsidian_vault not configured for account '{account}'", err=True)
+            click.echo("Please configure paths.obsidian_vault in your account or global config.", err=True)
+            sys.exit(1)
+        
+        # Scan vault
+        if format.lower() == 'detailed':
+            stats = scan_vault_stats(account, vault_path)
+            click.echo(f"\nUID Statistics for account: {account}")
+            click.echo("=" * 70)
+            click.echo(f"Vault directory: {stats['account_subdir']}")
+            click.echo(f"Total markdown files: {stats['total_files']}")
+            click.echo(f"Files with UID: {stats['files_with_uid']}")
+            if stats['max_uid'] is not None:
+                click.echo(f"Maximum UID: {stats['max_uid']}")
+                click.echo(f"Minimum UID: {stats['min_uid']}")
+            else:
+                click.echo("No UIDs found in vault")
+            click.echo("=" * 70)
+        else:
+            # Simple format - just show max UID
+            max_uid = get_max_uid_from_vault(account, vault_path)
+            if max_uid is not None:
+                click.echo(f"{max_uid}")
+            else:
+                click.echo("No UIDs found", err=True)
+                sys.exit(1)
+        
+    except FileNotFoundError as e:
+        click.echo(f"Error: Configuration file not found: {e}", err=True)
+        sys.exit(1)
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except ConfigurationError as e:
+        click.echo(f"Error: Configuration error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error scanning vault: {e}", err=True)
+        logger = logging.getLogger('email_agent')
+        logger.error(f"scan-uids failed: {e}", exc_info=True)
+        sys.exit(1)
 
 
 @cli.command()

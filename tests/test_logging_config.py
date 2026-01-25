@@ -43,11 +43,27 @@ def reset_logging():
     yield
     # Clear all handlers from root logger (close them first on Windows)
     root_logger = logging.getLogger('email_agent')
-    for handler in root_logger.handlers[:]:
-        handler.close()
+    # Get a copy of handlers list to avoid modification during iteration
+    handlers_to_close = list(root_logger.handlers)
+    for handler in handlers_to_close:
+        try:
+            handler.flush()  # Flush before closing
+            handler.close()  # Close file handlers explicitly
+        except Exception:
+            pass  # Ignore errors during cleanup
         root_logger.removeHandler(handler)
     root_logger.handlers.clear()
     root_logger.setLevel(logging.WARNING)
+    # Also clear handlers from parent logger if any
+    parent_logger = logging.getLogger()
+    parent_handlers = list(parent_logger.handlers)
+    for handler in parent_handlers:
+        try:
+            if isinstance(handler, logging.FileHandler):
+                handler.flush()
+                handler.close()
+        except Exception:
+            pass
     # Clear context
     clear_context()
 
@@ -98,6 +114,12 @@ logging:
     
     root_logger = logging.getLogger('email_agent')
     assert root_logger.level == logging.DEBUG
+    
+    # Explicitly close all file handlers before cleanup (Windows file locking)
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler):
+            handler.close()
+        root_logger.removeHandler(handler)
 
 
 def test_init_logging_env_overrides(reset_logging, temp_log_dir):
@@ -216,3 +238,10 @@ def test_file_handler_creation(reset_logging, temp_log_dir):
     assert log_file.exists()
     content = log_file.read_text()
     assert 'Test message to file' in content
+    
+    # Explicitly close all file handlers before cleanup (Windows file locking)
+    root_logger = logging.getLogger('email_agent')
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler):
+            handler.close()
+        root_logger.removeHandler(handler)

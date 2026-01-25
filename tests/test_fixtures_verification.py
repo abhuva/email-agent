@@ -17,11 +17,7 @@ def test_v3_config_dict_fixture(v3_config_dict):
     assert v3_config_dict['imap']['server'] == 'test.imap.com'
 
 
-def test_v3_config_file_fixture(v3_config_file):
-    """Test that v3_config_file fixture creates a valid config file."""
-    assert Path(v3_config_file).exists()
-    config_path = Path(v3_config_file)
-    assert config_path.suffix == '.yaml' or config_path.suffix == '.yml'
+# V3 config_file fixture test removed - V4 uses v4_config_file instead
 
 
 def test_sample_email_data_fixture(sample_email_data):

@@ -32,7 +32,7 @@ Usage:
     ...     account_id='work',
     ...     account_config=account_config,
     ...     imap_client_factory=create_imap_client_from_config,
-    ...     llm_client=LLMClient(),
+    ...     llm_client=LLMClient(account_config),
     ...     blacklist_service=load_blacklist_rules,
     ...     whitelist_service=load_whitelist_rules,
     ...     note_generator=NoteGenerator(),
@@ -49,6 +49,7 @@ import imaplib
 from typing import Dict, Any, Optional, List, Callable
 from pathlib import Path
 from dataclasses import dataclass
+from datetime import datetime
 
 from src.models import EmailContext, from_imap_dict
 from src.content_parser import parse_html_content
@@ -430,7 +431,13 @@ class ConfigurableImapClient(ImapClient):
             logger.error(error_msg)
             raise IMAPFetchError(error_msg) from e
     
-    def get_unprocessed_emails(self, max_emails: Optional[int] = None, force_reprocess: bool = False, uids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_unprocessed_emails(
+        self, 
+        max_emails: Optional[int] = None, 
+        force_reprocess: bool = False, 
+        uids: Optional[List[str]] = None,
+        min_uid: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         Retrieve unprocessed emails using account-specific query and processed_tag.
         
@@ -440,6 +447,7 @@ class ConfigurableImapClient(ImapClient):
             max_emails: Maximum number of emails to fetch
             force_reprocess: If True, include processed emails
             uids: Optional pre-fetched list of UIDs to use (for safety interlock flow)
+            min_uid: Optional minimum UID to filter by (only process emails with UID > min_uid)
         """
         self._ensure_connected()
         
@@ -447,6 +455,11 @@ class ConfigurableImapClient(ImapClient):
             # If UIDs are provided (from safety interlock), use them directly
             if uids is not None:
                 logger.info(f"Fetching {len(uids)} email(s) using provided UIDs")
+                # Filter by min_uid if provided
+                if min_uid is not None:
+                    original_count = len(uids)
+                    uids = [uid for uid in uids if int(uid) > min_uid]
+                    logger.info(f"Filtered to {len(uids)} emails with UID > {min_uid} (from {original_count})")
                 # Limit number of emails if specified
                 if max_emails and len(uids) > max_emails:
                     logger.info(f"Limiting to {max_emails} emails (found {len(uids)})")
@@ -486,6 +499,15 @@ class ConfigurableImapClient(ImapClient):
                 if not uids:
                     logger.info("No emails found" if force_reprocess else "No unprocessed emails found")
                     return []
+                
+                # Filter by min_uid if provided
+                if min_uid is not None:
+                    original_count = len(uids)
+                    uids = [uid for uid in uids if int(uid) > min_uid]
+                    logger.info(f"Filtered to {len(uids)} emails with UID > {min_uid} (from {original_count})")
+                    if not uids:
+                        logger.info(f"No emails found with UID > {min_uid}")
+                        return []
                 
                 logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
                 
@@ -585,7 +607,7 @@ class AccountProcessor:
         ...     account_id='work',
         ...     account_config=config,
         ...     imap_client_factory=create_imap_client_from_config,
-        ...     llm_client=LLMClient(),
+        ...     llm_client=LLMClient(config),
         ...     blacklist_service=load_blacklist_rules,
         ...     whitelist_service=load_whitelist_rules,
         ...     note_generator=NoteGenerator(),
@@ -648,7 +670,7 @@ class AccountProcessor:
         self._whitelist_service = whitelist_service
         self.note_generator = note_generator
         self.parser = parser
-        self.decision_logic = decision_logic or DecisionLogic()
+        self.decision_logic = decision_logic or DecisionLogic(account_config)
         
         # Logger (with account identifier)
         if logger is None:
@@ -723,7 +745,10 @@ class AccountProcessor:
         force_reprocess: bool = False,
         uid: Optional[str] = None,
         max_emails: Optional[int] = None,
-        debug_prompt: bool = False
+        debug_prompt: bool = False,
+        min_uid: Optional[int] = None,
+        after_date: Optional[datetime] = None,
+        before_date: Optional[datetime] = None
     ) -> None:
         """
         Execute the processing pipeline for this account.
@@ -745,6 +770,9 @@ class AccountProcessor:
             uid: Optional specific email UID to process (if provided, only this email is processed)
             max_emails: Optional maximum number of emails to process (overrides config)
             debug_prompt: If True, write classification prompts to debug files
+            min_uid: Optional minimum UID to filter by (only process emails with UID > min_uid)
+            after_date: Optional datetime - only process emails sent/received after this date
+            before_date: Optional datetime - only process emails sent/received before this date
         
         Raises:
             AccountProcessorRunError: If run fails critically
@@ -776,9 +804,42 @@ class AccountProcessor:
                     raise AccountProcessorRunError(f"Failed to process email UID {uid}: {e}") from e
                 return
             
+            # Build date-filtered query if date filters are provided
+            from src.date_query_builder import build_imap_date_query
+            # Get IMAP config - this is the same dict reference used by ConfigurableImapClient
+            imap_config = self.config.get('imap', {})
+            base_query = imap_config.get('query', 'ALL')
+            original_query = None
+            if after_date or before_date:
+                date_query = build_imap_date_query(
+                    base_query=base_query,
+                    after=after_date,
+                    before=before_date,
+                    use_sentsince=True  # Use SENTSINCE for sent date filtering
+                )
+                # Temporarily override query in config for this run
+                # This modifies the same dict that ConfigurableImapClient uses
+                original_query = imap_config.get('query')
+                imap_config['query'] = date_query
+                self.logger.info(f"Using date-filtered query: {date_query}")
+            
+            # Check for min_uid from vault if not explicitly provided
+            if min_uid is None:
+                from src.vault_utils import get_max_uid_from_vault
+                vault_path = self.config.get('paths', {}).get('obsidian_vault')
+                if vault_path:
+                    max_uid = get_max_uid_from_vault(self.account_id, vault_path)
+                    if max_uid:
+                        min_uid = max_uid
+                        self.logger.info(f"Found max UID in vault: {max_uid}, only processing UIDs > {max_uid}")
+            
             # Safety Interlock: Step 1 - Count emails before fetching
             self.logger.info("Safety interlock: Counting emails before processing...")
             email_count, uids = self._imap_conn.count_unprocessed_emails(force_reprocess=force_reprocess)
+            
+            # Restore original query if we modified it
+            if original_query is not None:
+                imap_config['query'] = original_query
             
             if email_count == 0:
                 self.logger.info("No emails to process. Exiting.")
@@ -842,7 +903,8 @@ class AccountProcessor:
             emails = self._imap_conn.get_unprocessed_emails(
                 max_emails=max_emails_config,
                 force_reprocess=force_reprocess,
-                uids=uids  # Use pre-counted UIDs to avoid re-searching
+                uids=uids,  # Use pre-counted UIDs to avoid re-searching
+                min_uid=min_uid  # Filter by min_uid if provided
             )
             self._processing_context['emails_fetched'] = len(emails)
             
@@ -1246,7 +1308,8 @@ class AccountProcessor:
                 summary_result = generate_email_summary(
                     email_data,
                     openrouter_client,
-                    summarization_result
+                    summarization_result,
+                    config=self.config
                 )
                 
                 # Store summary result in email_context for template rendering

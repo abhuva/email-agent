@@ -21,7 +21,7 @@ openrouter:
   api_key_env: OPENROUTER_API_KEY
   api_url: https://openrouter.ai/api/v1
 classification:
-  model: google/gemini-2.5-flash-lite-preview-09-2025
+  model: google/gemini-2.5-flash-lite
   temperature: 0.1
   retry_attempts: 3
   retry_delay_seconds: 1
@@ -33,7 +33,7 @@ summarization:
 processing:
   importance_threshold: 7
   spam_threshold: 5
-  max_body_chars: 6000
+  max_body_chars: 99000
   max_emails_per_run: 15
 # Optional - only if you want summarization
   summarization_tags:

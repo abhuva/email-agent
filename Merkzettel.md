@@ -1,33 +1,48 @@
-it seems during run its first fetching all mails (with no progress bar) and processing them - with progress bar. intented behaviour would be that also during the fetching stage there is a progress bar.
+progress bar und cli --> eins nutzt click library das andere was anderes --> warum? I guess that during the new implementation we didnt sticked properly to the already established conventions.
+Overall i see this with the progress bars the most.
+We had one in an earlier version that was green, slick and looked overall better, more compact also graphically. I would like that we have this overall, maybe decouple the graphic / ui rendering from the other logic at this point? This should be checked, if its better code-wise to seperate the logic here from the presentation. So we can change it at one place later - and not chase it over the whole code base.
+
+maybe related
+There is still this old ugly white bar UI in the terminal for the progress bars. We had previously a green, slick progress bar, i think this came with the click implementation, but i am not entirely sure.
+I want one unified UI for this.
+
+And we need more control over the amount of stuff displayed in the terminal, i want to be able to filter out more now, show less information while still keeping the ability to view it this detailed.
 
 ---
 
-It would be nice to have an estimated time left. This could be done simply by doing:
+message-id , referal id etc.. should be also fetched and written in the frontmatter.
+Then we can construct real markdown links (maybe in a second pass) to actually link these files 
 
-100 * current time running /  percentage done 
+Same with send emails (not only received ones)
 
-Atleast if my logic is right here.
+I want that the links in the markdown notes completely represent the relationships of the mails - both send and received ones. This way its easy to visualize the pathing of a conversation in Obsidian (through local graphs for example)
 
+---
 
-# next version
+OAuth Imap Access (tohuwabohu.halle@outlook.de)
+The question is how hard it is to implement this, specially the "register your app with microsoft" part.
 
-- lots of mail has their info in html stuff - how do we handle this right now? is it possible to use these (maybe just directly sending to the llm - in case we currently only sending a sanitized version)
+I think this is more important than i care to admit. I have atleast one important email adress thats over oAuth, and this has to be checked regularly. Excluding it from the system makes no sense.
 
-- whitelist blacklist is important now, as this would drastically change the final scoring (most likely we take the score from the llm and change it based on whitelist / blacklist)
+---
 
-- sqlite is now a serious consideration, we can get more and more data - in order to analyse it, it would most likely be super slow in markdown to process. This needs to be researched, but in the end, if we wanna do data analysis - we need other tools most likely.
-  BUT - and this is important: The markdown stays how it is, its the source of truth for the vault.
-  Additional analysis with a database or similar, this would be done aside / ontop of the markdown files.
+I thought about the categorisation issue. Right now its pretty basic. 
+First should be a better prompting (like i have for the meetings) to output a consistent, Obsidian Task compatible task format. Then in Obsidian build a Task query that filters and shows tasks from mails.
 
-- seperate mail accounts needs to be implemented now. This is mainly a question how to structure the config.yaml (and some code changes) - the core logic of fetching/processing isnt touched i think.
-  I want to be able to define multiple accounts in the config. 
-  Have an additional command for the runtime to either go through all of them - or a specific one.
-  It has to be considered if an even more complex setup (different config files per mail account) is worth it, what it mean in the future (how hard is it to do later compared to now) - so that each mail account could in theory be processed with different prompts/white-blacklists etc. - a custom setup for each account.
-  This would mean handling way more files for the setup - many of them wich are the same.
-  One idea would be a "mod" aproach - often mods in games use this modding thing, where you can write a file in a "mirrored" folder, like instead of /scripts/  its writing in /mods/scripts   -> and basically everything in the mod folder overwrites what is happening at runtime, but the fallback is always the /scripts/  --> obviously this is metaphor in a way.
-  For us this would mean having a default setup of files (configs, prompts etc.) and a folder/file structure similar to the mod idea - but here we have the "account names" from the mail accounts we target (or aliases, wich might be easier for a folder name)
-  And if we process this account, we take the setup from this folder (and all missing ones from the default.)
-  
-  This could mean first setting the defaults anyway, then checking into the folder and atleast for configs, only set what is in the file (means i could only change 1-2 properties, instead of having to mirror the whole file) - 
-  
-  I defintly want to discuss this in detail - this kind of extensability could prove fantastic later.
+---
+
+Another idea expanding on this. I want atleast a start for a categorisation based on our projects.
+I am thinking how this could work effectively.
+All projects are stored in a very strict folder system, with a strict naming convention. There is always a certain named markdown files with metadata, links and basic information about the project (wich also acts as main point for dealing with projects) - this makes it easy to parse all projects (with possible filters, so i can just process projects after a certain date that are self-financed and managed by NICA)
+
+This way we can get a structured representation of all this (either just in a json, xml, yaml or whatever suitable format - this has to be carefully checked about the pros and cons)
+
+So its easy for example to identify a certain modifier for this project like "2026_NICA_DSEE_Titel" wich also gives us info about the year, wich society, wich founding program, wich project title"
+
+Also it gives date information (when does it started or ends) and linked email-adresses.
+
+Then we can use a similar idea of the white-list (or basically just expanding on the whitelist) - and say for example: for a certain email adress in a certain date range - i link this email (in the metadata, by setting a property) also to a certain project.
+
+I didnt thought it entirely through - this needs some critical analysis and certainly a red-teaming.
+
+But i see this as a possible easy expandable aproach.

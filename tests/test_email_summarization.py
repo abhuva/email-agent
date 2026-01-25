@@ -265,7 +265,8 @@ class TestGenerateEmailSummary:
             'reason': 'tags_do_not_match'
         }
         
-        result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is False
         assert 'summarization_not_required' in result['error']
@@ -281,7 +282,8 @@ class TestGenerateEmailSummary:
             'prompt': None
         }
         
-        result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is False
         assert 'prompt_template_missing' in result['error']
@@ -296,7 +298,8 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is False
         assert 'email_body_empty' in result['error']
@@ -323,11 +326,8 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.settings.settings') as mock_settings:
-            mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
-            mock_settings.get_summarization_temperature.return_value = 0.3
-            
-            result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is True
         assert len(result['summary']) > 0
@@ -348,11 +348,8 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.settings.settings') as mock_settings:
-            mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
-            mock_settings.get_summarization_temperature.return_value = 0.3
-            
-            result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is False
         assert 'Summary unavailable' in result['summary']
@@ -374,11 +371,8 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.settings.settings') as mock_settings:
-            mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
-            mock_settings.get_summarization_temperature.return_value = 0.3
-            
-            result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert result['success'] is False
         assert 'Summary unavailable' in result['summary']
@@ -407,11 +401,37 @@ class TestGenerateEmailSummary:
             'prompt': 'Summarize this email.'
         }
         
-        with patch('src.settings.settings') as mock_settings:
-            mock_settings.get_summarization_model.return_value = 'gpt-3.5-turbo'
-            mock_settings.get_summarization_temperature.return_value = 0.3
-            
-            result = generate_email_summary(email, client, summarization_result)
+        config = {'summarization': {'model': 'openai/gpt-4o-mini', 'temperature': 0.3}}
+        result = generate_email_summary(email, client, summarization_result, config=config)
         
         assert 'api_latency' in result
         assert isinstance(result['api_latency'], float)
+    
+    def test_returns_error_when_model_not_configured(self):
+        """Test that function returns error when model is not configured."""
+        email = {
+            'id': b'123',
+            'subject': 'Test',
+            'sender': 'test@example.com',
+            'body': 'Content'
+        }
+        client = Mock()
+        
+        summarization_result = {
+            'summarize': True,
+            'prompt': 'Summarize this email.'
+        }
+        
+        # Test with no config
+        result = generate_email_summary(email, client, summarization_result, config=None)
+        assert result['success'] is False
+        assert 'model_not_configured' in result['error']
+        
+        # Test with config but no model
+        config_no_model = {'summarization': {}}
+        result = generate_email_summary(email, client, summarization_result, config=config_no_model)
+        assert result['success'] is False
+        assert 'model_not_configured' in result['error']
+        
+        # Verify API was never called
+        client.chat_completion.assert_not_called()

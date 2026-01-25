@@ -1,5 +1,5 @@
 """
-Tests for V3 IMAP client module.
+Tests for V4 IMAP client module.
 
 These tests verify IMAP connection, email retrieval, and flag management.
 Uses mocking to avoid requiring actual IMAP server access.
@@ -15,28 +15,25 @@ from src.imap_client import (
     IMAPFetchError,
     IMAPClientError
 )
-from src.settings import Settings
+from src.account_processor import ConfigurableImapClient
 
 
 @pytest.fixture
-def mock_settings(monkeypatch):
-    """Mock settings facade for testing."""
-    settings_mock = Mock(spec=Settings)
-    settings_mock.get_imap_server.return_value = 'test.imap.com'
-    settings_mock.get_imap_port.return_value = 993
-    settings_mock.get_imap_username.return_value = 'test@example.com'
-    settings_mock.get_imap_password.return_value = 'test_password'
-    settings_mock.get_imap_query.return_value = 'UNSEEN'
-    settings_mock.get_imap_processed_tag.return_value = 'AIProcessed'
-    settings_mock.get_max_emails_per_run.return_value = 15
-    
-    # Patch the settings singleton in the module
-    import src.imap_client
-    original_settings = src.imap_client.settings
-    monkeypatch.setattr(src.imap_client, 'settings', settings_mock)
-    yield settings_mock
-    # Restore original (though singleton should handle this)
-    monkeypatch.setattr(src.imap_client, 'settings', original_settings)
+def mock_imap_config():
+    """Mock IMAP configuration dictionary for testing."""
+    return {
+        'imap': {
+            'server': 'test.imap.com',
+            'port': 993,
+            'username': 'test@example.com',
+            'password': 'test_password',
+            'query': 'UNSEEN',
+            'processed_tag': 'AIProcessed'
+        },
+        'processing': {
+            'max_emails_per_run': 15
+        }
+    }
 
 
 @pytest.fixture
@@ -54,12 +51,12 @@ def test_imap_client_initialization():
     assert client._connected is False
 
 
-@patch('src.imap_client.imaplib.IMAP4_SSL')
-def test_imap_client_connect_success(mock_imap_class, mock_settings, mock_imap_connection):
+@patch('src.account_processor.imaplib.IMAP4_SSL')
+def test_imap_client_connect_success(mock_imap_class, mock_imap_config, mock_imap_connection):
     """Test successful IMAP connection."""
     mock_imap_class.return_value = mock_imap_connection
     
-    client = ImapClient()
+    client = ConfigurableImapClient(mock_imap_config)
     client.connect()
     
     assert client._connected is True
@@ -69,30 +66,30 @@ def test_imap_client_connect_success(mock_imap_class, mock_settings, mock_imap_c
     mock_imap_connection.select.assert_called_once_with('INBOX')
 
 
-@patch('src.imap_client.imaplib.IMAP4_SSL')
-def test_imap_client_connect_authentication_failure(mock_imap_class, mock_settings):
+@patch('src.account_processor.imaplib.IMAP4_SSL')
+def test_imap_client_connect_authentication_failure(mock_imap_class, mock_imap_config):
     """Test IMAP connection with authentication failure."""
     mock_imap = MagicMock()
     mock_imap.login.side_effect = imaplib.IMAP4.error('Authentication failed')
     mock_imap_class.return_value = mock_imap
     
-    client = ImapClient()
+    client = ConfigurableImapClient(mock_imap_config)
     with pytest.raises(IMAPConnectionError, match="IMAP authentication failed"):
         client.connect()
     
     assert client._connected is False
 
 
-@patch('src.imap_client.imaplib.IMAP4')
-def test_imap_client_connect_starttls(mock_imap_class, mock_settings):
+@patch('src.account_processor.imaplib.IMAP4')
+def test_imap_client_connect_starttls(mock_imap_class, mock_imap_config):
     """Test IMAP connection with STARTTLS (port 143)."""
-    mock_settings.get_imap_port.return_value = 143
+    mock_imap_config['imap']['port'] = 143
     
     mock_imap = MagicMock()
     mock_imap.select.return_value = ('OK', [b'1'])
     mock_imap_class.return_value = mock_imap
     
-    client = ImapClient()
+    client = ConfigurableImapClient(mock_imap_config)
     client.connect()
     
     assert client._connected is True
@@ -100,7 +97,7 @@ def test_imap_client_connect_starttls(mock_imap_class, mock_settings):
     mock_imap.starttls.assert_called_once()
 
 
-def test_imap_client_disconnect(mock_settings, mock_imap_connection):
+def test_imap_client_disconnect(mock_imap_connection):
     """Test IMAP disconnection."""
     client = ImapClient()
     client._imap = mock_imap_connection
@@ -113,19 +110,19 @@ def test_imap_client_disconnect(mock_settings, mock_imap_connection):
     mock_imap_connection.logout.assert_called_once()
 
 
-def test_imap_client_context_manager(mock_settings, mock_imap_connection):
+def test_imap_client_context_manager(mock_imap_connection, mock_imap_config):
     """Test IMAP client as context manager."""
-    with patch('src.imap_client.imaplib.IMAP4_SSL') as mock_imap_class:
+    with patch('src.account_processor.imaplib.IMAP4_SSL') as mock_imap_class:
         mock_imap_class.return_value = mock_imap_connection
         
-        with ImapClient() as client:
+        with ConfigurableImapClient(mock_imap_config) as client:
             assert client._connected is True
         
         # Should be disconnected after context exit
         assert client._connected is False
 
 
-def test_imap_client_get_email_by_uid(mock_settings, mock_imap_connection):
+def test_imap_client_get_email_by_uid(mock_imap_connection):
     """Test retrieving email by UID."""
     # Mock email data
     email_body = b"""From: sender@example.com
@@ -149,7 +146,7 @@ This is a test email body.
     mock_imap_connection.uid.assert_called_with('FETCH', '12345', '(RFC822)')
 
 
-def test_imap_client_get_email_by_uid_not_found(mock_settings, mock_imap_connection):
+def test_imap_client_get_email_by_uid_not_found(mock_imap_connection):
     """Test retrieving non-existent email by UID."""
     mock_imap_connection.uid.return_value = ('NO', [b'Email not found'])
     
@@ -161,7 +158,7 @@ def test_imap_client_get_email_by_uid_not_found(mock_settings, mock_imap_connect
         client.get_email_by_uid('99999')
 
 
-def test_imap_client_get_unprocessed_emails(mock_settings, mock_imap_connection):
+def test_imap_client_get_unprocessed_emails(mock_imap_connection):
     """Test retrieving unprocessed emails."""
     # Mock search results
     mock_imap_connection.uid.side_effect = [
@@ -187,7 +184,7 @@ def test_imap_client_get_unprocessed_emails(mock_settings, mock_imap_connection)
 
 
 @patch('src.dry_run.is_dry_run', return_value=False)
-def test_imap_client_set_flag(mock_dry_run, mock_settings, mock_imap_connection):
+def test_imap_client_set_flag(mock_dry_run, mock_imap_connection):
     """Test setting IMAP flag."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     
@@ -202,7 +199,7 @@ def test_imap_client_set_flag(mock_dry_run, mock_settings, mock_imap_connection)
 
 
 @patch('src.dry_run.is_dry_run', return_value=False)
-def test_imap_client_clear_flag(mock_dry_run, mock_settings, mock_imap_connection):
+def test_imap_client_clear_flag(mock_dry_run, mock_imap_connection):
     """Test clearing IMAP flag."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     
@@ -216,7 +213,7 @@ def test_imap_client_clear_flag(mock_dry_run, mock_settings, mock_imap_connectio
     mock_imap_connection.uid.assert_called_with('STORE', '12345', '-FLAGS', '(AIProcessed)')
 
 
-def test_imap_client_has_flag(mock_settings, mock_imap_connection):
+def test_imap_client_has_flag(mock_imap_connection):
     """Test checking if email has flag."""
     mock_imap_connection.uid.return_value = ('OK', [(b'12345 (FLAGS (\\Seen AIProcessed))',)])
     
@@ -228,7 +225,7 @@ def test_imap_client_has_flag(mock_settings, mock_imap_connection):
     assert client.has_flag('12345', 'NonExistentFlag') is False
 
 
-def test_imap_client_is_processed(mock_settings, mock_imap_connection):
+def test_imap_client_is_processed(mock_imap_connection):
     """Test checking if email is processed."""
     mock_imap_connection.uid.return_value = ('OK', [(b'12345 (FLAGS (AIProcessed))',)])
     
@@ -240,7 +237,7 @@ def test_imap_client_is_processed(mock_settings, mock_imap_connection):
 
 
 @patch('src.dry_run.is_dry_run', return_value=False)
-def test_imap_client_mark_as_processed(mock_dry_run, mock_settings, mock_imap_connection):
+def test_imap_client_mark_as_processed(mock_dry_run, mock_imap_connection):
     """Test marking email as processed."""
     mock_imap_connection.uid.return_value = ('OK', [b'1'])
     
@@ -255,7 +252,7 @@ def test_imap_client_mark_as_processed(mock_dry_run, mock_settings, mock_imap_co
     mock_imap_connection.uid.assert_called_with('STORE', '12345', '+FLAGS', '(AIProcessed)')
 
 
-def test_imap_client_get_next_unprocessed_email(mock_settings, mock_imap_connection):
+def test_imap_client_get_next_unprocessed_email(mock_imap_connection):
     """Test getting next unprocessed email."""
     mock_imap_connection.uid.side_effect = [
         ('OK', [b'12345']),  # Search result

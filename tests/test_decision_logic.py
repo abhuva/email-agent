@@ -16,6 +16,28 @@ from src.decision_logic import (
 from src.llm_client import LLMResponse
 
 
+@pytest.fixture
+def default_test_config():
+    """Default test configuration for DecisionLogic."""
+    return {
+        'processing': {
+            'importance_threshold': 8,
+            'spam_threshold': 5
+        }
+    }
+
+
+@pytest.fixture
+def custom_test_config():
+    """Custom test configuration for DecisionLogic."""
+    return {
+        'processing': {
+            'importance_threshold': 7,
+            'spam_threshold': 6
+        }
+    }
+
+
 class TestScoreProcessor:
     """Tests for score processing and validation."""
     
@@ -66,13 +88,9 @@ class TestScoreProcessor:
 class TestDecisionLogic:
     """Tests for threshold-based decision logic."""
     
-    @patch('src.decision_logic.settings')
-    def test_classify_important_email(self, mock_settings):
+    def test_classify_important_email(self, default_test_config):
         """Test classification of important email."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=1, importance_score=9)
         result = logic.classify(llm_response)
         
@@ -83,13 +101,9 @@ class TestDecisionLogic:
         assert result.status == ClassificationStatus.SUCCESS
         assert result.confidence > 0.0
     
-    @patch('src.decision_logic.settings')
-    def test_classify_spam_email(self, mock_settings):
+    def test_classify_spam_email(self, default_test_config):
         """Test classification of spam email."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=7, importance_score=2)
         result = logic.classify(llm_response)
         
@@ -99,13 +113,9 @@ class TestDecisionLogic:
         assert result.spam_score == 7
         assert result.status == ClassificationStatus.SUCCESS
     
-    @patch('src.decision_logic.settings')
-    def test_classify_neutral_email(self, mock_settings):
+    def test_classify_neutral_email(self, default_test_config):
         """Test classification of neutral email."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=2, importance_score=4)
         result = logic.classify(llm_response)
         
@@ -113,13 +123,9 @@ class TestDecisionLogic:
         assert result.is_spam is False
         assert result.status == ClassificationStatus.SUCCESS
     
-    @patch('src.decision_logic.settings')
-    def test_classify_at_threshold_boundary(self, mock_settings):
+    def test_classify_at_threshold_boundary(self, default_test_config):
         """Test classification when score is exactly at threshold."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         # Exactly at importance threshold (should be important)
         llm_response = LLMResponse(spam_score=2, importance_score=8)
         result = logic.classify(llm_response)
@@ -128,13 +134,9 @@ class TestDecisionLogic:
         assert result.is_spam is False
         assert "threshold_boundary" in result.metadata or "edge_cases" in result.metadata
     
-    @patch('src.decision_logic.settings')
-    def test_classify_conflicting_scores(self, mock_settings):
+    def test_classify_conflicting_scores(self, default_test_config):
         """Test classification with conflicting scores (important spam)."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         # High importance but also high spam (conflict)
         llm_response = LLMResponse(spam_score=7, importance_score=9)
         result = logic.classify(llm_response)
@@ -144,13 +146,9 @@ class TestDecisionLogic:
         assert result.is_spam is True
         assert "conflicting_classification" in result.metadata.get("edge_cases", [])
     
-    @patch('src.decision_logic.settings')
-    def test_classify_error_scores(self, mock_settings):
+    def test_classify_error_scores(self, default_test_config):
         """Test classification with error scores (-1)."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=-1, importance_score=-1)
         result = logic.classify(llm_response)
         
@@ -161,13 +159,9 @@ class TestDecisionLogic:
         assert result.status == ClassificationStatus.ERROR
         assert result.confidence == 0.0
     
-    @patch('src.decision_logic.settings')
-    def test_classify_invalid_scores(self, mock_settings):
+    def test_classify_invalid_scores(self, default_test_config):
         """Test classification with invalid scores (out of range)."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=15, importance_score=9)
         result = logic.classify(llm_response)
         
@@ -175,13 +169,9 @@ class TestDecisionLogic:
         assert result.importance_score == -1
         assert result.spam_score == -1
     
-    @patch('src.decision_logic.settings')
-    def test_classify_custom_thresholds(self, mock_settings):
+    def test_classify_custom_thresholds(self, custom_test_config):
         """Test classification with custom threshold values."""
-        mock_settings.get_importance_threshold.return_value = 7
-        mock_settings.get_spam_threshold.return_value = 6
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(custom_test_config)
         llm_response = LLMResponse(spam_score=4, importance_score=7)
         result = logic.classify(llm_response)
         
@@ -302,13 +292,9 @@ class TestClassificationResult:
 class TestEdgeCases:
     """Tests for edge case handling."""
     
-    @patch('src.decision_logic.settings')
-    def test_score_exactly_at_threshold(self, mock_settings):
+    def test_score_exactly_at_threshold(self, default_test_config):
         """Test handling of scores exactly at threshold."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=5, importance_score=8)
         result = logic.classify(llm_response)
         
@@ -319,13 +305,9 @@ class TestEdgeCases:
         assert len(result.metadata.get("edge_cases", [])) > 0
         assert "threshold_boundary" in result.metadata or result.metadata.get("threshold_boundary") is True
     
-    @patch('src.decision_logic.settings')
-    def test_unusual_high_both_scores(self, mock_settings):
+    def test_unusual_high_both_scores(self, default_test_config):
         """Test handling of unusual score combinations."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         llm_response = LLMResponse(spam_score=8, importance_score=9)
         result = logic.classify(llm_response)
         
@@ -340,13 +322,9 @@ class TestEdgeCases:
 class TestConfidenceCalculation:
     """Tests for confidence score calculation."""
     
-    @patch('src.decision_logic.settings')
-    def test_confidence_high_distance_from_threshold(self, mock_settings):
+    def test_confidence_high_distance_from_threshold(self, default_test_config):
         """Test confidence is higher when scores are far from threshold."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         # Score far above threshold
         llm_response_far = LLMResponse(spam_score=1, importance_score=10)
         result_far = logic.classify(llm_response_far)
@@ -358,13 +336,9 @@ class TestConfidenceCalculation:
         # Far score should have higher confidence
         assert result_far.confidence >= result_close.confidence
     
-    @patch('src.decision_logic.settings')
-    def test_confidence_range(self, mock_settings):
+    def test_confidence_range(self, default_test_config):
         """Test confidence is always in valid range (0.0-1.0)."""
-        mock_settings.get_importance_threshold.return_value = 8
-        mock_settings.get_spam_threshold.return_value = 5
-        
-        logic = DecisionLogic()
+        logic = DecisionLogic(default_test_config)
         
         test_cases = [
             LLMResponse(spam_score=1, importance_score=10),
