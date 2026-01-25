@@ -34,6 +34,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V5 Token Manager](v5-token-manager.md)** — OAuth token storage, loading, and automatic refresh (Task 4) ✅
 - **[V5 Google OAuth Provider](v5-google-provider.md)** — Google OAuth 2.0 provider implementation (Task 5) ✅
 - **[V5 OAuth Flow](v5-oauth-flow.md)** — Interactive OAuth flow for CLI-based authentication (Task 7) ✅
+- **[V5 Authentication Strategies](v5-auth-strategies.md)** — Password and OAuth authenticator implementations (Task 8) ✅
 
 ## V4 Module Documentation (Current Production Version)
 

@@ -241,6 +241,10 @@
   },
   "active": "db48651d53152916",
   "lastOpenFiles": [
+    "docs/v5-auth-strategies.md",
+    "src/auth/__pycache__/strategies.cpython-313.pyc",
+    "tests/__pycache__/test_auth_strategies.cpython-313-pytest-8.3.5.pyc",
+    "tests/test_auth_strategies.py",
     "docs/v5-oauth-flow.md",
     "src/auth/__pycache__/oauth_flow.cpython-313.pyc",
     "tests/__pycache__/test_oauth_flow.cpython-313-pytest-8.3.5.pyc",
@@ -253,9 +257,6 @@
     "docs/v5-google-provider.md",
     "prd_v5.md",
     "src/auth/providers/__pycache__/__init__.cpython-313.pyc",
-    "src/auth/providers/__pycache__/google.cpython-313.pyc",
-    "src/auth/providers/__pycache__",
-    "tests/__pycache__/test_google_provider.cpython-313-pytest-8.3.5.pyc",
     "README.md",
     "docs/v5-token-manager.md",
     "docs/v5-auth-interfaces.md",
@@ -275,7 +276,6 @@
     "config/summarization_prompt.md",
     "old pdd+prd/pdd_V4.md",
     "README-AI.md",
-    "docs/v4-configuration.md",
-    "docs/v3-v4-functionality-gap-analysis.md"
+    "docs/v4-configuration.md"
   ]
 }

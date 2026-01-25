@@ -1,6 +1,6 @@
 # Task ID: 8
 # Title: Implement authentication strategies
-# Status: pending
+# Status: done
 # Dependencies: 2, 4, 5, 6
 # Priority: high
 # Description: Create concrete authenticator classes for password and OAuth methods
@@ -21,31 +21,31 @@ In `src/auth/strategies.py`:
 Write unit tests for both authenticator classes with mocked IMAP connections. Test successful authentication and various failure scenarios. Verify token refresh is triggered when token is near expiration.
 
 # Subtasks:
-## 1. Implement PasswordAuthenticator class [pending]
+## 1. Implement PasswordAuthenticator class [done]
 ### Dependencies: None
 ### Description: Create the PasswordAuthenticator class with initialization from environment variables and basic login authentication method.
 ### Details:
 In `src/auth/strategies.py`, implement `PasswordAuthenticator` class that: 1) Initializes with `email` and `password` loaded securely from environment variables using `os.getenv()`; 2) Implements `authenticate(imap_conn)` method calling `imap_conn.login(email, password)`; 3) Use `IMAP4_SSL` with `ssl.create_default_context()` for secure connections per Python imaplib best practices[1][3].
 
-## 2. Implement OAuthAuthenticator class structure [pending]
+## 2. Implement OAuthAuthenticator class structure [done]
 ### Dependencies: 8.1
 ### Description: Create OAuthAuthenticator class with proper initialization and token management integration.
 ### Details:
 Implement `OAuthAuthenticator` class that: 1) Initializes with `email`, `account_name`, `provider_name`, and `TokenManager` instance; 2) Stores these parameters as instance variables; 3) Prepares for SASL XOAUTH2 authentication following OAuth 2.0 IMAP standards[6]. Ensure TokenManager dependency is properly imported and type-hinted.
 
-## 3. Implement OAuth SASL authentication logic [pending]
+## 3. Implement OAuth SASL authentication logic [done]
 ### Dependencies: 8.2
 ### Description: Add the core OAuth authentication method with proper SASL XOAUTH2 string construction.
 ### Details:
 In `OAuthAuthenticator.authenticate(imap_conn)`: 1) Call `TokenManager.get_valid_access_token()` (refreshing if needed); 2) Construct SASL string exactly as `user={email}\x01auth=Bearer {token}\x01\x01`; 3) Call `imap_conn.authenticate('XOAUTH2', sasl_string.encode('utf-8'))` per IMAP XOAUTH2 specification[3][6]. Handle base64 encoding if required by specific providers.
 
-## 4. Add comprehensive error handling [pending]
+## 4. Add comprehensive error handling [done]
 ### Dependencies: 8.1, 8.3
 ### Description: Implement robust error handling and exception mapping for both authentication strategies.
 ### Details:
 Add try-catch blocks around authentication calls: 1) Catch `imaplib.IMAP4.error` and map to custom `AuthenticationError` with specific messages ('AUTHENTICATIONFAILED', token refresh failures, etc.); 2) Log detailed errors using structured logging; 3) Provide backward compatibility with V4 error formats; 4) Ensure password errors don't leak credentials in error messages[1].
 
-## 5. Create unit tests for both authenticators [pending]
+## 5. Create unit tests for both authenticators [done]
 ### Dependencies: 8.4
 ### Description: Write comprehensive tests covering success/failure scenarios for both authentication strategies.
 ### Details:
