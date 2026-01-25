@@ -32,6 +32,7 @@ This is the top-level guide for all docs, implementation details, and project st
 ### V5 Authentication
 - **[V5 Authentication Interfaces](v5-auth-interfaces.md)** — Authentication protocols, OAuth providers, and utilities (Task 2) ✅
 - **[V5 Token Manager](v5-token-manager.md)** — OAuth token storage, loading, and automatic refresh (Task 4) ✅
+- **[V5 Google OAuth Provider](v5-google-provider.md)** — Google OAuth 2.0 provider implementation (Task 5) ✅
 
 ## V4 Module Documentation (Current Production Version)
 

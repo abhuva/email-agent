@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Implement token management system
-# Status: pending
+# Status: done
 # Dependencies: 2
 # Priority: high
 # Description: Create a token manager to handle storage, loading, and refreshing of OAuth tokens
@@ -21,37 +21,37 @@ In `src/auth/token_manager.py`:
 Write unit tests for token saving, loading, and refreshing. Mock file I/O and token refresh responses. Test expiry checking with various timestamps. Verify file permissions are set correctly.
 
 # Subtasks:
-## 1. Create TokenManager class skeleton with save_tokens and load_tokens methods [pending]
+## 1. Create TokenManager class skeleton with save_tokens and load_tokens methods [done]
 ### Dependencies: None
 ### Description: Implement the basic TokenManager class structure with token storage and retrieval using JSON files in credentials directory.
 ### Details:
 1. Create `src/auth/token_manager.py` with `TokenManager` class. 2. Implement `save_tokens(account_name, tokens)`: Create credentials directory if missing (`os.makedirs`), save tokens as JSON with filename `{account_name}.json`, set permissions to 0600 using `os.chmod(0o600)`. 3. Implement `load_tokens(account_name)`: Return tokens dict from JSON file or None if missing. 4. Add file path helper method `_get_token_path(account_name)`. 5. Handle FileNotFoundError and PermissionError with logging.
 
-## 2. Implement token expiry checking logic [pending]
+## 2. Implement token expiry checking logic [done]
 ### Dependencies: 4.1
 ### Description: Add token validation with 5-minute expiry buffer to determine if tokens need refreshing.
 ### Details:
 1. Add `_is_token_expired(tokens)` private method that parses `expires_at` or calculates from `expires_in` + current time. 2. Apply **5-minute buffer**: return True if expiry time <= `time.time() + 300`. 3. Handle missing/invalid expiry fields by treating as expired. 4. Add logging for expiry status. 5. Test edge cases: valid token, expired token, missing expiry, malformed expiry.
 
-## 3. Implement synchronous refresh_token method [pending]
+## 3. Implement synchronous refresh_token method [done]
 ### Dependencies: 4.1, 4.2
 ### Description: Create OAuth 2.0 refresh logic that calls provider token endpoint using refresh_token.
 ### Details:
 1. Implement `refresh_token(account_name, provider)`: Load existing tokens, construct refresh request per OAuth 2.0 spec (`grant_type=refresh_token`, `refresh_token`, provider-specific client_id/secret). 2. Use `requests.post()` to provider's token endpoint. 3. Parse response for new `access_token`, `refresh_token`, `expires_in`. 4. Calculate `expires_at = time.time() + expires_in`. 5. Save refreshed tokens via `save_tokens`. 6. Raise custom `TokenRefreshError` on 4xx/5xx responses with provider error details.
 
-## 4. Implement get_valid_token with automatic refresh [pending]
+## 4. Implement get_valid_token with automatic refresh [done]
 ### Dependencies: 4.1, 4.2, 4.3
 ### Description: Create main public method that returns valid access token, automatically refreshing when needed.
 ### Details:
 1. Implement `get_valid_token(account_name, provider)`: Load tokens, check expiry with buffer. 2. If expired/missing → call `refresh_token(account_name, provider)`. 3. Return `tokens['access_token']`. 4. Add retry logic (max 1 retry) for race conditions. 5. Cache valid tokens briefly using instance variable with TTL. 6. Return None if refresh fails after retry.
 
-## 5. Add comprehensive security and error handling [pending]
+## 5. Add comprehensive security and error handling [done]
 ### Dependencies: 4.1, 4.2, 4.3, 4.4
 ### Description: Implement production-grade security measures, exception handling, and logging.
 ### Details:
 1. Wrap all file I/O in try/except for OSError, PermissionError, json.JSONDecodeError. 2. Add request timeout (30s) and SSL verification to refresh requests. 3. Validate tokens dict structure before save/load. 4. Implement atomic file writes using temp files + `os.rename()`. 5. Add structured logging with account_name, provider, operation result. 6. Ensure backward compatibility: handle V4 token formats gracefully.
 
-## 6. Write unit tests for all TokenManager functionality [pending]
+## 6. Write unit tests for all TokenManager functionality [done]
 ### Dependencies: 4.1, 4.2, 4.3, 4.4, 4.5
 ### Description: Create comprehensive test suite covering all methods, edge cases, and error conditions.
 ### Details:

@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "prd_v5.md",
+                "file": "pdd_v5.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "prd_v5"
+              "title": "pdd_v5"
             }
           },
           {
@@ -50,7 +50,7 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -107,7 +107,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "57eec9babc93e0d3",
@@ -135,13 +136,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "README.md",
+                "file": "pdd_v5.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von README"
+              "title": "Gliederung von pdd_v5"
             }
           },
           {
@@ -224,21 +225,24 @@
       "command-palette:Befehlspalette öffnen": false
     }
   },
-  "active": "ab8ac7e2d90f2d65",
+  "active": "b54a5d36be78e76d",
   "lastOpenFiles": [
+    "docs/v5-google-provider.md",
+    "prd_v5.md",
+    "pdd_v5.md",
+    "src/auth/providers/__pycache__/__init__.cpython-313.pyc",
+    "src/auth/providers/__pycache__/google.cpython-313.pyc",
+    "src/auth/providers/__pycache__",
+    "tests/__pycache__/test_google_provider.cpython-313-pytest-8.3.5.pyc",
+    "tests/test_google_provider.py",
+    "README.md",
+    "docs/v5-token-manager.md",
+    "tests/__pycache__/test_token_manager.cpython-313-pytest-8.3.5.pyc",
+    "tests/test_token_manager.py",
+    "src/auth/__pycache__/token_manager.cpython-313.pyc",
     "docs/v5-auth-interfaces.md",
     "src/auth/__pycache__/__init__.cpython-313.pyc",
     "src/auth/__pycache__/interfaces.cpython-313.pyc",
-    "src/auth/__pycache__",
-    "tests/__pycache__/test_auth_interfaces.cpython-313-pytest-8.3.5.pyc",
-    "tests/test_auth_interfaces.py",
-    "credentials",
-    "src/auth/providers/microsoft.py",
-    "src/auth/providers/google.py",
-    "src/auth/providers/__init__.py",
-    "src/auth/providers",
-    "pdd_v5.md",
-    "prd_v5.md",
     "Merkzettel.md",
     "docs/v3-cli.md",
     "docs/ui-approach-comparison.md",
@@ -253,14 +257,11 @@
     "docs/v4-orchestrator.md",
     "config/prompt.md",
     "config/summarization_prompt.md",
-    "README.md",
     "old pdd+prd/pdd_V4.md",
     "README-AI.md",
     "docs/v4-configuration.md",
     "docs/v3-v4-functionality-gap-analysis.md",
     "docs/v4-config-migration-strategy.md",
-    "docs/v4-complete-migration-plan.md",
-    "docs/v3-v4-comparison-analysis.md",
-    "docs/v4-config-schema-reference.md"
+    "docs/v4-complete-migration-plan.md"
   ]
 }
