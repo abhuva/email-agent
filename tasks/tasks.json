@@ -738,7 +738,7 @@
       "id": 12,
       "title": "End-to-end testing and documentation",
       "description": "Perform comprehensive testing and create documentation for the OAuth integration",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         10,
         11
@@ -751,7 +751,7 @@
           "id": 1,
           "title": "Create end-to-end tests for OAuth 2.0 flows with Google and Microsoft accounts",
           "description": "Develop integration tests covering Authorization Code flow with PKCE for Google and Microsoft providers, including token acquisition, refresh, scope validation, and error handling for invalid/expired tokens. Use live test credentials in a staging environment with environment-specific configurations.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "Follow OAuth 2.0 best practices: test correct parameters, failed authorizations, revoked credentials, and protected resource access. Use real provider calls (not mocks) for accurate token validation, rate limits, and edge cases. Structure tests to run across environments with swappable configs[1][2]."
         },
@@ -759,7 +759,7 @@
           "id": 2,
           "title": "Create end-to-end tests for backward compatibility with password accounts (V4)",
           "description": "Implement tests verifying seamless fallback to legacy password authentication, mixed OAuth/password sessions, and no regressions in V4 user data access or CLI commands when OAuth is unavailable.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -769,7 +769,7 @@
           "id": 3,
           "title": "Create user documentation for OAuth setup and CLI authentication",
           "description": "Write comprehensive guides covering Google/Microsoft developer console setup, application configuration with client IDs/secrets, CLI authentication commands, and security best practices like PKCE and token binding.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -779,7 +779,7 @@
           "id": 4,
           "title": "Create troubleshooting documentation and example configuration files",
           "description": "Document common issues (redirect URI mismatches, scope errors, token expiration) with solutions, and provide sample config files for Google/Microsoft OAuth with secure defaults.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3
           ],
@@ -789,7 +789,7 @@
           "id": 5,
           "title": "Update README.md with OAuth integration information",
           "description": "Add dedicated OAuth section to README.md summarizing quickstart, supported providers, backward compatibility notes, security considerations, and links to full documentation.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             3,
             4
@@ -800,7 +800,7 @@
           "id": 6,
           "title": "Run comprehensive test suite and validate all documentation",
           "description": "Execute full end-to-end test suite across all providers/environments, fix any failures, then review all documentation for accuracy against test results and best practices.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

@@ -27,7 +27,7 @@ This is the top-level guide for all docs, implementation details, and project st
 - [Live Test Guide](live-test-guide.md) — Guide for manual live testing
 - [Task Master Project Management](../README-task-master.md) — Task management system
 
-## V5 Module Documentation (OAuth Integration - In Development)
+## V5 Module Documentation (OAuth Integration - Complete)
 
 ### V5 Authentication
 - **[V5 Authentication Interfaces](v5-auth-interfaces.md)** — Authentication protocols, OAuth providers, and utilities (Task 2) ✅
@@ -35,6 +35,14 @@ This is the top-level guide for all docs, implementation details, and project st
 - **[V5 Google OAuth Provider](v5-google-provider.md)** — Google OAuth 2.0 provider implementation (Task 5) ✅
 - **[V5 OAuth Flow](v5-oauth-flow.md)** — Interactive OAuth flow for CLI-based authentication (Task 7) ✅
 - **[V5 Authentication Strategies](v5-auth-strategies.md)** — Password and OAuth authenticator implementations (Task 8) ✅
+
+### V5 User Documentation
+- **[V5 OAuth User Guide](v5-oauth-user-guide.md)** — Complete OAuth setup and usage guide for end users (Task 12) ✅
+- **[V5 OAuth Troubleshooting](v5-oauth-troubleshooting.md)** — Detailed troubleshooting guide for OAuth issues (Task 12) ✅
+
+### V5 Testing
+- **E2E OAuth Tests** (`tests/test_e2e_oauth.py`) — End-to-end tests for OAuth flows with Google and Microsoft (Task 12) ✅
+- **E2E Backward Compatibility Tests** (`tests/test_e2e_oauth_backward_compat.py`) — Tests for password authentication compatibility (Task 12) ✅
 
 ## V4 Module Documentation (Current Production Version)
 

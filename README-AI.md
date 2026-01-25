@@ -14,11 +14,12 @@
 5. Generates structured Obsidian notes using Jinja2 templates
 
 **Current Status:** 
+- **V5** (OAuth Integration) - ✅ Complete - OAuth 2.0 authentication for Google and Microsoft accounts
 - **V4** (Orchestrator) - ✅ Complete and production-ready - Multi-tenant platform with rules engine, multi-account support, and V4-only CLI
 - **V3** (Foundational Upgrade) - Historical version (superseded by V4)
 - **V1 and V2** - Historical versions
 
-**Working Branch:** `v4-orchestrator` (current production branch)
+**Working Branch:** `v5-oauth` (current development branch, OAuth integration complete)
 
 ---
 
@@ -36,18 +37,18 @@ email-agent/
 ├── pdd.md                     # Product Design Doc V3 (historical, superseded by V4)
 ├── pdd_v2.md                  # Product Design Doc V2 (historical)
 │
-├── src/                       # Source code modules (V4)
+├── src/                       # Source code modules
 │   ├── __init__.py
-│   ├── cli_v4.py              # V4 CLI interface (click-based) - Current production CLI
+│   ├── cli_v4.py              # V4 CLI interface (click-based) - Current production CLI (includes V5 auth command)
 │   ├── orchestrator.py        # V4 MasterOrchestrator (multi-account orchestration)
 │   ├── account_processor.py   # V4 Account Processor (per-account pipeline with safety interlock)
 │   ├── config_loader.py       # V4 configuration loader with deep merge
-│   ├── config_schema.py       # V4 configuration schema validation
+│   ├── config_schema.py       # V4 configuration schema validation (includes V5 OAuth auth block)
 │   ├── config_validator.py    # V4 configuration validator
 │   ├── models.py              # V4 EmailContext data class
 │   ├── content_parser.py      # V4 HTML to Markdown parser
 │   ├── rules.py               # V4 Rules engine (blacklist/whitelist)
-│   ├── imap_client.py         # IMAP operations (shared)
+│   ├── imap_client.py         # IMAP operations (shared, supports OAuth authentication)
 │   ├── llm_client.py          # LLM API client with retry logic (shared)
 │   ├── decision_logic.py      # Threshold-based classification (shared)
 │   ├── note_generator.py      # Jinja2 note generation (shared)
@@ -55,6 +56,16 @@ email-agent/
 │   ├── dry_run.py             # Dry-run mode (shared)
 │   ├── dry_run_output.py      # Dry-run output formatting (shared)
 │   ├── logging_config.py      # V4 centralized logging configuration
+│   ├── auth/                   # V5 OAuth authentication module
+│   │   ├── __init__.py
+│   │   ├── interfaces.py       # Authentication protocols and OAuth provider interfaces
+│   │   ├── oauth_flow.py       # OAuth 2.0 flow orchestration for CLI
+│   │   ├── token_manager.py   # OAuth token storage, loading, and refresh
+│   │   ├── strategies.py       # Password and OAuth authenticator implementations
+│   │   └── providers/          # OAuth provider implementations
+│   │       ├── __init__.py
+│   │       ├── google.py       # Google OAuth provider
+│   │       └── microsoft.py    # Microsoft OAuth provider
 │   └── ...                    # Additional modules
 │
 ├── tests/                     # Test suite
@@ -70,6 +81,11 @@ email-agent/
 │   ├── test_summarization.py
 │   ├── test_obsidian_*.py      # Obsidian integration tests
 │   ├── test_e2e_v4_pipeline.py  # V4 end-to-end tests with real email accounts
+│   ├── test_e2e_oauth.py        # V5 OAuth end-to-end tests (Google/Microsoft)
+│   ├── test_e2e_oauth_backward_compat.py  # V5 backward compatibility tests (password auth)
+│   ├── test_oauth_flow.py       # V5 OAuth flow tests
+│   ├── test_auth_strategies.py  # V5 authentication strategy tests
+│   ├── test_auth_interfaces.py  # V5 authentication interface tests
 │   └── ...                    # Additional module tests
 │
 ├── config/                    # Configuration files
@@ -79,9 +95,15 @@ email-agent/
 │   ├── note_template.md.j2    # Jinja2 note template
 │   ├── prompt.md              # LLM classification prompt
 │   ├── accounts/              # Account-specific configurations
-│   │   └── *.yaml             # Account-specific config files (e.g., example-account.yaml)
+│   │   ├── *.yaml             # Account-specific config files (e.g., example-account.yaml)
+│   │   ├── example-google-oauth.yaml    # V5 Google OAuth example config
+│   │   ├── example-microsoft-oauth.yaml # V5 Microsoft OAuth example config
+│   │   └── example-password.yaml        # V4 password auth example config
 │   ├── blacklist.yaml         # Global blacklist rules
 │   └── whitelist.yaml         # Global whitelist rules
+│
+├── credentials/               # OAuth token storage (V5, gitignored)
+│   └── *.json                 # OAuth tokens per account (0600 permissions)
 │
 ├── docs/                      # Documentation
 │   ├── MAIN_DOCS.md           # Documentation index (developer-focused)
@@ -202,11 +224,19 @@ email-agent/
 
 **`src/imap_client.py`** - IMAP operations (shared)
 - `IMAPClient` - IMAP client class
-- `connect()` - Connection management
+- `connect()` - Connection management (supports OAuth and password authentication)
 - `fetch_emails()` - Email fetching with query support
 - `fetch_email_by_uid()` - Fetch specific email by UID
 - `tag_email()` - Flag/tag application
 - `remove_flags()` - Flag removal (for cleanup)
+
+**`src/auth/`** - V5 OAuth authentication module
+- `interfaces.py` - Authentication protocols and OAuth provider interfaces
+- `oauth_flow.py` - OAuth 2.0 flow orchestration for CLI authentication
+- `token_manager.py` - OAuth token storage, loading, and automatic refresh
+- `strategies.py` - Password and OAuth authenticator implementations
+- `providers/google.py` - Google OAuth 2.0 provider
+- `providers/microsoft.py` - Microsoft OAuth 2.0 provider
 
 **`src/llm_client.py`** - LLM API client (shared)
 - `LLMClient` - LLM client class
@@ -234,11 +264,14 @@ email-agent/
 - **Configuration Files**:
   - `config/config.yaml` - Global default configuration
   - `config/accounts/<account-name>.yaml` - Account-specific overrides
-  - `.env` - Environment variables (IMAP passwords, API keys)
+  - `.env` - Environment variables (IMAP passwords, API keys, OAuth credentials)
+  - Password auth: `IMAP_PASSWORD`
+  - OAuth auth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`
+  - LLM API: `OPENROUTER_API_KEY`
 - **ConfigLoader**: Loads and merges configurations with validation
 - **Schema Validation**: Validates configuration structure using Pydantic models
 
-### V4 Configuration Structure
+### V4/V5 Configuration Structure
 - **Global Config** (`config/config.yaml`):
   - `imap` - IMAP server defaults (port, query, processed_tag, application_flags)
   - `paths` - File and directory paths (template_file, obsidian_vault, log_file, etc.)
@@ -247,7 +280,11 @@ email-agent/
   - `summarization` - Summarization settings (optional)
   - `processing` - Processing thresholds and limits (importance_threshold, spam_threshold, max_emails_per_run)
 - **Account Config** (`config/accounts/<account-name>.yaml`):
-  - `imap` - Account-specific IMAP settings (server, username, password_env) - **required**
+  - `imap` - Account-specific IMAP settings (server, username) - **required**
+  - `auth` - Authentication method (V5):
+    - `method: 'password'` - Password authentication (V4 style, default)
+    - `method: 'oauth'` - OAuth 2.0 authentication (V5)
+      - `provider: 'google'` or `'microsoft'` - OAuth provider
   - `paths` - Account-specific path overrides (e.g., obsidian_vault)
   - Any other overrides as needed
 
@@ -262,6 +299,15 @@ email-agent/
 - Dry-run mode for preview
 - Force-reprocess capability
 - Safety interlock with cost estimation
+
+### V5 Key Features (OAuth Integration)
+- OAuth 2.0 authentication for Google and Microsoft accounts
+- Secure token storage and automatic refresh
+- Backward compatible with password authentication (V4)
+- CLI `auth` command for OAuth authentication flow
+- Support for both OAuth and password accounts in same configuration
+- Token management with 5-minute expiry buffer
+- CSRF protection with state parameter validation
 
 ---
 
@@ -395,6 +441,20 @@ email-agent/
 
 ## Current Task Status
 
+**V5 Implementation (OAuth Integration):** ✅ **COMPLETE** (on `v5-oauth` branch)
+- All V5 tasks completed (Tasks 1-12)
+- OAuth 2.0 authentication for Google and Microsoft
+- Backward compatible with V4 password authentication
+- Comprehensive test suite (unit, integration, E2E)
+- Complete user documentation and troubleshooting guides
+- **Key Features:**
+  - OAuth 2.0 Authorization Code Flow
+  - Google and Microsoft OAuth providers
+  - Secure token storage and automatic refresh
+  - CLI `auth` command for authentication
+  - Password and OAuth authentication strategies
+  - Token manager with expiry checking
+
 **V4 Implementation:** ✅ **COMPLETE** (on `v4-orchestrator` branch)
 - All V4 tasks completed (Tasks 1-22)
 - V3 to V4 migration complete (Task 22) - All V3 code removed, V4-only architecture
@@ -424,10 +484,12 @@ email-agent/
 ### When Starting Work:
 1. **Read:** `README-AI.md` (this file) - **This is the main entry point**
 2. **Check Branch:** 
-   - Current work: `v4-orchestrator` branch (see `pdd_V4.md`)
+   - Current work: `v5-oauth` branch (V5 OAuth integration, see `pdd_v5.md`)
+   - Production: `v4-orchestrator` branch (V4, see `pdd_V4.md`)
    - Historical: `main` branch (V3, superseded by V4)
 3. **Check:** `tasks/tasks.json` or run `task-master next` for current task
 4. **Review:** Relevant module docs in `docs/` directory
+   - V5: `docs/v5-*.md` (OAuth integration documentation)
    - V4: `docs/v4-*.md` (current production documentation)
    - Historical: `docs/v3-*.md` (historical reference)
 5. **Understand:** Current task context from `tasks/task_*.txt`
@@ -488,6 +550,14 @@ email-agent/
 
 ## Version Information
 
+- **V5:** OAuth Integration (✅ Complete, `v5-oauth` branch)
+  - OAuth 2.0 authentication for Google and Microsoft accounts
+  - Secure token storage and automatic refresh
+  - Backward compatible with V4 password authentication
+  - CLI `auth` command for OAuth flow
+  - Token manager with expiry checking
+  - OAuth and password authentication strategies
+  - **Status:** All V5 tasks complete (Tasks 1-12)
 - **V4:** Orchestrator (✅ Complete and production-ready, `v4-orchestrator` branch)
   - Multi-account support with state isolation
   - Configuration system (default + override model with deep merge)
@@ -512,12 +582,24 @@ email-agent/
 
 1. **README.md** - Human-facing overview
 2. **README-AI.md** - This file (AI agent entry point) ⭐ **START HERE**
-3. **pdd_V4.md** - V4 product requirements (current production, v4-orchestrator branch)
-4. **pdd.md** - V3 product requirements (historical, superseded by V4)
-5. **docs/MAIN_DOCS.md** - Documentation index
-6. **docs/COMPLETE_GUIDE.md** - Complete user guide
-7. **docs/v4-*.md** - V4 module documentation (current production)
-8. **docs/v3-*.md** - V3 module documentation (historical reference)
+3. **pdd_v5.md** - V5 product requirements (OAuth integration, v5-oauth branch)
+4. **pdd_V4.md** - V4 product requirements (current production, v4-orchestrator branch)
+5. **pdd.md** - V3 product requirements (historical, superseded by V4)
+6. **docs/MAIN_DOCS.md** - Documentation index
+7. **docs/COMPLETE_GUIDE.md** - Complete user guide
+8. **docs/v5-*.md** - V5 OAuth module documentation
+9. **docs/v4-*.md** - V4 module documentation (current production)
+10. **docs/v3-*.md** - V3 module documentation (historical reference)
+
+---
+
+**OAuth Integration (V5):**
+- OAuth 2.0 authentication is fully implemented and documented
+- Supports Google and Microsoft accounts
+- Backward compatible with V4 password authentication
+- See `docs/v5-oauth-user-guide.md` for setup instructions
+- See `docs/v5-oauth-troubleshooting.md` for troubleshooting
+- Example configurations: `config/accounts/example-google-oauth.yaml`, `config/accounts/example-microsoft-oauth.yaml`
 
 ---
 

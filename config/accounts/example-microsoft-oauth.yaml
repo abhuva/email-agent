@@ -1,0 +1,44 @@
+# Example Microsoft OAuth Account Configuration
+# 
+# This is an example configuration file for a Microsoft/Outlook account using OAuth 2.0 authentication.
+# Copy this file to config/accounts/<your-account-name>.yaml and customize it.
+#
+# Prerequisites:
+# 1. Register application in Azure Portal
+# 2. Add MS_CLIENT_ID and MS_CLIENT_SECRET to .env file
+# 3. Configure API permissions in Azure Portal
+#
+# See docs/v5-oauth-user-guide.md for detailed setup instructions.
+
+imap:
+  # Outlook/Office 365 IMAP server settings
+  server: outlook.office365.com  # For Office 365 accounts
+  # Alternative: imap-mail.outlook.com for personal Outlook accounts
+  username: your.email@outlook.com  # Replace with your Outlook/Office 365 email
+  port: 993
+  use_ssl: true
+  
+  # IMAP query settings (optional - uses global defaults if not specified)
+  query: "UNSEEN"  # Fetch unread emails
+  processed_tag: "AIProcessed"  # Tag to mark processed emails
+  
+  # Application flags (optional)
+  application_flags:
+    - "AIProcessed"
+    - "ObsidianNoteCreated"
+
+# OAuth 2.0 authentication configuration
+auth:
+  method: oauth  # Use OAuth 2.0 authentication
+  provider: microsoft  # Microsoft OAuth provider
+
+# Paths (optional - uses global defaults if not specified)
+paths:
+  obsidian_vault: "~/Documents/Obsidian/Email"  # Path to Obsidian vault
+  template_file: "config/note_template.md.j2"  # Note template file
+
+# Processing settings (optional - uses global defaults if not specified)
+processing:
+  importance_threshold: 7  # Minimum importance score (0-10)
+  spam_threshold: 5  # Maximum spam score (0-10)
+  max_emails_per_run: 50  # Maximum emails to process per run

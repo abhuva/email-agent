@@ -120,6 +120,52 @@ python main.py cleanup-flags --account work
 python main.py show-config --account work
 ```
 
+### OAuth Authentication (V5)
+
+Email Agent now supports OAuth 2.0 authentication for Google and Microsoft accounts, providing a more secure alternative to app passwords.
+
+**Quick Setup:**
+
+1. **Set up OAuth credentials** in Google Cloud Console or Azure Portal
+2. **Add credentials to `.env`**:
+   ```bash
+   # For Google
+   GOOGLE_CLIENT_ID=your_client_id
+   GOOGLE_CLIENT_SECRET=your_client_secret
+   
+   # For Microsoft
+   MS_CLIENT_ID=your_client_id
+   MS_CLIENT_SECRET=your_client_secret
+   ```
+3. **Configure account** with OAuth:
+   ```yaml
+   auth:
+     method: oauth
+     provider: google  # or microsoft
+   ```
+4. **Authenticate account**:
+   ```bash
+   python main.py auth --account <account-name>
+   ```
+
+**Features:**
+- ✅ Secure token-based authentication
+- ✅ Automatic token refresh
+- ✅ Backward compatible with password authentication
+- ✅ Supports Google and Microsoft accounts
+
+**Documentation:**
+- [V5 OAuth User Guide](docs/v5-oauth-user-guide.md) - Complete setup instructions
+- [V5 OAuth Troubleshooting](docs/v5-oauth-troubleshooting.md) - Troubleshooting guide
+- [V5 OAuth Flow](docs/v5-oauth-flow.md) - Technical implementation details
+
+**Example Configurations:**
+- `config/accounts/example-google-oauth.yaml` - Google OAuth example
+- `config/accounts/example-microsoft-oauth.yaml` - Microsoft OAuth example
+- `config/accounts/example-password.yaml` - Password authentication (V4 style)
+
+---
+
 ### Command-Line Options
 
 **Main Commands:**
@@ -139,6 +185,10 @@ python main.py show-config --account work
   - `--format yaml|json` - Output format (default: yaml)
   - `--with-sources` - Include source fields in JSON output
   - `--no-highlight` - Disable highlighting of overridden values
+- `auth` - Initiate OAuth 2.0 authentication flow (V5)
+  - `--account <name>` - Account name to authenticate (required)
+  - Requires OAuth credentials in `.env` (GOOGLE_CLIENT_ID/SECRET or MS_CLIENT_ID/SECRET)
+  - Account must be configured with `auth.method='oauth'` in account config
 
 **Global Options:**
 - `--config-dir <PATH>` - Base directory for configuration files (default: config)
@@ -213,6 +263,7 @@ processing:
 
 Each account has its own configuration file that can override global settings:
 
+**Password Authentication (V4 style):**
 ```yaml
 # Account-specific IMAP settings (overrides global defaults)
 imap:
@@ -220,9 +271,28 @@ imap:
   username: 'your-email@example.com'   # Email account username (required per account)
   password_env: 'IMAP_PASSWORD'        # Environment variable name containing IMAP password
 
+# Authentication (optional - defaults to password if not specified)
+auth:
+  method: password
+
 # Account-specific paths (overrides global defaults)
 paths:
   obsidian_vault: '/path/to/account/vault'  # Account-specific Obsidian vault
+```
+
+**OAuth Authentication (V5):**
+```yaml
+imap:
+  server: 'imap.gmail.com'            # IMAP server hostname
+  username: 'your-email@gmail.com'    # Email account username
+
+# OAuth 2.0 authentication
+auth:
+  method: oauth
+  provider: google  # or 'microsoft'
+
+paths:
+  obsidian_vault: '/path/to/account/vault'
 ```
 
 **Note:** Account-specific configs only need to include values that differ from global defaults. The V4 configuration system uses deep merge to combine global and account-specific settings.
@@ -233,8 +303,23 @@ See `config/accounts/example-account.yaml` for a complete example.
 
 The `.env` file contains sensitive credentials:
 
+**Password Authentication:**
 ```bash
 IMAP_PASSWORD=your-imap-password-here
+OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+```
+
+**OAuth Authentication (V5):**
+```bash
+# Google OAuth (for Google accounts)
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Microsoft OAuth (for Microsoft/Outlook accounts)
+MS_CLIENT_ID=your_microsoft_client_id
+MS_CLIENT_SECRET=your_microsoft_client_secret
+
+# Still required for LLM API
 OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
 ```
 
@@ -323,6 +408,16 @@ Overall Summary → Exit
 - **[V4 Migration Guide](docs/v4-migration-guide.md)** — Step-by-step guide for migrating from V3 to V4
 - **[V4 Troubleshooting](docs/v4-troubleshooting.md)** — Comprehensive troubleshooting guide for common V4 issues
 - **[Scoring Criteria](docs/scoring-criteria.md)** — Email scoring system
+
+### V5 OAuth Documentation
+- **[V5 OAuth User Guide](docs/v5-oauth-user-guide.md)** — Complete OAuth setup and usage guide
+- **[V5 OAuth Troubleshooting](docs/v5-oauth-troubleshooting.md)** — Detailed troubleshooting for OAuth issues
+- **[V5 OAuth Flow](docs/v5-oauth-flow.md)** — Technical OAuth flow implementation
+- **[V5 Token Manager](docs/v5-token-manager.md)** — Token storage and refresh system
+- **[V5 Google Provider](docs/v5-google-provider.md)** — Google OAuth provider implementation
+- **[V5 Microsoft Provider](docs/v5-microsoft-provider.md)** — Microsoft OAuth provider implementation
+- **[V5 Auth Interfaces](docs/v5-auth-interfaces.md)** — Authentication interfaces and protocols
+- **[V5 Auth Strategies](docs/v5-auth-strategies.md)** — Authentication strategy pattern implementation
 
 ### Historical Documentation
 - **[Product Design Doc V3 (PDD)](pdd.md)** — V3 project strategy (historical, superseded by V4)
@@ -516,6 +611,12 @@ A: Use `python main.py cleanup-flags --account <name>` (requires confirmation) t
 
 **Q: How do I view the merged configuration for an account?**  
 A: Use `python main.py show-config --account <name>` to display the merged configuration (global + account-specific overrides).
+
+**Q: How do I set up OAuth authentication?**  
+A: See [V5 OAuth User Guide](docs/v5-oauth-user-guide.md) for complete setup instructions. Quick steps: 1) Create OAuth credentials in Google Cloud Console or Azure Portal, 2) Add credentials to `.env`, 3) Configure account with `auth.method='oauth'`, 4) Run `python main.py auth --account <name>`.
+
+**Q: Can I use both OAuth and password authentication?**  
+A: Yes! OAuth and password authentication can coexist. Configure each account with the appropriate `auth.method` in its configuration file.
 
 **Q: Why aren't tags visible in Thunderbird?**  
 A: Thunderbird's "Schlagworte" view only shows KEYWORDS extension tags. The flags are still applied and searchable via IMAP. See [docs/imap-keywords-vs-flags.md](docs/imap-keywords-vs-flags.md).
