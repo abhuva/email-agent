@@ -669,7 +669,7 @@
       "id": 11,
       "title": "Update account processor for OAuth support",
       "description": "Modify the account processor to create the appropriate authenticator based on configuration",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3,
         9
@@ -682,7 +682,7 @@
           "id": 1,
           "title": "Implement configuration parsing for auth block with backward compatibility",
           "description": "Update the account configuration reader to parse the new `auth` block structure while maintaining backward compatibility for existing password-only configs.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "details": "1. Add `auth` field validation to config schema (email, password OR oauth: {account_name, provider, token_manager})\n2. Implement fallback logic: if `auth` missing, construct legacy password auth from `email`/`password` fields\n3. Add `get_auth_config()` method returning dict with `method` ('password'|'oauth') and auth params\n4. Log deprecation warning for legacy password configs\n5. Add unit tests for: valid password config, valid OAuth config, missing auth block fallback, invalid schema"
         },
@@ -690,7 +690,7 @@
           "id": 2,
           "title": "Create PasswordAuthenticator and OAuthAuthenticator factory classes",
           "description": "Implement abstract Authenticator base class and concrete implementations for both authentication methods.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -700,7 +700,7 @@
           "id": 3,
           "title": "Refactor IMAP client initialization to use dynamic authenticator",
           "description": "Replace hardcoded password login with config-driven authenticator selection and execution.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2
@@ -711,7 +711,7 @@
           "id": 4,
           "title": "Add comprehensive error handling and validation",
           "description": "Implement robust error handling for missing configs, invalid tokens, network issues, and OAuth-specific failures.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,
@@ -723,7 +723,7 @@
           "id": 5,
           "title": "Add end-to-end testing and security validation",
           "description": "Create comprehensive integration tests and validate security best practices implementation.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1,
             2,

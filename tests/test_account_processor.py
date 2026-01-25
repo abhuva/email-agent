@@ -26,6 +26,7 @@ from src.models import EmailContext, from_imap_dict
 from src.rules import ActionEnum
 from src.llm_client import LLMResponse
 from src.decision_logic import ClassificationResult, ClassificationStatus
+from src.auth.strategies import PasswordAuthenticator, OAuthAuthenticator
 
 
 @pytest.fixture
@@ -333,6 +334,333 @@ class TestConfigurableImapClient:
         # Verify authenticator was used (login called via PasswordAuthenticator)
         mock_imap.login.assert_called_once_with('test@example.com', 'test_password')
         assert client._connected
+    
+    def test_create_from_config_backward_compatibility_no_auth_block(self):
+        """Test backward compatibility when auth block is missing (defaults to password)."""
+        config = {
+            'imap': {
+                'server': 'imap.test.com',
+                'port': 993,
+                'username': 'test@example.com',
+                'password_env': 'TEST_PASSWORD'
+            }
+        }
+        
+        with patch('src.auth.strategies.os.getenv', return_value='test_password'):
+            client = create_imap_client_from_config(config)
+            assert isinstance(client, ConfigurableImapClient)
+            assert isinstance(client.authenticator, PasswordAuthenticator)
+    
+    def test_create_from_config_oauth_google(self):
+        """Test creating client with OAuth Google provider."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        with patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_token'):
+            client = create_imap_client_from_config(config)
+            assert isinstance(client, ConfigurableImapClient)
+            assert isinstance(client.authenticator, OAuthAuthenticator)
+            assert client.authenticator.provider_name == 'google'
+            assert client.authenticator.account_name == 'test-account'
+    
+    def test_create_from_config_oauth_microsoft(self):
+        """Test creating client with OAuth Microsoft provider."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'outlook.office365.com',
+                'port': 993,
+                'username': 'test@outlook.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'microsoft'
+            }
+        }
+        
+        with patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_token'):
+            client = create_imap_client_from_config(config)
+            assert isinstance(client, ConfigurableImapClient)
+            assert isinstance(client.authenticator, OAuthAuthenticator)
+            assert client.authenticator.provider_name == 'microsoft'
+    
+    def test_create_from_config_oauth_missing_provider(self):
+        """Test that OAuth method requires provider."""
+        config = {
+            'imap': {
+                'server': 'imap.test.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'auth': {
+                'method': 'oauth'
+                # Missing provider
+            }
+        }
+        
+        with pytest.raises(AccountProcessorSetupError, match="OAuth provider is required"):
+            create_imap_client_from_config(config)
+    
+    def test_create_from_config_oauth_invalid_provider(self):
+        """Test that invalid OAuth provider raises error."""
+        config = {
+            'imap': {
+                'server': 'imap.test.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'invalid_provider'
+            }
+        }
+        
+        with pytest.raises(AccountProcessorSetupError, match="Invalid OAuth provider"):
+            create_imap_client_from_config(config)
+    
+    def test_create_from_config_password_missing_env(self):
+        """Test that password method requires password_env."""
+        config = {
+            'imap': {
+                'server': 'imap.test.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'auth': {
+                'method': 'password'
+                # Missing password_env
+            }
+        }
+        
+        with pytest.raises(AccountProcessorSetupError, match="Password environment variable"):
+            create_imap_client_from_config(config)
+    
+    def test_create_from_config_invalid_method(self):
+        """Test that invalid auth method raises error."""
+        config = {
+            'imap': {
+                'server': 'imap.test.com',
+                'port': 993,
+                'username': 'test@example.com'
+            },
+            'auth': {
+                'method': 'invalid_method'
+            }
+        }
+        
+        with pytest.raises(AccountProcessorSetupError, match="Invalid authentication method"):
+            create_imap_client_from_config(config)
+    
+    @patch('src.account_processor.imaplib.IMAP4_SSL')
+    @patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_access_token')
+    def test_connect_with_oauth(self, mock_get_token, mock_imap_ssl):
+        """Test connecting with OAuth authentication."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        # Mock IMAP connection
+        mock_imap = Mock()
+        mock_imap.authenticate = Mock(return_value=('OK', [b'Success']))
+        mock_imap.select = Mock(return_value=('OK', [b'1']))
+        mock_imap_ssl.return_value = mock_imap
+        
+        client = create_imap_client_from_config(config)
+        client.connect()
+        
+        # Verify connection was made
+        mock_imap_ssl.assert_called_once_with('imap.gmail.com', 993)
+        # Verify OAuth authenticate was called
+        assert mock_imap.authenticate.called
+        call_args = mock_imap.authenticate.call_args
+        assert call_args[0][0] == 'XOAUTH2'
+        assert client._connected
+
+
+class TestOAuthAuthentication:
+    """Test OAuth authentication scenarios."""
+    
+    @patch('src.account_processor.imaplib.IMAP4_SSL')
+    @patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_token')
+    def test_oauth_authentication_success(self, mock_get_token, mock_imap_ssl):
+        """Test successful OAuth authentication."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        # Mock IMAP connection
+        mock_imap = Mock()
+        mock_imap.authenticate = Mock(return_value=('OK', [b'Success']))
+        mock_imap.select = Mock(return_value=('OK', [b'1']))
+        mock_imap_ssl.return_value = mock_imap
+        
+        client = create_imap_client_from_config(config)
+        client.connect()
+        
+        # Verify token was retrieved
+        mock_get_token.assert_called_once_with('test-account', 'google')
+        # Verify OAuth authenticate was called
+        assert mock_imap.authenticate.called
+        assert client._connected
+    
+    @patch('src.account_processor.imaplib.IMAP4_SSL')
+    @patch('src.auth.token_manager.TokenManager.get_valid_token', return_value=None)
+    def test_oauth_authentication_no_token(self, mock_get_token, mock_imap_ssl):
+        """Test OAuth authentication when no token is available."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        # Mock IMAP connection
+        mock_imap = Mock()
+        mock_imap_ssl.return_value = mock_imap
+        
+        client = create_imap_client_from_config(config)
+        
+        # Should raise IMAPConnectionError when trying to connect without token
+        from src.imap_client import IMAPConnectionError
+        with pytest.raises(IMAPConnectionError, match="Failed to obtain access token"):
+            client.connect()
+    
+    @patch('src.account_processor.imaplib.IMAP4_SSL')
+    @patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_token')
+    def test_oauth_authentication_failure(self, mock_get_token, mock_imap_ssl):
+        """Test OAuth authentication failure (invalid token)."""
+        config = {
+            'account_id': 'test-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        # Mock IMAP connection with authentication failure
+        mock_imap = Mock()
+        mock_imap.authenticate = Mock(return_value=('NO', [b'Authentication failed']))
+        mock_imap_ssl.return_value = mock_imap
+        
+        client = create_imap_client_from_config(config)
+        
+        # Should raise IMAPConnectionError (wraps AuthenticationError)
+        from src.imap_client import IMAPConnectionError
+        with pytest.raises(IMAPConnectionError, match="OAuth authentication failed"):
+            client.connect()
+    
+    def test_oauth_account_name_fallback_to_username(self):
+        """Test that OAuth uses username as account_name fallback."""
+        config = {
+            # No account_id
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            }
+        }
+        
+        with patch('src.auth.token_manager.TokenManager.get_valid_token', return_value='test_token'):
+            client = create_imap_client_from_config(config)
+            assert client.authenticator.account_name == 'test@gmail.com'
+    
+    def test_account_processor_with_oauth(self, mock_llm_client, mock_note_generator, mock_decision_logic):
+        """Test AccountProcessor setup with OAuth authentication."""
+        from src.rules import load_blacklist_rules, load_whitelist_rules
+        from src.content_parser import parse_html_content
+        
+        oauth_config = {
+            'account_id': 'test-oauth-account',
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+                'username': 'test@gmail.com',
+                'query': 'ALL',
+                'processed_tag': 'AIProcessed'
+            },
+            'auth': {
+                'method': 'oauth',
+                'provider': 'google'
+            },
+            'processing': {
+                'max_emails_per_run': 10
+            }
+        }
+        
+        # Mock IMAP client with OAuth
+        mock_imap_client = Mock()
+        mock_imap_client._connected = False
+        mock_imap_client.connect = Mock()
+        mock_imap_client.disconnect = Mock()
+        mock_imap_client.count_unprocessed_emails = Mock(return_value=(0, []))
+        mock_imap_client.get_unprocessed_emails = Mock(return_value=[])
+        
+        def imap_factory(config):
+            return mock_imap_client
+        
+        processor = AccountProcessor(
+            account_id='test-oauth-account',
+            account_config=oauth_config,
+            imap_client_factory=imap_factory,
+            llm_client=mock_llm_client,
+            blacklist_service=load_blacklist_rules,
+            whitelist_service=load_whitelist_rules,
+            note_generator=mock_note_generator,
+            parser=parse_html_content,
+            decision_logic=mock_decision_logic
+        )
+        
+        # Setup should work with OAuth config
+        processor.setup()
+        
+        # Verify IMAP client was created and connected
+        assert processor._imap_conn is not None
+        mock_imap_client.connect.assert_called_once()
+        
+        processor.teardown()
 
 
 class TestAccountProcessorPipeline:

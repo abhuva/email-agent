@@ -328,6 +328,53 @@ class ConfigurableImapClient(ImapClient):
             self.authenticator = self._create_authenticator_from_config(config)
             logger.debug(f"Created authenticator from config: {type(self.authenticator).__name__}")
     
+    def _validate_auth_config(self, auth_config: Dict[str, Any], imap_config: Dict[str, Any], method: str) -> None:
+        """
+        Validate authentication configuration for specific method.
+        
+        Args:
+            auth_config: Authentication configuration block
+            imap_config: IMAP configuration block
+            method: Authentication method ('password' or 'oauth')
+        
+        Raises:
+            AccountProcessorSetupError: If configuration is invalid
+        """
+        if method == 'oauth':
+            provider = auth_config.get('provider')
+            if not provider:
+                raise AccountProcessorSetupError(
+                    "OAuth provider is required when auth method is 'oauth'. "
+                    "Set 'auth.provider' to 'google' or 'microsoft'."
+                )
+            
+            if provider not in ('google', 'microsoft'):
+                raise AccountProcessorSetupError(
+                    f"Invalid OAuth provider '{provider}'. "
+                    "Supported providers: 'google', 'microsoft'"
+                )
+        
+        elif method == 'password':
+            password_env = auth_config.get('password_env') or imap_config.get('password_env')
+            
+            if not password_env:
+                # Check for deprecated direct password in config
+                password = imap_config.get('password')
+                if password:
+                    logger.warning(
+                        "Using 'password' directly in config is deprecated. "
+                        "Use 'auth.password_env' with an environment variable instead."
+                    )
+                    raise AccountProcessorSetupError(
+                        "Direct password in config is not supported. "
+                        "Please use 'auth.password_env' with an environment variable."
+                    )
+                else:
+                    raise AccountProcessorSetupError(
+                        "Password environment variable not specified. "
+                        "Set 'auth.password_env' or 'imap.password_env' in config."
+                    )
+    
     def _create_authenticator_from_config(self, config: Dict[str, Any]) -> AuthenticatorProtocol:
         """
         Create an authenticator instance from configuration.
@@ -355,20 +402,14 @@ class ConfigurableImapClient(ImapClient):
         # Get authentication method (defaults to 'password' for backward compatibility)
         method = auth_config.get('method', 'password')
         
+        # Validate configuration for the selected method
+        self._validate_auth_config(auth_config, imap_config, method)
+        
         if method == 'oauth':
             # OAuth authentication
             provider = auth_config.get('provider')
-            if not provider:
-                raise AccountProcessorSetupError(
-                    "OAuth provider is required when auth method is 'oauth'"
-                )
             
-            if provider not in ('google', 'microsoft'):
-                raise AccountProcessorSetupError(
-                    f"Invalid OAuth provider '{provider}'. Supported: 'google', 'microsoft'"
-                )
-            
-            # Get account name for token storage (use username as fallback)
+            # Get account name for token storage (use account_id or username as fallback)
             account_name = config.get('account_id') or username
             
             # Create TokenManager
@@ -385,29 +426,6 @@ class ConfigurableImapClient(ImapClient):
         elif method == 'password':
             # Password authentication (default)
             password_env = auth_config.get('password_env') or imap_config.get('password_env')
-            
-            if not password_env:
-                # Backward compatibility: try to get password directly from config
-                password = imap_config.get('password')
-                if password:
-                    # Log deprecation warning
-                    logger.warning(
-                        "Using 'password' directly in config is deprecated. "
-                        "Use 'auth.password_env' with an environment variable instead."
-                    )
-                    # For backward compatibility, we'll still need to handle this
-                    # But PasswordAuthenticator requires password_env, so we need a workaround
-                    # Actually, we can't use PasswordAuthenticator with direct password
-                    # So we'll raise an error and suggest migration
-                    raise AccountProcessorSetupError(
-                        "Direct password in config is not supported. "
-                        "Please use 'auth.password_env' with an environment variable."
-                    )
-                else:
-                    raise AccountProcessorSetupError(
-                        "Password environment variable not specified. "
-                        "Set 'auth.password_env' or 'imap.password_env' in config."
-                    )
             
             # Create PasswordAuthenticator
             return PasswordAuthenticator(

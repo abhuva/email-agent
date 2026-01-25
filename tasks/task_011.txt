@@ -1,6 +1,6 @@
 # Task ID: 11
 # Title: Update account processor for OAuth support
-# Status: pending
+# Status: done
 # Dependencies: 3, 9
 # Priority: high
 # Description: Modify the account processor to create the appropriate authenticator based on configuration
@@ -20,7 +20,7 @@ In `src/account_processor.py`:
 Write unit tests for the account processor with various configurations. Test both password and OAuth authentication methods. Verify backward compatibility with existing configurations. Test error handling for missing or invalid configurations.
 
 # Subtasks:
-## 1. Implement configuration parsing for auth block with backward compatibility [pending]
+## 1. Implement configuration parsing for auth block with backward compatibility [done]
 ### Dependencies: None
 ### Description: Update the account configuration reader to parse the new `auth` block structure while maintaining backward compatibility for existing password-only configs.
 ### Details:
@@ -30,7 +30,7 @@ Write unit tests for the account processor with various configurations. Test bot
 4. Log deprecation warning for legacy password configs
 5. Add unit tests for: valid password config, valid OAuth config, missing auth block fallback, invalid schema
 
-## 2. Create PasswordAuthenticator and OAuthAuthenticator factory classes [pending]
+## 2. Create PasswordAuthenticator and OAuthAuthenticator factory classes [done]
 ### Dependencies: 11.1
 ### Description: Implement abstract Authenticator base class and concrete implementations for both authentication methods.
 ### Details:
@@ -45,7 +45,7 @@ Write unit tests for the account processor with various configurations. Test bot
 4. Add `create_authenticator(auth_config)` factory function
 5. Unit test both authenticators with mock IMAPClient
 
-## 3. Refactor IMAP client initialization to use dynamic authenticator [pending]
+## 3. Refactor IMAP client initialization to use dynamic authenticator [done]
 ### Dependencies: 11.1, 11.2
 ### Description: Replace hardcoded password login with config-driven authenticator selection and execution.
 ### Details:
@@ -58,7 +58,7 @@ Write unit tests for the account processor with various configurations. Test bot
 4. Integration test: full IMAP connection flow with both auth types
 5. Verify capabilities check happens AFTER successful authentication
 
-## 4. Add comprehensive error handling and validation [pending]
+## 4. Add comprehensive error handling and validation [done]
 ### Dependencies: 11.1, 11.2, 11.3
 ### Description: Implement robust error handling for missing configs, invalid tokens, network issues, and OAuth-specific failures.
 ### Details:
@@ -70,7 +70,7 @@ Write unit tests for the account processor with various configurations. Test bot
 6. Add retry logic for transient OAuth token fetch failures (max 3 attempts)
 7. Integration tests for all error scenarios with pytest.raises()
 
-## 5. Add end-to-end testing and security validation [pending]
+## 5. Add end-to-end testing and security validation [done]
 ### Dependencies: 11.1, 11.2, 11.3, 11.4
 ### Description: Create comprehensive integration tests and validate security best practices implementation.
 ### Details:
