@@ -193,6 +193,27 @@ class ConfigSchemaValidator:
             # Add normalized section to normalized config
             if normalized_section or section_config:
                 normalized[section_name] = normalized_section if normalized_section else section_config
+            
+            # Apply section-level validation (e.g., cross-field constraints)
+            if section_name == 'auth' and section_config:
+                auth_issues = self._validate_auth_section(section_path, normalized_section or section_config)
+                for issue in auth_issues:
+                    if issue.severity == 'error':
+                        result.errors.append(issue)
+                    else:
+                        result.warnings.append(issue)
+        
+        # Check for backward compatibility: warn if auth block is missing but password_env is in imap
+        # This indicates old-style V4 configuration
+        if 'auth' not in config and 'imap' in config:
+            imap_config = config.get('imap', {})
+            if 'password_env' in imap_config:
+                result.warnings.append(ValidationIssue(
+                    path='auth',
+                    error_code='DEPRECATED_CONFIG_STYLE',
+                    message="Configuration uses deprecated password-only style. Consider adding explicit 'auth' block with method='password' for future compatibility.",
+                    severity='warning'
+                ))
         
         # Determine overall validity (valid if no errors)
         result.is_valid = not result.has_errors()
@@ -371,5 +392,149 @@ class ConfigSchemaValidator:
                         value=value,
                         severity='error'
                     ))
+        
+        return issues
+    
+    def _validate_auth_section(
+        self,
+        path: str,
+        auth_config: Dict[str, Any]
+    ) -> List[ValidationIssue]:
+        """
+        Validate the auth section with conditional logic based on method.
+        
+        Rules:
+        - If method='oauth', provider is required and password_env is ignored
+        - If method='password', password_env is required
+        - Default method is 'password' for backward compatibility
+        
+        Args:
+            path: Path to the auth section (e.g., 'auth')
+            auth_config: The auth configuration dictionary
+            
+        Returns:
+            List of ValidationIssue objects (empty if validation passes)
+        """
+        issues = []
+        
+        # Get method, defaulting to 'password' for backward compatibility
+        method = auth_config.get('method', 'password')
+        
+        # Validate method value
+        if method not in ['password', 'oauth']:
+            issues.append(ValidationIssue(
+                path=f"{path}.method",
+                error_code='INVALID_AUTH_METHOD',
+                message=f"Auth method must be 'password' or 'oauth', got {repr(method)}",
+                value=method,
+                severity='error'
+            ))
+            return issues  # Can't continue validation with invalid method
+        
+        if method == 'oauth':
+            # OAuth method: provider is required
+            provider = auth_config.get('provider')
+            if not provider:
+                issues.append(ValidationIssue(
+                    path=f"{path}.provider",
+                    error_code='MISSING_REQUIRED_FIELD',
+                    message="Provider is required when auth method is 'oauth'",
+                    severity='error'
+                ))
+            elif provider not in ['google', 'microsoft']:
+                issues.append(ValidationIssue(
+                    path=f"{path}.provider",
+                    error_code='INVALID_PROVIDER',
+                    message=f"Provider must be 'google' or 'microsoft', got {repr(provider)}",
+                    value=provider,
+                    severity='error'
+                ))
+            
+            # Validate OAuth-specific configuration if present
+            oauth_config = auth_config.get('oauth')
+            if oauth_config and isinstance(oauth_config, dict):
+                # Validate required OAuth fields
+                required_oauth_fields = ['client_id', 'client_secret_env', 'redirect_uri']
+                for field in required_oauth_fields:
+                    if field not in oauth_config or not oauth_config[field]:
+                        issues.append(ValidationIssue(
+                            path=f"{path}.oauth.{field}",
+                            error_code='MISSING_REQUIRED_FIELD',
+                            message=f"OAuth configuration requires '{field}' field",
+                            severity='error'
+                        ))
+                    elif field in ['client_id', 'client_secret_env', 'redirect_uri']:
+                        # Validate string type and non-empty
+                        if not isinstance(oauth_config[field], str) or len(oauth_config[field]) < 1:
+                            issues.append(ValidationIssue(
+                                path=f"{path}.oauth.{field}",
+                                error_code='INVALID_VALUE',
+                                message=f"OAuth '{field}' must be a non-empty string",
+                                value=oauth_config[field],
+                                severity='error'
+                            ))
+                
+                # Validate scopes (optional, defaults to empty list)
+                if 'scopes' in oauth_config:
+                    scopes = oauth_config['scopes']
+                    if not isinstance(scopes, list):
+                        issues.append(ValidationIssue(
+                            path=f"{path}.oauth.scopes",
+                            error_code='INVALID_TYPE',
+                            message="OAuth scopes must be a list",
+                            value=scopes,
+                            severity='error'
+                        ))
+                    elif not all(isinstance(scope, str) for scope in scopes):
+                        issues.append(ValidationIssue(
+                            path=f"{path}.oauth.scopes",
+                            error_code='INVALID_ITEM_TYPE',
+                            message="All OAuth scopes must be strings",
+                            value=scopes,
+                            severity='error'
+                        ))
+                
+                # Validate access_type (optional, defaults to 'offline')
+                if 'access_type' in oauth_config:
+                    access_type = oauth_config['access_type']
+                    if not isinstance(access_type, str):
+                        issues.append(ValidationIssue(
+                            path=f"{path}.oauth.access_type",
+                            error_code='INVALID_TYPE',
+                            message="OAuth access_type must be a string",
+                            value=access_type,
+                            severity='error'
+                        ))
+                
+                # Validate include_granted_scopes (optional, defaults to True)
+                if 'include_granted_scopes' in oauth_config:
+                    include_granted_scopes = oauth_config['include_granted_scopes']
+                    if not isinstance(include_granted_scopes, bool):
+                        issues.append(ValidationIssue(
+                            path=f"{path}.oauth.include_granted_scopes",
+                            error_code='INVALID_TYPE',
+                            message="OAuth include_granted_scopes must be a boolean",
+                            value=include_granted_scopes,
+                            severity='error'
+                        ))
+        
+        elif method == 'password':
+            # Password method: password_env is required
+            password_env = auth_config.get('password_env')
+            if not password_env:
+                issues.append(ValidationIssue(
+                    path=f"{path}.password_env",
+                    error_code='MISSING_REQUIRED_FIELD',
+                    message="password_env is required when auth method is 'password'",
+                    severity='error'
+                ))
+            elif not isinstance(password_env, str) or len(password_env) < 1:
+                issues.append(ValidationIssue(
+                    path=f"{path}.password_env",
+                    error_code='INVALID_VALUE',
+                    message="password_env must be a non-empty string",
+                    value=password_env,
+                    severity='error'
+                ))
         
         return issues

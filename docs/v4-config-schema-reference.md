@@ -192,7 +192,94 @@ config/
 
 ---
 
-### 7. Safety Interlock Configuration (`safety_interlock`)
+### 7. Authentication Configuration (`auth`)
+
+**Scope:** Account-specific (optional, defaults to password authentication)  
+**Required:** No (optional section)  
+**V5 Feature:** OAuth 2.0 support for Google and Microsoft accounts
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `method` | `str` | No | `'password'` | Authentication method: `'password'` or `'oauth'` |
+| `provider` | `str \| None` | Conditional | `None` | OAuth provider: `'google'` or `'microsoft'` (required when `method='oauth'`) |
+| `password_env` | `str \| None` | Conditional | `None` | Environment variable name containing IMAP password (required when `method='password'`) |
+| `oauth` | `dict \| None` | Conditional | `None` | OAuth 2.0 configuration (required when `method='oauth'`) |
+
+**OAuth Configuration (`oauth` sub-section):**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | `str` | Yes | - | OAuth 2.0 client ID from provider |
+| `client_secret_env` | `str` | Yes | - | Environment variable name containing OAuth client secret |
+| `redirect_uri` | `str` | Yes | - | OAuth redirect URI (e.g., `'http://localhost:8080/callback'`) |
+| `scopes` | `list[str]` | No | `[]` | OAuth scopes (e.g., `['https://mail.google.com/']` for Google) |
+| `access_type` | `str` | No | `'offline'` | OAuth access type (Google-specific: `'offline'` for refresh tokens) |
+| `include_granted_scopes` | `bool` | No | `true` | Include previously granted scopes (Google-specific) |
+
+**Constraints:**
+- `method`: Must be `'password'` or `'oauth'`
+- `provider`: Must be `'google'` or `'microsoft'` (only valid when `method='oauth'`)
+- `password_env`: Required when `method='password'`, ignored when `method='oauth'`
+- `provider`: Required when `method='oauth'`, ignored when `method='password'`
+- `oauth.client_id`, `oauth.client_secret_env`, `oauth.redirect_uri`: Required when `method='oauth'`
+- `oauth.scopes`: If provided, must be a list of strings
+- `oauth.access_type`: Must be a string (typically `'offline'` for Google)
+- `oauth.include_granted_scopes`: Must be a boolean
+
+**Conditional Validation Rules:**
+- **Password Method:** When `method='password'`, `password_env` is required. `provider` and `oauth` are ignored.
+- **OAuth Method:** When `method='oauth'`, `provider` is required and must be `'google'` or `'microsoft'`. `oauth` configuration with `client_id`, `client_secret_env`, and `redirect_uri` is required. `password_env` is ignored.
+
+**Backward Compatibility:**
+- If `auth` section is missing, defaults to `method='password'` and uses `imap.password_env` from IMAP configuration
+- Existing V4 configurations without `auth` block continue to work (deprecation warning logged)
+- Migration: Add explicit `auth` block with `method='password'` and `password_env` for future compatibility
+
+**Account Override Behavior:**
+- Always account-specific: Each account can have different authentication method
+- Commonly used: OAuth for Google/Microsoft accounts, password for other providers
+- OAuth configuration is account-specific (different client IDs/secrets per account)
+
+**Example Configurations:**
+
+```yaml
+# Password authentication (default, backward compatible)
+auth:
+  method: password
+  password_env: IMAP_PASSWORD
+
+# Google OAuth authentication
+auth:
+  method: oauth
+  provider: google
+  oauth:
+    client_id: your-google-client-id
+    client_secret_env: GOOGLE_CLIENT_SECRET
+    redirect_uri: http://localhost:8080/callback
+    scopes:
+      - https://mail.google.com/
+    access_type: offline
+    include_granted_scopes: true
+
+# Microsoft OAuth authentication
+auth:
+  method: oauth
+  provider: microsoft
+  oauth:
+    client_id: your-microsoft-client-id
+    client_secret_env: MS_CLIENT_SECRET
+    redirect_uri: http://localhost:8080/callback
+    scopes:
+      - https://outlook.office.com/IMAP.AccessAsUser.All
+      - https://outlook.office.com/User.Read
+      - offline_access
+```
+
+**Note:** This is a V5 feature. For OAuth setup instructions, see the OAuth integration documentation.
+
+---
+
+### 8. Safety Interlock Configuration (`safety_interlock`)
 
 **Scope:** Global (can be overridden per account)  
 **Required:** No (optional section)

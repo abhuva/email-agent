@@ -333,3 +333,259 @@ class TestConfigSchemaValidator:
         assert result.is_valid is False
         assert result.has_errors()
         assert any('LENGTH_BELOW_MIN' in issue.error_code for issue in result.errors)
+    
+    # Auth schema validation tests
+    def test_validate_auth_password_method_valid(self, validator, valid_config):
+        """Test that valid password auth config passes validation."""
+        valid_config['auth'] = {
+            'method': 'password',
+            'password_env': 'IMAP_PASSWORD'
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is True
+        assert not result.has_errors()
+    
+    def test_validate_auth_password_method_missing_password_env(self, validator, valid_config):
+        """Test that password method requires password_env."""
+        valid_config['auth'] = {
+            'method': 'password'
+            # Missing password_env
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.password_env' in issue.path and 'MISSING_REQUIRED_FIELD' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_method_valid_google(self, validator, valid_config):
+        """Test that valid OAuth config with Google provider passes validation."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'scopes': ['https://mail.google.com/'],
+                'access_type': 'offline',
+                'include_granted_scopes': True
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is True
+        assert not result.has_errors()
+    
+    def test_validate_auth_oauth_method_valid_microsoft(self, validator, valid_config):
+        """Test that valid OAuth config with Microsoft provider passes validation."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'microsoft',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'MS_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'scopes': ['https://outlook.office.com/IMAP.AccessAsUser.All']
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is True
+        assert not result.has_errors()
+    
+    def test_validate_auth_oauth_method_missing_provider(self, validator, valid_config):
+        """Test that OAuth method requires provider."""
+        valid_config['auth'] = {
+            'method': 'oauth'
+            # Missing provider
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.provider' in issue.path and 'MISSING_REQUIRED_FIELD' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_method_invalid_provider(self, validator, valid_config):
+        """Test that provider must be 'google' or 'microsoft'."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'invalid-provider'
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.provider' in issue.path and 'INVALID_PROVIDER' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_method_invalid_method(self, validator, valid_config):
+        """Test that method must be 'password' or 'oauth'."""
+        valid_config['auth'] = {
+            'method': 'invalid-method'
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.method' in issue.path and 'INVALID_AUTH_METHOD' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_missing_required_fields(self, validator, valid_config):
+        """Test that OAuth config requires client_id, client_secret_env, and redirect_uri."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id'
+                # Missing client_secret_env and redirect_uri
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        # Should have errors for missing fields
+        oauth_errors = [e for e in result.errors if 'auth.oauth' in e.path]
+        assert len(oauth_errors) >= 2  # At least 2 missing fields
+    
+    def test_validate_auth_oauth_invalid_scopes_type(self, validator, valid_config):
+        """Test that OAuth scopes must be a list."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'scopes': 'not-a-list'  # Should be a list
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.oauth.scopes' in issue.path and 'INVALID_TYPE' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_invalid_scope_items(self, validator, valid_config):
+        """Test that OAuth scope items must be strings."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'scopes': ['valid-scope', 123, 'another-scope']  # Mixed types
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.oauth.scopes' in issue.path and 'INVALID_ITEM_TYPE' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_invalid_access_type(self, validator, valid_config):
+        """Test that OAuth access_type must be a string."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'access_type': 123  # Should be a string
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.oauth.access_type' in issue.path and 'INVALID_TYPE' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_oauth_invalid_include_granted_scopes(self, validator, valid_config):
+        """Test that OAuth include_granted_scopes must be a boolean."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'include_granted_scopes': 'not-a-boolean'  # Should be a boolean
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is False
+        assert result.has_errors()
+        assert any('auth.oauth.include_granted_scopes' in issue.path and 'INVALID_TYPE' in issue.error_code 
+                   for issue in result.errors)
+    
+    def test_validate_auth_default_method_password(self, validator, valid_config):
+        """Test that auth block defaults to method='password' when method is missing."""
+        valid_config['auth'] = {
+            'password_env': 'IMAP_PASSWORD'
+            # method not specified, should default to 'password'
+        }
+        result = validator.validate(valid_config)
+        # Should be valid because method defaults to 'password' and password_env is provided
+        assert result.is_valid is True
+        assert result.normalized_config['auth']['method'] == 'password'
+    
+    def test_validate_auth_backward_compatibility_warning(self, validator, valid_config):
+        """Test that V4 configs without auth block generate deprecation warning."""
+        # Remove auth block if present, keep password_env in imap (old style)
+        if 'auth' in valid_config:
+            del valid_config['auth']
+        valid_config['imap']['password_env'] = 'IMAP_PASSWORD'
+        
+        result = validator.validate(valid_config)
+        # Should be valid but with warning
+        assert result.is_valid is True
+        assert result.has_warnings()
+        assert any('DEPRECATED_CONFIG_STYLE' in issue.error_code for issue in result.warnings)
+        assert any('auth' in issue.path for issue in result.warnings)
+    
+    def test_validate_auth_extra_fields_ignored(self, validator, valid_config):
+        """Test that extra unknown fields in auth block are ignored (don't cause errors)."""
+        valid_config['auth'] = {
+            'method': 'password',
+            'password_env': 'IMAP_PASSWORD',
+            'unknown_field': 'should-be-ignored',
+            'another_unknown': 123
+        }
+        result = validator.validate(valid_config)
+        # Should be valid (extra fields ignored, no errors)
+        assert result.is_valid is True
+        assert not result.has_errors()
+        # Normalized config contains only schema-defined fields
+        auth_config = result.normalized_config.get('auth', {})
+        assert 'method' in auth_config
+        assert 'password_env' in auth_config
+        # Extra fields are not in normalized config (they're ignored, not preserved)
+    
+    def test_validate_auth_oauth_empty_scopes_allowed(self, validator, valid_config):
+        """Test that OAuth scopes can be an empty list."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback',
+                'scopes': []  # Empty list should be valid
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is True
+        assert not result.has_errors()
+    
+    def test_validate_auth_oauth_optional_fields_defaults(self, validator, valid_config):
+        """Test that OAuth optional fields (access_type, include_granted_scopes) are optional."""
+        valid_config['auth'] = {
+            'method': 'oauth',
+            'provider': 'google',
+            'oauth': {
+                'client_id': 'test-client-id',
+                'client_secret_env': 'GOOGLE_CLIENT_SECRET',
+                'redirect_uri': 'http://localhost:8080/callback'
+                # access_type and include_granted_scopes are optional
+            }
+        }
+        result = validator.validate(valid_config)
+        assert result.is_valid is True
+        assert not result.has_errors()

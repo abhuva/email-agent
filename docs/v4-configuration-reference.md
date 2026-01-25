@@ -49,7 +49,8 @@ V4 configuration is organized into the following domains:
 4. **`classification`** - Email classification settings
 5. **`summarization`** - Email summarization settings (optional)
 6. **`processing`** - Processing thresholds and limits
-7. **`safety_interlock`** - Safety interlock settings (optional)
+7. **`auth`** - Authentication settings (optional, V5 feature: OAuth 2.0 support)
+8. **`safety_interlock`** - Safety interlock settings (optional)
 
 See [V4 Configuration Schema Reference](v4-config-schema-reference.md) for complete schema details.
 

@@ -317,6 +317,43 @@ def get_v4_config_schema() -> SchemaDefinition:
                     }
                 }
             }
+        },
+        'auth': {
+            'required': False,  # Optional - account-specific, defaults to password if missing
+            'fields': {
+                'method': {
+                    'type': str,
+                    'required': False,
+                    'default': 'password',
+                    'constraints': {
+                        'enum': ['password', 'oauth']
+                    }
+                },
+                'provider': {
+                    'type': (str, type(None)),
+                    'required': False,
+                    'default': None,
+                    'constraints': {
+                        'enum': ['google', 'microsoft']  # Only valid when method='oauth'
+                    }
+                },
+                'password_env': {
+                    'type': (str, type(None)),
+                    'required': False,
+                    'default': None,
+                    'constraints': {
+                        'min_length': 1  # Required when method='password'
+                    }
+                },
+                'oauth': {
+                    'type': (dict, type(None)),
+                    'required': False,
+                    'default': None,
+                    'constraints': {
+                        # OAuth-specific fields validated via custom validator
+                    }
+                }
+            }
         }
     }
 
