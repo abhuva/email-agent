@@ -167,7 +167,7 @@
           "id": 2,
           "title": "Implement token expiry checking logic",
           "description": "Add token validation with 5-minute expiry buffer to determine if tokens need refreshing.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
