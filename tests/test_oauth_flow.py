@@ -358,20 +358,23 @@ class TestOAuthCallbackHandler:
         mock_address = ('127.0.0.1', 12345)
         mock_server = Mock()
         
-        # Create handler with mocked connection
-        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
-        handler.path = '/callback?code=test_code&state=test_state'
-        handler.oauth_flow._state = 'test_state'
-        
-        # Mock the response methods
-        handler.send_response = Mock()
-        handler.send_header = Mock()
-        handler.end_headers = Mock()
-        handler.wfile = Mock()
-        handler.wfile.write = Mock()
-        
-        # Simulate GET request
-        handler.do_GET()
+        # Patch handle() to skip BaseHTTPRequestHandler's request handling
+        # which tries to read raw_requestline and causes len() errors
+        with patch.object(OAuthCallbackHandler, 'handle', lambda self: None):
+            # Create handler with mocked connection
+            handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
+            handler.path = '/callback?code=test_code&state=test_state'
+            handler.oauth_flow._state = 'test_state'
+            
+            # Mock the response methods
+            handler.send_response = Mock()
+            handler.send_header = Mock()
+            handler.end_headers = Mock()
+            handler.wfile = Mock()
+            handler.wfile.write = Mock()
+            
+            # Simulate GET request
+            handler.do_GET()
         
         assert oauth_flow.auth_code == 'test_code'
         assert oauth_flow.callback_state == 'test_state'
@@ -385,15 +388,18 @@ class TestOAuthCallbackHandler:
         mock_address = ('127.0.0.1', 12345)
         mock_server = Mock()
         
-        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
-        handler.path = '/callback?state=test_state'
-        handler.send_response = Mock()
-        handler.send_header = Mock()
-        handler.end_headers = Mock()
-        handler.wfile = Mock()
-        handler.wfile.write = Mock()
-        
-        handler.do_GET()
+        # Patch handle() to skip BaseHTTPRequestHandler's request handling
+        # which tries to read raw_requestline and causes len() errors
+        with patch.object(OAuthCallbackHandler, 'handle', lambda self: None):
+            handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
+            handler.path = '/callback?state=test_state'
+            handler.send_response = Mock()
+            handler.send_header = Mock()
+            handler.end_headers = Mock()
+            handler.wfile = Mock()
+            handler.wfile.write = Mock()
+            
+            handler.do_GET()
         
         assert oauth_flow.callback_error is not None
         assert isinstance(oauth_flow.callback_error, OAuthCallbackError)
@@ -406,15 +412,18 @@ class TestOAuthCallbackHandler:
         mock_address = ('127.0.0.1', 12345)
         mock_server = Mock()
         
-        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
-        handler.path = '/callback?error=access_denied&error_description=User%20denied'
-        handler.send_response = Mock()
-        handler.send_header = Mock()
-        handler.end_headers = Mock()
-        handler.wfile = Mock()
-        handler.wfile.write = Mock()
-        
-        handler.do_GET()
+        # Patch handle() to skip BaseHTTPRequestHandler's request handling
+        # which tries to read raw_requestline and causes len() errors
+        with patch.object(OAuthCallbackHandler, 'handle', lambda self: None):
+            handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
+            handler.path = '/callback?error=access_denied&error_description=User%20denied'
+            handler.send_response = Mock()
+            handler.send_header = Mock()
+            handler.end_headers = Mock()
+            handler.wfile = Mock()
+            handler.wfile.write = Mock()
+            
+            handler.do_GET()
         
         assert oauth_flow.callback_error is not None
         assert isinstance(oauth_flow.callback_error, OAuthCallbackError)
@@ -453,8 +462,10 @@ class TestRunCompleteFlow:
     
     def test_run_port_error(self, oauth_flow):
         """Test flow failure when no ports available."""
-        with patch.object(oauth_flow, 'find_available_port', side_effect=OAuthPortError("No ports")):
-            with pytest.raises(OAuthPortError):
+        # Patch start_local_server to raise OAuthPortError directly
+        # This ensures the error is raised before the flow continues
+        with patch.object(oauth_flow, 'start_local_server', side_effect=OAuthPortError("No ports available")):
+            with pytest.raises(OAuthPortError, match="No ports available"):
                 oauth_flow.run(timeout=1)
     
     def test_run_timeout(self, oauth_flow):

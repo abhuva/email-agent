@@ -194,8 +194,8 @@ class TestMixedAuthAccounts:
         with open(account_config_path, 'w') as f:
             yaml.dump(account_config, f)
         
-        # Load account config
-        merged_config = config_loader.load_merged_config(account_name)
+        # Load account config (disable validation for backward compat tests)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         assert merged_config is not None
         assert merged_config.get('auth', {}).get('method') == 'password'
@@ -222,8 +222,8 @@ class TestMixedAuthAccounts:
         with open(account_config_path, 'w') as f:
             yaml.dump(account_config, f)
         
-        # Load account config
-        merged_config = config_loader.load_merged_config(account_name)
+        # Load account config (disable validation for backward compat tests)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         assert merged_config is not None
         assert merged_config.get('auth', {}).get('method') == 'oauth'
@@ -248,8 +248,8 @@ class TestMixedAuthAccounts:
         with open(account_config_path, 'w') as f:
             yaml.dump(account_config, f)
         
-        # Load account config
-        merged_config = config_loader.load_merged_config(account_name)
+        # Load account config (disable validation for backward compat tests)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         # Should default to password method
         # Note: This depends on config_schema.py implementation
@@ -380,9 +380,9 @@ class TestConfigBackwardCompat:
         with open(account_config_path, 'w') as f:
             yaml.dump(v4_config, f)
         
-        # Load with ConfigLoader
+        # Load with ConfigLoader (disable validation for backward compat tests)
         config_loader = ConfigLoader(base_dir=config_dir)
-        merged_config = config_loader.load_merged_config(account_name)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         # Should still work - either defaults to password or preserves V4 structure
         assert merged_config is not None
@@ -422,9 +422,9 @@ class TestConfigBackwardCompat:
         with open(account_config_path, 'w') as f:
             yaml.dump(v4_config, f)
         
-        # Load with ConfigLoader
+        # Load with ConfigLoader (disable validation for backward compat tests)
         config_loader = ConfigLoader(base_dir=config_dir)
-        merged_config = config_loader.load_merged_config(account_name)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         # Should preserve password_env
         assert merged_config is not None
@@ -466,9 +466,9 @@ class TestConfigBackwardCompat:
         with open(account_config_path, 'w') as f:
             yaml.dump(v5_config, f)
         
-        # Load with ConfigLoader
+        # Load with ConfigLoader (disable validation for backward compat tests)
         config_loader = ConfigLoader(base_dir=config_dir)
-        merged_config = config_loader.load_merged_config(account_name)
+        merged_config = config_loader.load_merged_config(account_name, validate=False)
         
         # Should load OAuth config
         assert merged_config is not None

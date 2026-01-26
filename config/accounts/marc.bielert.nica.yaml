@@ -2,6 +2,8 @@ imap:
   server: nica-network.netcup-mail.de
   port: 143
   username: marc.bielert@nica.network
-  password_env: IMAP_PASSWORD
 processing:
   max_emails_per_run: 99999
+auth:
+  method: password
+  password_env: IMAP_PASSWORD
