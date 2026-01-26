@@ -668,7 +668,12 @@ class TestOrchestrationRun:
             log_level=None,
             dry_run=False
         ))
-        master_orchestrator.select_accounts = Mock(return_value=['work'])
+        
+        # Mock select_accounts to return accounts AND set accounts_to_process
+        def mock_select_accounts(args):
+            master_orchestrator.accounts_to_process = ['work']
+            return ['work']
+        master_orchestrator.select_accounts = Mock(side_effect=mock_select_accounts)
         master_orchestrator.create_account_processor = Mock(return_value=mock_account_processor)
         
         result = master_orchestrator.run(['--account', 'work'])

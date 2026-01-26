@@ -359,13 +359,29 @@ def _extract_domain_from_email(email_address: str) -> Optional[str]:
     if not email_address:
         return None
     
-    # Parse email address to extract just the email part
-    name, email_addr = parseaddr(str(email_address))
+    email_str = str(email_address).strip()
+    
+    # First try to extract email from angle brackets if present
+    # This handles "Name <email>" and "Lastname, Firstname <email>" formats
+    if '<' in email_str and '>' in email_str:
+        start = email_str.rfind('<')
+        end = email_str.rfind('>')
+        if start < end:
+            email_addr = email_str[start+1:end].strip()
+            # Extract domain part (everything after @)
+            if '@' in email_addr:
+                domain = email_addr.split('@', 1)[1].strip()
+                # Remove any trailing angle brackets or other characters
+                domain = domain.rstrip('>').strip()
+                return domain if domain else None
+    
+    # Fallback to parseaddr for other formats
+    name, email_addr = parseaddr(email_str)
     
     # If parseaddr didn't extract email, try the whole string
     if not email_addr:
-        email_addr = str(email_address).strip()
-        # Try to extract email from angle brackets if present
+        email_addr = email_str
+        # Try to extract email from angle brackets if present (fallback)
         if '<' in email_addr and '>' in email_addr:
             start = email_addr.rfind('<')
             end = email_addr.rfind('>')
