@@ -189,7 +189,7 @@ def test_imap_client_get_unprocessed_emails(mock_imap_connection):
     # Verify search query excludes processed tag
     search_call = mock_imap_connection.uid.call_args_list[0]
     assert search_call[0][0] == 'SEARCH'
-    assert 'NOT KEYWORD "AIProcessed"' in search_call[0][2]
+    assert 'UNKEYWORD "AIProcessed"' in search_call[0][2]
 
 
 @patch('src.dry_run.is_dry_run', return_value=False)

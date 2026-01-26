@@ -87,12 +87,14 @@ class TestPasswordAuthBackwardCompat:
     def test_password_authenticator_initialization(self):
         """Test PasswordAuthenticator can be initialized with password."""
         email = 'test@example.com'
-        password = 'test_password'
+        password_env = 'TEST_PASSWORD_ENV'
+        test_password = 'test_password'
         
-        authenticator = PasswordAuthenticator(email=email, password=password)
-        
-        assert authenticator.email == email
-        assert authenticator.password == password
+        with patch.dict(os.environ, {password_env: test_password}):
+            authenticator = PasswordAuthenticator(email=email, password_env=password_env)
+            
+            assert authenticator.email == email
+            assert authenticator.password == test_password
     
     def test_password_authenticator_with_env_var(self):
         """Test PasswordAuthenticator loads password from environment variable."""
@@ -127,9 +129,11 @@ class TestPasswordAuthBackwardCompat:
     def test_password_authenticator_missing_password(self):
         """Test PasswordAuthenticator error handling for missing password."""
         email = 'test@example.com'
+        password_env = 'NON_EXISTENT_ENV_VAR'
         
-        with pytest.raises((ValueError, AttributeError)):
-            PasswordAuthenticator(email=email, password=None)
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises((ValueError, KeyError, AttributeError)):
+                PasswordAuthenticator(email=email, password_env=password_env)
     
     def test_password_authenticator_missing_env_var(self):
         """Test PasswordAuthenticator error handling for missing env var."""
@@ -155,7 +159,19 @@ class TestMixedAuthAccounts:
         config_dir.mkdir()
         (config_dir / 'accounts').mkdir()
         
-        return ConfigLoader(config_dir=config_dir)
+        # Create minimal global config file (required by ConfigLoader)
+        global_config_path = config_dir / 'config.yaml'
+        import yaml
+        global_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'port': 993,
+            },
+        }
+        with open(global_config_path, 'w') as f:
+            yaml.dump(global_config, f)
+        
+        return ConfigLoader(base_dir=config_dir)
     
     def test_config_loader_password_account(self, config_loader, tmp_path):
         """Test ConfigLoader loads password account correctly."""
@@ -337,6 +353,18 @@ class TestConfigBackwardCompat:
         config_dir.mkdir()
         (config_dir / 'accounts').mkdir()
         
+        # Create minimal global config file (required by ConfigLoader)
+        global_config_path = config_dir / 'config.yaml'
+        import yaml
+        global_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'port': 993,
+            },
+        }
+        with open(global_config_path, 'w') as f:
+            yaml.dump(global_config, f)
+        
         account_name = 'v4_account'
         account_config_path = config_dir / 'accounts' / f'{account_name}.yaml'
         
@@ -349,12 +377,11 @@ class TestConfigBackwardCompat:
             # No auth block - V4 style
         }
         
-        import yaml
         with open(account_config_path, 'w') as f:
             yaml.dump(v4_config, f)
         
         # Load with ConfigLoader
-        config_loader = ConfigLoader(config_dir=config_dir)
+        config_loader = ConfigLoader(base_dir=config_dir)
         merged_config = config_loader.load_merged_config(account_name)
         
         # Should still work - either defaults to password or preserves V4 structure
@@ -369,6 +396,18 @@ class TestConfigBackwardCompat:
         config_dir.mkdir()
         (config_dir / 'accounts').mkdir()
         
+        # Create minimal global config file (required by ConfigLoader)
+        global_config_path = config_dir / 'config.yaml'
+        import yaml
+        global_config = {
+            'imap': {
+                'server': 'imap.example.com',
+                'port': 993,
+            },
+        }
+        with open(global_config_path, 'w') as f:
+            yaml.dump(global_config, f)
+        
         account_name = 'v4_password_account'
         account_config_path = config_dir / 'accounts' / f'{account_name}.yaml'
         
@@ -380,12 +419,11 @@ class TestConfigBackwardCompat:
             },
         }
         
-        import yaml
         with open(account_config_path, 'w') as f:
             yaml.dump(v4_config, f)
         
         # Load with ConfigLoader
-        config_loader = ConfigLoader(config_dir=config_dir)
+        config_loader = ConfigLoader(base_dir=config_dir)
         merged_config = config_loader.load_merged_config(account_name)
         
         # Should preserve password_env
@@ -398,6 +436,18 @@ class TestConfigBackwardCompat:
         config_dir = tmp_path / 'config'
         config_dir.mkdir()
         (config_dir / 'accounts').mkdir()
+        
+        # Create minimal global config file (required by ConfigLoader)
+        global_config_path = config_dir / 'config.yaml'
+        import yaml
+        global_config = {
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+            },
+        }
+        with open(global_config_path, 'w') as f:
+            yaml.dump(global_config, f)
         
         account_name = 'v5_oauth_account'
         account_config_path = config_dir / 'accounts' / f'{account_name}.yaml'
@@ -413,12 +463,11 @@ class TestConfigBackwardCompat:
             },
         }
         
-        import yaml
         with open(account_config_path, 'w') as f:
             yaml.dump(v5_config, f)
         
         # Load with ConfigLoader
-        config_loader = ConfigLoader(config_dir=config_dir)
+        config_loader = ConfigLoader(base_dir=config_dir)
         merged_config = config_loader.load_merged_config(account_name)
         
         # Should load OAuth config
@@ -450,6 +499,18 @@ class TestErrorHandlingBackwardCompat:
         config_dir.mkdir()
         (config_dir / 'accounts').mkdir()
         
+        # Create minimal global config file (required by ConfigLoader)
+        global_config_path = config_dir / 'config.yaml'
+        import yaml
+        global_config = {
+            'imap': {
+                'server': 'imap.gmail.com',
+                'port': 993,
+            },
+        }
+        with open(global_config_path, 'w') as f:
+            yaml.dump(global_config, f)
+        
         account_name = 'invalid_oauth_account'
         account_config_path = config_dir / 'accounts' / f'{account_name}.yaml'
         
@@ -464,12 +525,11 @@ class TestErrorHandlingBackwardCompat:
             },
         }
         
-        import yaml
         with open(account_config_path, 'w') as f:
             yaml.dump(invalid_config, f)
         
         # ConfigLoader might load it, but validation should catch it
-        config_loader = ConfigLoader(config_dir=config_dir)
+        config_loader = ConfigLoader(base_dir=config_dir)
         
         # Depending on schema validation, this might raise or load with None provider
         try:

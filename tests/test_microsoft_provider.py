@@ -579,14 +579,14 @@ class TestIntegration:
         mock_app_class.return_value = mock_app
         
         # Step 1: Generate authorization URL
+        state = 'test_state_123'
         mock_flow = {
-            'auth_uri': 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=flow_state',
-            'state': 'flow_state',
+            'auth_uri': f'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state={state}',
+            'state': state,
         }
         mock_app.initiate_auth_code_flow.return_value = mock_flow
         microsoft_provider.app = mock_app
         
-        state = 'test_state_123'
         auth_url = microsoft_provider.get_auth_url(state)
         assert 'login.microsoftonline.com' in auth_url
         
@@ -598,7 +598,7 @@ class TestIntegration:
         }
         mock_app.acquire_token_by_auth_code_flow.return_value = mock_result
         
-        # Step 3: Handle callback
+        # Step 3: Handle callback (use the same state that was set in get_auth_url)
         code = 'auth_code_789'
         token_info = microsoft_provider.handle_callback(code, state)
         

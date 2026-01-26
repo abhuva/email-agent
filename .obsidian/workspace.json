@@ -211,6 +211,7 @@
   },
   "active": "b4c7ae537e1c1920",
   "lastOpenFiles": [
+    "tests/test_auth_strategies.py",
     "tests/test_token_manager.py",
     "tests/test_oauth_flow.py",
     "tests/test_microsoft_provider.py",
@@ -221,7 +222,6 @@
     "src/auth/oauth_flow.py",
     "src/auth/interfaces.py",
     "src/auth/__init__.py",
-    "scripts/prd_v5_combined.txt",
     "old pdd+prd/prd-v4.md",
     "old pdd+prd/pdd_V4.md",
     "docs/v5-token-manager.md",

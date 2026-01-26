@@ -339,6 +339,7 @@ def _extract_domain_from_email(email_address: str) -> Optional[str]:
     Handles various email formats:
     - "user@domain.com"
     - "Name <user@domain.com>"
+    - "Lastname, Firstname <user@domain.com>"
     - "user@domain.com" (already clean)
     
     Args:
@@ -352,6 +353,8 @@ def _extract_domain_from_email(email_address: str) -> Optional[str]:
         'example.com'
         >>> _extract_domain_from_email("Name <user@example.com>")
         'example.com'
+        >>> _extract_domain_from_email("Lastname, Firstname <user@example.com>")
+        'example.com'
     """
     if not email_address:
         return None
@@ -362,6 +365,12 @@ def _extract_domain_from_email(email_address: str) -> Optional[str]:
     # If parseaddr didn't extract email, try the whole string
     if not email_addr:
         email_addr = str(email_address).strip()
+        # Try to extract email from angle brackets if present
+        if '<' in email_addr and '>' in email_addr:
+            start = email_addr.rfind('<')
+            end = email_addr.rfind('>')
+            if start < end:
+                email_addr = email_addr[start+1:end].strip()
     
     # Extract domain part (everything after @)
     if '@' in email_addr:

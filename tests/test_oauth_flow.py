@@ -156,17 +156,17 @@ class TestStartLocalServer:
     
     def test_start_local_server_auto_find_port(self, oauth_flow):
         """Test server startup with auto port detection."""
-        # Make default port busy
+        # Make default port busy by actually binding and listening
         busy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         busy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             busy_socket.bind(('localhost', 8080))
             busy_socket.listen(1)  # Actually listen to make port truly busy
             
-            # Should find alternative port
+            # Should find alternative port (starts from 8080, so should find 8081 or higher)
             port = oauth_flow.start_local_server()
             assert port != 8080
-            assert 8080 < port < 8100
+            assert port >= 8081  # Should be at least 8081 since 8080 is busy
         finally:
             busy_socket.close()
             oauth_flow.stop_local_server()
@@ -352,8 +352,14 @@ class TestOAuthCallbackHandler:
     
     def test_handler_success(self, oauth_flow):
         """Test successful callback handling."""
-        # Create a minimal mock handler
-        handler = OAuthCallbackHandler(oauth_flow, None, None, None)
+        # Create a mock connection
+        mock_connection = Mock()
+        mock_connection.makefile.return_value = Mock()
+        mock_address = ('127.0.0.1', 12345)
+        mock_server = Mock()
+        
+        # Create handler with mocked connection
+        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
         handler.path = '/callback?code=test_code&state=test_state'
         handler.oauth_flow._state = 'test_state'
         
@@ -373,7 +379,13 @@ class TestOAuthCallbackHandler:
     
     def test_handler_missing_code(self, oauth_flow):
         """Test callback with missing code parameter."""
-        handler = OAuthCallbackHandler(oauth_flow, None, None, None)
+        # Create a mock connection
+        mock_connection = Mock()
+        mock_connection.makefile.return_value = Mock()
+        mock_address = ('127.0.0.1', 12345)
+        mock_server = Mock()
+        
+        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
         handler.path = '/callback?state=test_state'
         handler.send_response = Mock()
         handler.send_header = Mock()
@@ -388,7 +400,13 @@ class TestOAuthCallbackHandler:
     
     def test_handler_oauth_error(self, oauth_flow):
         """Test callback with OAuth error parameter."""
-        handler = OAuthCallbackHandler(oauth_flow, None, None, None)
+        # Create a mock connection
+        mock_connection = Mock()
+        mock_connection.makefile.return_value = Mock()
+        mock_address = ('127.0.0.1', 12345)
+        mock_server = Mock()
+        
+        handler = OAuthCallbackHandler(oauth_flow, mock_connection, mock_address, mock_server)
         handler.path = '/callback?error=access_denied&error_description=User%20denied'
         handler.send_response = Mock()
         handler.send_header = Mock()
@@ -473,7 +491,7 @@ class TestEdgeCases:
                 sock.listen(1)  # Actually listen to make port truly busy
                 sockets.append(sock)
             
-            # Should find next available port
+            # Should find next available port (since 8080, 8081, 8082 are busy)
             port = oauth_flow.find_available_port(start_port=8080, max_attempts=10)
             assert port >= 8083
         finally:

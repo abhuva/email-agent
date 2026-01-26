@@ -181,8 +181,11 @@ class TestOAuthAuthenticator:
     @patch('src.auth.strategies.generate_xoauth2_sasl')
     def test_authenticate_success(self, mock_generate_sasl, mock_imap, token_manager, valid_token):
         """Test successful OAuth authentication."""
-        # Mock SASL string generation
-        mock_sasl_bytes = b'base64_encoded_sasl_string'
+        # Mock SASL string generation - return valid base64-encoded bytes
+        # The actual SASL string format: "user=email\x01auth=Bearer token\x01\x01"
+        import base64
+        test_sasl_string = "user=user@example.com\x01auth=Bearer test_token\x01\x01"
+        mock_sasl_bytes = base64.b64encode(test_sasl_string.encode('utf-8'))
         mock_generate_sasl.return_value = mock_sasl_bytes
         
         # Mock token manager
@@ -210,8 +213,10 @@ class TestOAuthAuthenticator:
     @patch('src.auth.strategies.generate_xoauth2_sasl')
     def test_authenticate_token_refresh_triggered(self, mock_generate_sasl, mock_imap, token_manager, valid_token):
         """Test that token refresh is triggered when token is expired."""
-        # Mock SASL string generation
-        mock_sasl_bytes = b'base64_encoded_sasl_string'
+        # Mock SASL string generation - return valid base64-encoded bytes
+        import base64
+        test_sasl_string = "user=user@example.com\x01auth=Bearer test_token\x01\x01"
+        mock_sasl_bytes = base64.b64encode(test_sasl_string.encode('utf-8'))
         mock_generate_sasl.return_value = mock_sasl_bytes
         
         # Mock token manager to simulate expired token that gets refreshed
