@@ -5,15 +5,27 @@
 An extensible Python CLI agent that connects to IMAP accounts, fetches emails, tags/classifies them via AI (OpenAI-compatible or Google/Gemini via OpenRouter), and logs every step. Built for robust team, audit, and production use with comprehensive error handling and logging.
 
 **Current Status:** 
-- **V4 (Orchestrator)** - ✅ Complete and production-ready - Multi-tenant platform with rules engine, multi-account support, and V4-only CLI
+- **V5 (OAuth Integration)** - OAuth 2.0 authentication for Google and Microsoft accounts
+- **V4 (Orchestrator)** - Multi-tenant platform with rules engine, multi-account support, and V4-only CLI
 - **V3 (Foundational Upgrade)** - Historical version (superseded by V4)
 - **V1 and V2** - Historical versions
+
+**Working Branch:** `main` (current development branch, OAuth integration complete)
 
 ---
 
 ## Features
 
-### V4 Features (Current Version)
+### V5 Features (OAuth Integration)
+- **OAuth 2.0 Authentication**: Secure token-based authentication for Google and Microsoft accounts
+- **Automatic Token Refresh**: Tokens are automatically refreshed before expiry
+- **Backward Compatible**: Works alongside password authentication (V4 style)
+- **CLI Auth Command**: `python main.py auth --account <name>` for OAuth authentication flow
+- **Secure Token Storage**: OAuth tokens stored securely with proper file permissions
+- **CSRF Protection**: State parameter validation for OAuth flows
+- **Token Management**: Automatic expiry checking with 5-minute buffer
+
+### V4 Features (Production Version)
 - **Multi-Account Support**: Process multiple email accounts with isolated state and configuration
 - **Score-Based Classification**: Granular importance and spam scores (0-10) instead of rigid categories
 - **CLI Controls**: Developer-friendly commands for targeted processing, debugging, and maintenance
@@ -43,6 +55,8 @@ An extensible Python CLI agent that connects to IMAP accounts, fetches emails, t
 - **V3 (Foundational Upgrade)**: Score-based classification, CLI controls, Jinja2 templating (superseded by V4)
 - **V2 (Obsidian Integration)**: Obsidian note creation, YAML frontmatter, conditional summarization
 - **V1 (Email Tagging)**: Basic IMAP email fetching and AI classification
+
+**Note:** V5 OAuth integration is complete and available on the `v5-oauth` branch. V4 remains the stable production version on the `v4-orchestrator` branch.
 
 ---
 
@@ -335,7 +349,19 @@ The prompt file contains the instructions sent to the AI for email classificatio
 
 ## How It Works
 
-### V4 Workflow (Current Version)
+### V5 Workflow (OAuth Integration)
+V5 adds OAuth 2.0 authentication while maintaining full backward compatibility with V4 password authentication. The authentication flow is handled transparently by the `IMAPClient` and authentication strategies.
+
+**OAuth Authentication Flow:**
+1. User runs `python main.py auth --account <name>` for OAuth accounts
+2. OAuth flow opens browser for user consent
+3. Authorization code exchanged for access/refresh tokens
+4. Tokens stored securely in `credentials/` directory
+5. Tokens automatically refreshed before expiry during IMAP operations
+
+**Processing Flow:** Same as V4 (see below), with OAuth authentication instead of password authentication for OAuth-configured accounts.
+
+### V4 Workflow (Production Version)
 
 1. **Configuration Loading**: Loads global config and account-specific overrides using `ConfigLoader`
 2. **Account Processing**: For each account (or specified account):
@@ -393,7 +419,17 @@ Overall Summary → Exit
 
 ## Documentation
 
-### V4 Documentation (Current Production Version)
+### V5 OAuth Documentation
+- **[V5 OAuth User Guide](docs/v5-oauth-user-guide.md)** — Complete OAuth setup and usage guide
+- **[V5 OAuth Troubleshooting](docs/v5-oauth-troubleshooting.md)** — Detailed troubleshooting for OAuth issues
+- **[V5 OAuth Flow](docs/v5-oauth-flow.md)** — Technical OAuth flow implementation
+- **[V5 Token Manager](docs/v5-token-manager.md)** — Token storage and refresh system
+- **[V5 Google Provider](docs/v5-google-provider.md)** — Google OAuth provider implementation
+- **[V5 Microsoft Provider](docs/v5-microsoft-provider.md)** — Microsoft OAuth provider implementation
+- **[V5 Auth Interfaces](docs/v5-auth-interfaces.md)** — Authentication interfaces and protocols
+- **[V5 Auth Strategies](docs/v5-auth-strategies.md)** — Authentication strategy pattern implementation
+
+### V4 Documentation (Production Version)
 - **[Product Design Doc V4 (PDD)](pdd_V4.md)** — V4 project strategy and requirements (✅ Complete)
 - **[V4 CLI Usage Guide](docs/v4-cli-usage.md)** — Complete command-line interface reference
 - **[V4 Configuration System](docs/v4-configuration.md)** — Multi-tenant configuration with account-specific overrides
@@ -546,6 +582,21 @@ Test IMAP flags functionality:
 python scripts/test_imap_flags.py
 ```
 
+### V5 OAuth End-to-End Testing
+
+V5 includes comprehensive OAuth end-to-end tests that validate OAuth authentication flows:
+
+```bash
+# Run V5 OAuth E2E tests (requires OAuth credentials)
+pytest tests/test_e2e_oauth.py -v -m e2e_oauth
+
+# Run V5 backward compatibility tests (password auth)
+pytest tests/test_e2e_oauth_backward_compat.py -v
+
+# Run OAuth flow unit tests
+pytest tests/test_oauth_flow.py -v
+```
+
 ### V4 End-to-End Testing
 
 V4 includes comprehensive end-to-end tests that validate the complete email processing pipeline using real email accounts:
@@ -574,18 +625,20 @@ pytest tests/test_e2e_v4_pipeline.py -v -m "not e2e_v4"
 > **Start here:** [README-AI.md](README-AI.md) - Optimized entry point with complete project structure, architecture, and development context.
 > 
 > Then:
-> 1. Review [pdd_V4.md](pdd_V4.md) for V4 implementation details (current version)
-> 2. Run `task-master list` and `task-master next` to see project state/tasks
-> 3. Review module docs in `docs/` as needed
+> 1. Review [pdd_v5.md](pdd_v5.md) for V5 OAuth implementation details (current development)
+> 2. Review [pdd_V4.md](pdd_V4.md) for V4 implementation details (production version)
+> 3. Run `task-master list` and `task-master next` to see project state/tasks
+> 4. Review module docs in `docs/` as needed
 
 > **For Human Developers:**
 > 
 > 1. Read this README.md for overview
 > 2. See [docs/COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md) for detailed user guide
 > 3. See [docs/MAIN_DOCS.md](docs/MAIN_DOCS.md) for documentation index
-> 4. See [docs/v4-migration-guide.md](docs/v4-migration-guide.md) if migrating from V3
+> 4. See [docs/v5-oauth-user-guide.md](docs/v5-oauth-user-guide.md) for OAuth setup (V5)
+> 5. See [docs/v4-migration-guide.md](docs/v4-migration-guide.md) if migrating from V3
 
-*Don't forget: Secrets and configs are in `.env`, `config/config.yaml` (global), and `config/accounts/*.yaml` (account-specific). See docs above for details.*
+*Don't forget: Secrets and configs are in `.env`, `config/config.yaml` (global), and `config/accounts/*.yaml` (account-specific). OAuth tokens are stored in `credentials/` directory. See docs above for details.*
 
 ---
 
@@ -633,29 +686,45 @@ A: Edit the Jinja2 template at `config/note_template.md.j2` to customize the Mar
 ```
 email-agent/
 ├── src/                    # Source code
-│   ├── cli_v4.py          # V4 CLI interface (click-based)
+│   ├── cli_v4.py          # V4 CLI interface (click-based, includes V5 auth command)
 │   ├── orchestrator.py    # V4 MasterOrchestrator (multi-account)
 │   ├── account_processor.py # V4 Account Processor (per-account pipeline)
 │   ├── config_loader.py   # V4 configuration loader with deep merge
-│   ├── config_schema.py   # V4 configuration schema validation
+│   ├── config_schema.py   # V4 configuration schema validation (includes V5 OAuth auth block)
 │   ├── rules.py           # V4 rules engine (blacklist/whitelist)
 │   ├── content_parser.py  # V4 HTML to Markdown parser
 │   ├── models.py          # V4 EmailContext data class
-│   ├── imap_client.py     # IMAP operations
+│   ├── imap_client.py     # IMAP operations (supports OAuth authentication)
 │   ├── llm_client.py      # LLM API client with retry logic
 │   ├── decision_logic.py  # Threshold-based classification
 │   ├── note_generator.py  # Jinja2 note generation
+│   ├── auth/               # V5 OAuth authentication module
+│   │   ├── interfaces.py   # Authentication protocols and OAuth provider interfaces
+│   │   ├── oauth_flow.py   # OAuth 2.0 flow orchestration for CLI
+│   │   ├── token_manager.py # OAuth token storage, loading, and refresh
+│   │   ├── strategies.py   # Password and OAuth authenticator implementations
+│   │   └── providers/      # OAuth provider implementations
+│   │       ├── google.py   # Google OAuth provider
+│   │       └── microsoft.py # Microsoft OAuth provider
 │   └── ...                # Additional modules
 ├── tests/                  # Test suite
+│   ├── test_e2e_oauth.py  # V5 OAuth end-to-end tests
+│   ├── test_oauth_flow.py  # V5 OAuth flow tests
+│   └── ...                # Additional tests
 ├── config/                 # Configuration files
 │   ├── config.yaml.example # Global configuration template
 │   ├── accounts/           # Account-specific configurations
-│   │   └── example-account.yaml
+│   │   ├── example-account.yaml
+│   │   ├── example-google-oauth.yaml    # V5 Google OAuth example
+│   │   ├── example-microsoft-oauth.yaml # V5 Microsoft OAuth example
+│   │   └── example-password.yaml        # V4 password auth example
 │   └── note_template.md.j2 # Jinja2 note template
+├── credentials/            # OAuth token storage (V5, gitignored)
+│   └── *.json             # OAuth tokens per account (0600 permissions)
 ├── docs/                   # Documentation
 ├── scripts/                # Utility scripts
 ├── logs/                   # Log files (gitignored)
-├── main.py                 # Entry point (V4)
+├── main.py                 # Entry point (V4/V5)
 └── requirements.txt        # Dependencies
 ```
 
@@ -674,9 +743,10 @@ email-agent/
 
 ---
 
-> **For AI agents:** Always start with [README-AI.md](README-AI.md) for complete project context, then review the PDD V4 and current tasks before making changes!
+> **For AI agents:** Always start with [README-AI.md](README-AI.md) for complete project context, then review the PDD V5 (current development) or PDD V4 (production) and current tasks before making changes!
 
 **Note:** 
-- **V4** (Orchestrator) is the current production version. See [pdd_V4.md](pdd_V4.md) for V4 implementation details.
+- **V5** (OAuth Integration) is complete on the `v5-oauth` branch. See [pdd_v5.md](pdd_v5.md) for V5 implementation details.
+- **V4** (Orchestrator) is the current production version on the `v4-orchestrator` branch. See [pdd_V4.md](pdd_V4.md) for V4 implementation details.
 - **V3** (Foundational Upgrade) is a historical version that has been superseded by V4. See [pdd.md](pdd.md) for historical V3 implementation details.
 - **V1 and V2** are historical versions.
