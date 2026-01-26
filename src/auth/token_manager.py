@@ -354,12 +354,16 @@ class TokenManager:
         token_endpoint, client_id, client_secret = self._get_provider_config(provider)
         
         # Construct refresh request per OAuth 2.0 spec
+        # Note: Public Client apps (Microsoft) don't require client_secret
         refresh_data = {
             'grant_type': 'refresh_token',
             'refresh_token': refresh_token,
             'client_id': client_id,
-            'client_secret': client_secret,
         }
+        
+        # Only include client_secret if available (required for Confidential Client apps)
+        if client_secret:
+            refresh_data['client_secret'] = client_secret
         
         # Make refresh request
         try:
@@ -432,7 +436,7 @@ class TokenManager:
             logger.error(error_msg)
             raise TokenRefreshError(error_msg) from e
     
-    def _get_provider_config(self, provider: str) -> tuple[str, str, str]:
+    def _get_provider_config(self, provider: str) -> tuple[str, str, Optional[str]]:
         """Get provider-specific OAuth configuration.
         
         Args:
@@ -440,9 +444,10 @@ class TokenManager:
         
         Returns:
             Tuple of (token_endpoint, client_id, client_secret)
+            client_secret may be None for Microsoft Public Client apps
         
         Raises:
-            TokenRefreshError: If provider is unknown or credentials are missing
+            TokenRefreshError: If provider is unknown or required credentials are missing
         """
         provider_lower = provider.lower()
         
@@ -454,13 +459,25 @@ class TokenManager:
             token_endpoint = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
             client_id = os.getenv('MS_CLIENT_ID')
             client_secret = os.getenv('MS_CLIENT_SECRET')
+            # Microsoft Public Client apps don't require client_secret
+            # Only log a warning if missing (for Confidential Client apps)
+            if not client_secret:
+                logger.debug(
+                    "MS_CLIENT_SECRET not set. Using Public Client flow for token refresh. "
+                    "This is valid for Public Client apps registered in Azure Portal."
+                )
         else:
             raise TokenRefreshError(f"Unknown provider: {provider} (supported: 'google', 'microsoft')")
         
+        # Check client_id first (required for all providers)
         if not client_id:
-            raise TokenRefreshError(f"Missing {provider.upper()}_CLIENT_ID environment variable")
-        if not client_secret:
-            raise TokenRefreshError(f"Missing {provider.upper()}_CLIENT_SECRET environment variable")
+            # Use correct env var name in error message
+            env_var_name = 'GOOGLE_CLIENT_ID' if provider_lower == 'google' else 'MS_CLIENT_ID'
+            raise TokenRefreshError(f"Missing {env_var_name} environment variable")
+        
+        # Check client_secret for Google (required) and Microsoft Confidential Client (optional)
+        if provider_lower == 'google' and not client_secret:
+            raise TokenRefreshError("Missing GOOGLE_CLIENT_SECRET environment variable")
         
         return token_endpoint, client_id, client_secret
     

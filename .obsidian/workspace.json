@@ -49,8 +49,7 @@
               "title": "v5-oauth-user-guide"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -107,8 +106,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "57eec9babc93e0d3",
@@ -136,13 +134,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/v5-oauth-user-guide.md",
+                "file": "Merkzettel.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von v5-oauth-user-guide"
+              "title": "Gliederung von Merkzettel"
             }
           },
           {
@@ -225,8 +223,11 @@
       "command-palette:Befehlspalette öffnen": false
     }
   },
-  "active": "db48651d53152916",
+  "active": "b4c7ae537e1c1920",
   "lastOpenFiles": [
+    "tests/__pycache__/test_e2e_oauth_backward_compat.cpython-313-pytest-8.3.5.pyc",
+    "tests/__pycache__/test_e2e_oauth.cpython-313-pytest-8.3.5.pyc",
+    "docs/v5-oauth-user-guide.md",
     "credentials/tohuwabohu.halle.outlook.json",
     "config/example-google-oauth.yaml.back",
     "config/accounts/example-google-oauth.yaml.back",
@@ -238,7 +239,6 @@
     "config/accounts/example-microsoft-oauth.yaml",
     "config/accounts/example-google-oauth.yaml",
     "docs/v5-oauth-troubleshooting.md",
-    "docs/v5-oauth-user-guide.md",
     "tests/test_e2e_oauth_backward_compat.py",
     "tests/test_e2e_oauth.py",
     "docs/v4-migration-guide.md",
@@ -250,8 +250,6 @@
     "docs/v5-auth-interfaces.md",
     "docs/v4-unit-tests.md",
     "RPG - A REPOSITORY PLANNING GRAPH FOR UNIFIED AND SCALABLE CODEBASE GENERATION.md",
-    "src/auth/__pycache__/strategies.cpython-313.pyc",
-    "tests/__pycache__/test_auth_strategies.cpython-313-pytest-8.3.5.pyc",
     "pdd_v5.md",
     "prd_v5.md",
     "Merkzettel.md",

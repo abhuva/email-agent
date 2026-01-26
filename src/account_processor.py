@@ -517,6 +517,9 @@ class ConfigurableImapClient(ImapClient):
         and returns the count and UID list. This is used for cost estimation
         before actual email fetching.
         
+        If the IMAP search fails (e.g., Office365 doesn't support KEYWORD searches),
+        falls back to fetching all emails and filtering in Python.
+        
         Args:
             force_reprocess: If True, include processed emails in search
             
@@ -526,23 +529,28 @@ class ConfigurableImapClient(ImapClient):
             - list_of_uids: List of email UIDs (as strings)
             
         Raises:
-            IMAPFetchError: If search fails
+            IMAPFetchError: If search fails and fallback also fails
         """
         self._ensure_connected()
         
+        # Get query and processed_tag from account config
+        user_query = self._imap_config.get('query', 'ALL')
+        processed_tag = self._imap_config.get('processed_tag', 'AIProcessed')
+        
+        if force_reprocess:
+            logger.info(f"Counting emails (force-reprocess mode, query: {user_query})")
+            search_query = user_query
+        else:
+            logger.info(f"Counting unprocessed emails (query: {user_query}, exclude: {processed_tag})")
+            # Office365/Outlook doesn't accept (ALL NOT KEYWORD "...")
+            # Use build_imap_query_with_exclusions for proper handling
+            from src.imap_connection import build_imap_query_with_exclusions
+            search_query = build_imap_query_with_exclusions(user_query, [processed_tag])
+            logger.info(f"Generated IMAP search query: {search_query}")
+        
         try:
-            # Get query and processed_tag from account config
-            user_query = self._imap_config.get('query', 'ALL')
-            processed_tag = self._imap_config.get('processed_tag', 'AIProcessed')
-            
-            if force_reprocess:
-                logger.info(f"Counting emails (force-reprocess mode, query: {user_query})")
-                search_query = user_query
-            else:
-                logger.info(f"Counting unprocessed emails (query: {user_query}, exclude: {processed_tag})")
-                search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
-            
-            # Search for UIDs (no fetching)
+            # Try IMAP search first
+            logger.debug(f"Executing IMAP UID SEARCH with query: {search_query}")
             typ, data = self._imap.uid('SEARCH', None, search_query)
             
             if typ != 'OK':
@@ -568,12 +576,58 @@ class ConfigurableImapClient(ImapClient):
             logger.info(f"Found {len(uids)} email(s)" + (" (including processed)" if force_reprocess else ""))
             return (len(uids), uids)
             
-        except IMAPFetchError:
-            raise
-        except Exception as e:
-            error_msg = f"Error counting unprocessed emails: {e}"
-            logger.error(error_msg)
-            raise IMAPFetchError(error_msg) from e
+        except (IMAPFetchError, Exception) as e:
+            # Check if this is an Office365 KEYWORD search error
+            error_str = str(e)
+            is_keyword_error = (
+                'Command Argument Error' in error_str or
+                'BAD' in error_str or
+                'KEYWORD' in error_str.upper() or
+                'UNKEYWORD' in error_str.upper()
+            )
+            
+            if is_keyword_error and not force_reprocess:
+                # Office365 doesn't support KEYWORD/UNKEYWORD searches
+                # Use simpler approach: just search with user_query, rely on vault-based UID tracking
+                # to avoid reprocessing (via min_uid filtering in get_unprocessed_emails)
+                logger.warning(
+                    f"IMAP search with KEYWORD exclusions failed (likely Office365 limitation): {e}. "
+                    f"Using simpler approach: search without KEYWORD filtering, rely on vault-based UID tracking."
+                )
+                # Just search with user_query - no KEYWORD filtering
+                # The vault-based min_uid tracking will handle avoiding reprocessing
+                typ, data = self._imap.uid('SEARCH', None, user_query)
+                
+                if typ != 'OK':
+                    raise IMAPFetchError(f"IMAP search failed: {data}")
+                
+                if not data or not data[0]:
+                    logger.info("No emails found")
+                    return (0, [])
+                
+                # Parse UIDs
+                uid_bytes = data[0]
+                if isinstance(uid_bytes, bytes):
+                    uid_str = uid_bytes.decode('utf-8')
+                else:
+                    uid_str = str(uid_bytes)
+                
+                uids = [uid.strip() for uid in uid_str.split() if uid.strip()]
+                
+                if not uids:
+                    logger.info("No emails found")
+                    return (0, [])
+                
+                logger.info(
+                    f"Found {len(uids)} email(s) (KEYWORD filtering skipped for Office365 compatibility). "
+                    f"Vault-based UID tracking will prevent reprocessing."
+                )
+                return (len(uids), uids)
+            else:
+                # Re-raise if it's a different error or force_reprocess mode
+                error_msg = f"Error counting unprocessed emails: {e}"
+                logger.error(error_msg)
+                raise IMAPFetchError(error_msg) from e
     
     def get_unprocessed_emails(
         self, 
@@ -619,7 +673,10 @@ class ConfigurableImapClient(ImapClient):
                     search_query = user_query
                 else:
                     logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
-                    search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
+                    # Office365/Outlook doesn't accept (ALL NOT KEYWORD "...")
+                    # Use build_imap_query_with_exclusions for proper handling
+                    from src.imap_connection import build_imap_query_with_exclusions
+                    search_query = build_imap_query_with_exclusions(user_query, [processed_tag])
                 
                 # Search for UIDs
                 typ, data = self._imap.uid('SEARCH', None, search_query)

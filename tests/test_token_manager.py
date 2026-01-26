@@ -330,6 +330,7 @@ class TestRefreshToken:
         token_manager.save_tokens('test_account', valid_tokens)
         
         with patch.dict(os.environ, {}, clear=True):
+            # Google requires CLIENT_ID (checked first)
             with pytest.raises(TokenRefreshError, match="CLIENT_ID"):
                 token_manager.refresh_token('test_account', 'google')
     
@@ -346,7 +347,7 @@ class TestRefreshToken:
     })
     @patch('src.auth.token_manager.requests.post')
     def test_refresh_token_microsoft(self, mock_post, token_manager, valid_tokens):
-        """Test token refresh for Microsoft provider."""
+        """Test token refresh for Microsoft provider with client secret (Confidential Client)."""
         token_manager.save_tokens('test_account', valid_tokens)
         
         mock_response = MagicMock()
@@ -362,6 +363,38 @@ class TestRefreshToken:
         
         # Verify correct endpoint was called
         assert 'microsoftonline.com' in mock_post.call_args[0][0]
+        
+        # Verify client_secret was included in request
+        call_args = mock_post.call_args
+        assert 'client_secret' in call_args[1]['data']
+        assert call_args[1]['data']['client_secret'] == 'ms_client_secret'
+    
+    @patch.dict(os.environ, {
+        'MS_CLIENT_ID': 'ms_client_id',
+    }, clear=True)
+    @patch('src.auth.token_manager.requests.post')
+    def test_refresh_token_microsoft_public_client(self, mock_post, token_manager, valid_tokens):
+        """Test token refresh for Microsoft Public Client app (without client_secret)."""
+        token_manager.save_tokens('test_account', valid_tokens)
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'access_token': 'new_token',
+            'expires_in': 3600,
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+        
+        refreshed = token_manager.refresh_token('test_account', 'microsoft')
+        assert refreshed['access_token'] == 'new_token'
+        
+        # Verify correct endpoint was called
+        assert 'microsoftonline.com' in mock_post.call_args[0][0]
+        
+        # Verify client_secret was NOT included in request (Public Client)
+        call_args = mock_post.call_args
+        assert 'client_secret' not in call_args[1]['data']
+        assert call_args[1]['data']['client_id'] == 'ms_client_id'
 
 
 class TestGetValidToken:

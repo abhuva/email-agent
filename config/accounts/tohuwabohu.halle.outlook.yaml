@@ -18,7 +18,8 @@ imap:
   port: 993
   use_ssl: true
   
-
+processing:
+  max_emails_per_run: 99999
 # OAuth 2.0 authentication configuration
 auth:
   method: oauth  # Use OAuth 2.0 authentication

@@ -17,12 +17,6 @@ Same with send emails (not only received ones)
 
 I want that the links in the markdown notes completely represent the relationships of the mails - both send and received ones. This way its easy to visualize the pathing of a conversation in Obsidian (through local graphs for example)
 
----
-
-OAuth Imap Access (tohuwabohu.halle@outlook.de)
-The question is how hard it is to implement this, specially the "register your app with microsoft" part.
-
-I think this is more important than i care to admit. I have atleast one important email adress thats over oAuth, and this has to be checked regularly. Excluding it from the system makes no sense.
 
 ---
 
@@ -46,3 +40,7 @@ Then we can use a similar idea of the white-list (or basically just expanding on
 I didnt thought it entirely through - this needs some critical analysis and certainly a red-teaming.
 
 But i see this as a possible easy expandable aproach.
+
+---
+
+we somehow use still keywords (and tagging the mails) - i wonder if we really should keep this. This is only for the logic of "do i processed this already or not". It gives issues with microsoft servers also.

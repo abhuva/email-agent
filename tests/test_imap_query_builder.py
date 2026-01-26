@@ -9,14 +9,14 @@ from src.imap_connection import build_imap_query_with_exclusions
 def test_build_imap_query_with_exclusions_basic():
     """Test basic query building with exclude tags"""
     result = build_imap_query_with_exclusions('UNSEEN', ['AIProcessed', 'ObsidianNoteCreated'])
-    expected = '(UNSEEN NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated")'
+    expected = '(UNSEEN UNKEYWORD "AIProcessed" UNKEYWORD "ObsidianNoteCreated")'
     assert result == expected
 
 
 def test_build_imap_query_with_exclusions_single_tag():
     """Test query building with single exclude tag"""
     result = build_imap_query_with_exclusions('UNSEEN', ['AIProcessed'])
-    expected = '(UNSEEN NOT KEYWORD "AIProcessed")'
+    expected = '(UNSEEN UNKEYWORD "AIProcessed")'
     assert result == expected
 
 
@@ -26,7 +26,7 @@ def test_build_imap_query_with_exclusions_three_tags():
         'UNSEEN',
         ['AIProcessed', 'ObsidianNoteCreated', 'NoteCreationFailed']
     )
-    expected = '(UNSEEN NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated" NOT KEYWORD "NoteCreationFailed")'
+    expected = '(UNSEEN UNKEYWORD "AIProcessed" UNKEYWORD "ObsidianNoteCreated" UNKEYWORD "NoteCreationFailed")'
     assert result == expected
 
 
@@ -53,7 +53,7 @@ def test_build_imap_query_with_exclusions_complex_query():
         user_query,
         ['AIProcessed', 'ObsidianNoteCreated']
     )
-    expected = f'({user_query} NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated")'
+    expected = f'({user_query} UNKEYWORD "AIProcessed" UNKEYWORD "ObsidianNoteCreated")'
     assert result == expected
 
 
@@ -63,7 +63,7 @@ def test_build_imap_query_with_exclusions_custom_tags():
         'UNSEEN',
         ['AIProcessed', 'CustomTag', 'Archived']
     )
-    expected = '(UNSEEN NOT KEYWORD "AIProcessed" NOT KEYWORD "CustomTag" NOT KEYWORD "Archived")'
+    expected = '(UNSEEN UNKEYWORD "AIProcessed" UNKEYWORD "CustomTag" UNKEYWORD "Archived")'
     assert result == expected
 
 
@@ -74,18 +74,18 @@ def test_build_imap_query_with_exclusions_many_tags():
     
     # Verify all tags are included
     for tag in tags:
-        assert f'NOT KEYWORD "{tag}"' in result
+        assert f'UNKEYWORD "{tag}"' in result
     
-    # Verify query structure
+    # Verify query structure (non-ALL queries should be wrapped in parentheses)
     assert result.startswith('(UNSEEN')
     assert result.endswith(')')
-    assert result.count('NOT KEYWORD') == len(tags)
+    assert result.count('UNKEYWORD') == len(tags)
 
 
 def test_build_imap_query_with_exclusions_all_flag():
-    """Test query building with ALL query"""
+    """Test query building with ALL query (Office365 compatibility - no parentheses)"""
     result = build_imap_query_with_exclusions('ALL', ['AIProcessed'])
-    expected = '(ALL NOT KEYWORD "AIProcessed")'
+    expected = 'ALL UNKEYWORD "AIProcessed"'
     assert result == expected
 
 
@@ -95,5 +95,5 @@ def test_build_imap_query_with_exclusions_from_query():
         'FROM "sender@example.com"',
         ['AIProcessed', 'ObsidianNoteCreated']
     )
-    expected = '(FROM "sender@example.com" NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated")'
+    expected = '(FROM "sender@example.com" UNKEYWORD "AIProcessed" UNKEYWORD "ObsidianNoteCreated")'
     assert result == expected

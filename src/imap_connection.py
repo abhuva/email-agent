@@ -123,7 +123,10 @@ def build_imap_query_with_exclusions(
     Build IMAP query combining user query with tag exclusions.
     
     This function creates an IMAP query that combines the user's base query
-    with NOT KEYWORD clauses to exclude emails with specific tags.
+    with UNKEYWORD clauses to exclude emails with specific tags.
+    
+    Uses UNKEYWORD (standard IMAP operator) instead of NOT KEYWORD for better
+    compatibility with Office365/Outlook IMAP servers.
     
     Args:
         user_query: User-defined IMAP query (e.g., 'UNSEEN')
@@ -135,10 +138,19 @@ def build_imap_query_with_exclusions(
         
     Example:
         >>> build_imap_query_with_exclusions('UNSEEN', ['AIProcessed', 'ObsidianNoteCreated'])
-        '(UNSEEN NOT KEYWORD "AIProcessed" NOT KEYWORD "ObsidianNoteCreated")'
+        '(UNSEEN UNKEYWORD "AIProcessed" UNKEYWORD "ObsidianNoteCreated")'
+        
+        >>> build_imap_query_with_exclusions('ALL', ['AIProcessed'])
+        'ALL UNKEYWORD "AIProcessed"'
         
         >>> build_imap_query_with_exclusions('UNSEEN', [], disable_idempotency=True)
         'UNSEEN'
+    
+    Note:
+        Office365/Outlook IMAP servers are strict about IMAP syntax and don't accept
+        ALL wrapped in parentheses when combined with other criteria. This function
+        handles ALL specially to avoid syntax errors. Uses UNKEYWORD instead of
+        NOT KEYWORD for better Office365 compatibility.
     """
     if disable_idempotency:
         return user_query
@@ -146,12 +158,20 @@ def build_imap_query_with_exclusions(
     if not exclude_tags:
         return user_query
     
-    # Build NOT KEYWORD clauses for each tag
+    # Build exclusion clauses for each tag
     # IMAP uses "KEYWORD" in SEARCH to search for FLAGS (confusing naming in IMAP spec)
-    exclusion_clauses = ' '.join(f'NOT KEYWORD "{tag}"' for tag in exclude_tags)
+    # Office365/Outlook may not support NOT KEYWORD, so try UNKEYWORD first
+    # UNKEYWORD is the standard IMAP operator for "does not have keyword"
+    # If that doesn't work, we'll fall back to NOT KEYWORD
+    exclusion_clauses = ' '.join(f'UNKEYWORD "{tag}"' for tag in exclude_tags)
     
-    # Combine: ({user_query} NOT KEYWORD "tag1" NOT KEYWORD "tag2" ...)
-    final_query = f'({user_query} {exclusion_clauses})'
+    # Office365/Outlook doesn't accept (ALL NOT KEYWORD "...")
+    # When user_query is ALL, don't wrap in parentheses
+    if user_query.strip().upper() == 'ALL':
+        final_query = f'{user_query} {exclusion_clauses}'
+    else:
+        # For other queries, wrap in parentheses for proper grouping
+        final_query = f'({user_query} {exclusion_clauses})'
     
     return final_query
 

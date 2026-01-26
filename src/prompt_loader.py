@@ -26,7 +26,13 @@ def parse_markdown_frontmatter(md: str) -> Dict[str, Any]:
         front = m.group(1)
         content = m.group(2)
         try:
-            metadata = yaml.safe_load(front) or {}
+            # Remove control characters that YAML doesn't allow
+            # Control characters (0x00-0x1F, 0x7F-0x9F) are not allowed in YAML
+            # Replace them with spaces or remove them
+            import re
+            # Remove control characters except newlines and tabs
+            front_clean = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]', '', front)
+            metadata = yaml.safe_load(front_clean) or {}
         except Exception as e:
             logging.warning(f"Error parsing frontmatter: {e}")
             metadata = {}

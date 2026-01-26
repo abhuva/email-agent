@@ -301,8 +301,10 @@ class ImapClient:
             else:
                 logger.info(f"Searching for unprocessed emails (query: {user_query}, exclude: {processed_tag})")
                 # Build search query excluding processed emails
-                # Use NOT KEYWORD to exclude emails with the processed tag
-                search_query = f'({user_query} NOT KEYWORD "{processed_tag}")'
+                # Office365/Outlook doesn't accept (ALL NOT KEYWORD "...")
+                # Use build_imap_query_with_exclusions for proper handling
+                from src.imap_connection import build_imap_query_with_exclusions
+                search_query = build_imap_query_with_exclusions(user_query, [processed_tag])
             
             # Search for UIDs (use UID SEARCH, not SEARCH)
             typ, data = self._imap.uid('SEARCH', None, search_query)
