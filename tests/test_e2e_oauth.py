@@ -218,7 +218,8 @@ class TestMicrosoftOAuthE2E:
         assert microsoft_provider.client_id is not None
         assert microsoft_provider.client_secret is not None
         assert 'IMAP.AccessAsUser.All' in str(microsoft_provider.scopes)
-        assert 'offline_access' in microsoft_provider.scopes
+        # offline_access is a reserved MSAL scope and should NOT be in the scopes list
+        assert 'offline_access' not in microsoft_provider.scopes
     
     def test_microsoft_authorization_url_generation(self, microsoft_provider):
         """Test Microsoft authorization URL generation."""

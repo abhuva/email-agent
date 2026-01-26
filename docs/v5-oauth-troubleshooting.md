@@ -316,6 +316,44 @@ Error 400: redirect_uri_mismatch
 
 ### Microsoft OAuth Issues
 
+#### "AADSTS500200: Personal Microsoft account not supported"
+
+**Symptoms:**
+```
+AADSTS500200: User account 'user@hotmail.com' is a personal Microsoft account. 
+Personal Microsoft accounts are not supported for this application unless explicitly 
+invited to an organization.
+```
+
+**Causes:**
+1. Azure App Registration is configured to only accept organizational accounts
+2. User is trying to authenticate with a personal Microsoft account (Hotmail, Outlook.com, Live.com)
+3. App registration "Supported account types" is set incorrectly
+
+**Solutions:**
+
+1. **Update Azure App Registration (Recommended):**
+   - Go to [Azure Portal](https://portal.azure.com)
+   - Navigate to **Azure Active Directory** → **App registrations**
+   - Select your application
+   - Go to **Authentication** section
+   - Under **Supported account types**, select:
+     - **"Accounts in any organizational directory and personal Microsoft accounts (e.g. Skype, Xbox)"**
+   - Click **Save**
+   - **Important:** This change allows both organizational (Office 365) and personal (Outlook.com, Hotmail) accounts
+
+2. **Verify Account Type:**
+   - Personal accounts: `@hotmail.com`, `@outlook.com`, `@live.com`, `@msn.com`
+   - Organizational accounts: `@yourcompany.com`, `@yourcompany.onmicrosoft.com`
+   - If you need to use a personal account, you must update the Azure App Registration as above
+
+3. **Re-authenticate After Fix:**
+   ```bash
+   python main.py auth --account <account-name>
+   ```
+
+**Note:** If you only need organizational accounts, you can keep the current setting, but you'll need to use an organizational account for authentication.
+
 #### "AADSTS50020: User account not found"
 
 **Cause:** Account doesn't exist or wrong account type.

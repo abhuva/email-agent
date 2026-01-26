@@ -1,0 +1,26 @@
+# Example Microsoft OAuth Account Configuration
+# 
+# This is an example configuration file for a Microsoft/Outlook account using OAuth 2.0 authentication.
+# Copy this file to config/accounts/<your-account-name>.yaml and customize it.
+#
+# Prerequisites:
+# 1. Register application in Azure Portal
+# 2. Add MS_CLIENT_ID and MS_CLIENT_SECRET to .env file
+# 3. Configure API permissions in Azure Portal
+#
+# See docs/v5-oauth-user-guide.md for detailed setup instructions.
+
+imap:
+  server: outlook.office365.com  # Use outlook.office365.com for better OAuth compatibility
+  # Alternative: imap-mail.outlook.com for personal Outlook accounts (may have OAuth issues)
+  username: tohuwabohu.halle@outlook.de  # Replace with your Outlook/Office 365 email
+  password_env: MS_CLIENT_SECRET
+  port: 993
+  use_ssl: true
+  
+
+# OAuth 2.0 authentication configuration
+auth:
+  method: oauth  # Use OAuth 2.0 authentication
+  provider: microsoft  # Microsoft OAuth provider
+

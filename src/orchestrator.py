@@ -452,6 +452,8 @@ Examples:
         # Load merged configuration for this account
         try:
             account_config = self.config_loader.load_merged_config(account_id)
+            # Add account_id to config so authenticators can use it for token lookup
+            account_config['account_id'] = account_id
             self.logger.debug(f"Loaded merged configuration for account: {account_id}")
         except (FileNotFoundError, ConfigurationError) as e:
             raise ConfigurationError(

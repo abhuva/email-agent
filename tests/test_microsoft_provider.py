@@ -76,22 +76,25 @@ class TestMicrosoftOAuthProviderInitialization:
         """Test that default scopes include Outlook IMAP scopes."""
         assert 'https://outlook.office.com/IMAP.AccessAsUser.All' in microsoft_provider.scopes
         assert 'https://outlook.office.com/User.Read' in microsoft_provider.scopes
-        assert 'offline_access' in microsoft_provider.scopes
+        # offline_access is a reserved MSAL scope and should NOT be in the scopes list
+        assert 'offline_access' not in microsoft_provider.scopes
     
-    def test_init_adds_offline_access_if_missing(self, mock_env_vars):
-        """Test that offline_access scope is automatically added if missing."""
-        custom_scopes = ['https://outlook.office.com/IMAP.AccessAsUser.All']
+    def test_init_removes_offline_access_if_present(self, mock_env_vars):
+        """Test that offline_access scope is automatically removed if present (MSAL reserved scope)."""
+        custom_scopes = ['https://outlook.office.com/IMAP.AccessAsUser.All', 'offline_access']
         provider = MicrosoftOAuthProvider(scopes=custom_scopes)
-        assert 'offline_access' in provider.scopes
+        # offline_access should be removed as it's a reserved MSAL scope
+        assert 'offline_access' not in provider.scopes
+        assert 'https://outlook.office.com/IMAP.AccessAsUser.All' in provider.scopes
     
     def test_init_custom_scopes(self, mock_env_vars):
         """Test initialization with custom scopes."""
         custom_scopes = ['https://outlook.office.com/IMAP.AccessAsUser.All', 'custom_scope']
         provider = MicrosoftOAuthProvider(scopes=custom_scopes)
-        # Should include custom scopes plus offline_access
+        # Should include custom scopes, but NOT offline_access (MSAL reserved scope)
         assert 'https://outlook.office.com/IMAP.AccessAsUser.All' in provider.scopes
         assert 'custom_scope' in provider.scopes
-        assert 'offline_access' in provider.scopes
+        assert 'offline_access' not in provider.scopes
     
     def test_init_default_redirect_uri(self, microsoft_provider):
         """Test that default redirect URI is set correctly."""
@@ -133,9 +136,10 @@ class TestGetAuthUrl:
         """Test successful authorization URL generation."""
         # Mock MSAL app
         mock_app = MagicMock()
+        # MSAL returns a flow with its own state (which may differ from what we pass)
         mock_flow = {
             'auth_uri': 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=test_state',
-            'state': 'test_state',
+            'state': 'test_state',  # This is the state that will be in the callback
         }
         mock_app.initiate_auth_code_flow.return_value = mock_flow
         mock_app_class.return_value = mock_app
@@ -145,10 +149,13 @@ class TestGetAuthUrl:
         auth_url = microsoft_provider.get_auth_url(state)
         
         assert 'login.microsoftonline.com' in auth_url
-        assert microsoft_provider._state == state
+        # We now use the state from MSAL's flow, not the passed state
+        assert microsoft_provider._state == mock_flow['state']
         mock_app.initiate_auth_code_flow.assert_called_once_with(
             scopes=microsoft_provider.scopes,
             redirect_uri=microsoft_provider.redirect_uri,
+            state=state,  # We pass our state to MSAL
+            prompt='select_account',  # Force account picker to show
         )
         assert microsoft_provider._flow == mock_flow
     

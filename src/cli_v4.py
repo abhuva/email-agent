@@ -672,7 +672,7 @@ def auth(ctx: click.Context, account: str):
         try:
             account_config = config_loader.load_merged_config(account)
         except (FileNotFoundError, ConfigurationError) as e:
-            click.echo(f"❌ Error: Failed to load configuration for account '{account}': {e}", err=True)
+            click.echo(f"[ERROR] Failed to load configuration for account '{account}': {e}", err=True)
             click.echo(f"   Make sure the account configuration file exists: config/accounts/{account}.yaml", err=True)
             sys.exit(1)
         
@@ -680,7 +680,7 @@ def auth(ctx: click.Context, account: str):
         try:
             ConfigLoader._validate_account_name(account)
         except ValueError as e:
-            click.echo(f"❌ Error: Invalid account name: {e}", err=True)
+            click.echo(f"[ERROR] Invalid account name: {e}", err=True)
             sys.exit(1)
         
         # Check if auth method is OAuth
@@ -688,7 +688,7 @@ def auth(ctx: click.Context, account: str):
         auth_method = auth_config.get('method', 'password')
         
         if auth_method != 'oauth':
-            click.echo(f"❌ Error: Account '{account}' is not configured for OAuth authentication.", err=True)
+            click.echo(f"[ERROR] Account '{account}' is not configured for OAuth authentication.", err=True)
             click.echo(f"   Current auth method: '{auth_method}'", err=True)
             click.echo(f"   To use OAuth, set auth.method='oauth' in config/accounts/{account}.yaml", err=True)
             sys.exit(1)
@@ -696,13 +696,13 @@ def auth(ctx: click.Context, account: str):
         # Get provider from config
         provider_name = auth_config.get('provider')
         if not provider_name:
-            click.echo(f"❌ Error: OAuth provider not specified for account '{account}'.", err=True)
+            click.echo(f"[ERROR] OAuth provider not specified for account '{account}'.", err=True)
             click.echo(f"   Set auth.provider='google' or auth.provider='microsoft' in config/accounts/{account}.yaml", err=True)
             sys.exit(1)
         
         provider_name = provider_name.lower().strip()
         if provider_name not in ('google', 'microsoft'):
-            click.echo(f"❌ Error: Invalid OAuth provider '{provider_name}' for account '{account}'.", err=True)
+            click.echo(f"[ERROR] Invalid OAuth provider '{provider_name}' for account '{account}'.", err=True)
             click.echo(f"   Supported providers: 'google', 'microsoft'", err=True)
             sys.exit(1)
         
@@ -713,7 +713,7 @@ def auth(ctx: click.Context, account: str):
         token_manager = TokenManager()
         credentials_path = token_manager._get_token_path(account)
         if credentials_path.exists():
-            click.echo(f"\n⚠️  Warning: Tokens already exist for account '{account}'")
+            click.echo(f"\n[WARNING] Tokens already exist for account '{account}'")
             click.echo(f"   Location: {credentials_path}")
             overwrite = click.prompt(
                 "   Do you want to overwrite existing tokens? (yes/no)",
@@ -731,16 +731,20 @@ def auth(ctx: click.Context, account: str):
             else:  # microsoft
                 provider = MicrosoftOAuthProvider()
         except (GoogleOAuthError, MicrosoftOAuthError) as e:
-            click.echo(f"❌ Error: Failed to initialize {provider_name} OAuth provider: {e}", err=True)
+            click.echo(f"[ERROR] Failed to initialize {provider_name} OAuth provider: {e}", err=True)
             if provider_name == 'google':
                 click.echo("   Make sure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set in .env", err=True)
             else:
                 click.echo("   Make sure MS_CLIENT_ID and MS_CLIENT_SECRET are set in .env", err=True)
             sys.exit(1)
         except Exception as e:
-            click.echo(f"❌ Error: Unexpected error initializing OAuth provider: {e}", err=True)
+            click.echo(f"[ERROR] Unexpected error initializing OAuth provider: {e}", err=True)
             logger.error(f"OAuth provider initialization failed: {e}", exc_info=True)
             sys.exit(1)
+        
+        # Get email from config for login_hint (helps with account selection)
+        imap_config = account_config.get('imap', {})
+        email = imap_config.get('username', '')
         
         # Create OAuth flow
         try:
@@ -748,51 +752,60 @@ def auth(ctx: click.Context, account: str):
                 provider=provider,
                 token_manager=token_manager,
                 account_name=account,
-                callback_port=8080  # Default port, will auto-detect if unavailable
+                callback_port=8080,  # Default port, will auto-detect if unavailable
+                login_hint=email if email and provider_name == 'microsoft' else None  # Microsoft supports login_hint
             )
         except Exception as e:
-            click.echo(f"❌ Error: Failed to create OAuth flow: {e}", err=True)
+            click.echo(f"[ERROR] Failed to create OAuth flow: {e}", err=True)
             logger.error(f"OAuth flow creation failed: {e}", exc_info=True)
             sys.exit(1)
         
+        # Show helpful message about which account to authenticate with
+        # (email was already retrieved above for login_hint)
+        click.echo(f"\n[AUTH] Starting OAuth authentication for account '{account}' ({provider_name})...")
+        if email:
+            click.echo(f"\n[IMPORTANT] When the browser opens, please sign in with:")
+            click.echo(f"   Email: {email}")
+            click.echo(f"   This is the account you want to access emails from.")
+            click.echo(f"   Do NOT sign in with a different account, as the token will be tied to that account.\n")
+        
         # Run OAuth flow
         try:
-            click.echo(f"\n🔐 Starting OAuth authentication for account '{account}' ({provider_name})...")
             token_info = flow.run(timeout=120)
             
             # Success message
-            click.echo(f"\n✅ Authentication successful for account '{account}'!")
+            click.echo(f"\n[SUCCESS] Authentication successful for account '{account}'!")
             click.echo(f"   Tokens saved to: {credentials_path}")
             click.echo(f"   Provider: {provider_name}")
             logger.info(f"OAuth authentication completed successfully for account '{account}'")
             
         except OAuthPortError as e:
-            click.echo(f"\n❌ Error: {e}", err=True)
+            click.echo(f"\n[ERROR] {e}", err=True)
             click.echo("   Please free a port (8080-8099) or close other applications using these ports.", err=True)
             flow.stop_local_server()  # Cleanup server if it was started
             sys.exit(1)
         except OAuthTimeoutError as e:
-            click.echo(f"\n❌ Error: Authentication timed out: {e}", err=True)
+            click.echo(f"\n[ERROR] Authentication timed out: {e}", err=True)
             click.echo("   Please try again and complete the authorization in your browser.", err=True)
             flow.stop_local_server()  # Cleanup server if it was started
             sys.exit(1)
         except OAuthError as e:
-            click.echo(f"\n❌ Error: Authentication failed: {e}", err=True)
+            click.echo(f"\n[ERROR] Authentication failed: {e}", err=True)
             logger.error(f"OAuth flow failed for account '{account}': {e}", exc_info=True)
             flow.stop_local_server()  # Cleanup server if it was started
             sys.exit(1)
         except KeyboardInterrupt:
-            click.echo("\n\n⚠️  Authentication cancelled by user.", err=True)
+            click.echo("\n\n[WARNING] Authentication cancelled by user.", err=True)
             flow.stop_local_server()
             sys.exit(130)  # Standard exit code for Ctrl+C
         except Exception as e:
-            click.echo(f"\n❌ Error: Unexpected error during authentication: {e}", err=True)
+            click.echo(f"\n[ERROR] Unexpected error during authentication: {e}", err=True)
             logger.error(f"Unexpected error during OAuth flow: {e}", exc_info=True)
             flow.stop_local_server()  # Cleanup server if it was started
             sys.exit(1)
         
     except Exception as e:
-        click.echo(f"\n❌ Error: Unexpected error: {e}", err=True)
+        click.echo(f"\n[ERROR] Unexpected error: {e}", err=True)
         logger = logging.getLogger('email_agent')
         logger.error(f"Auth command failed: {e}", exc_info=True)
         sys.exit(1)

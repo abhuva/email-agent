@@ -42,7 +42,10 @@ class MicrosoftOAuthProvider(OAuthProvider):
     Scopes:
         https://outlook.office.com/IMAP.AccessAsUser.All - Required for Outlook IMAP access
         https://outlook.office.com/User.Read - For user identification
-        offline_access - Required for refresh tokens
+    
+    Note: offline_access is a reserved scope in MSAL and should NOT be included in scopes.
+    MSAL automatically handles refresh tokens when the app is configured with offline_access
+    permission in Azure Portal API permissions.
     
     References:
         - Microsoft Identity Platform: https://learn.microsoft.com/en-us/entra/identity-platform/
@@ -55,10 +58,12 @@ class MicrosoftOAuthProvider(OAuthProvider):
     TOKEN_ENDPOINT = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
     
     # Required scopes for Outlook IMAP access
+    # Note: 'offline_access' is a reserved scope in MSAL and should NOT be included here.
+    # MSAL automatically handles refresh tokens when the app is configured with offline_access
+    # permission in Azure Portal (which is already set up in the API permissions).
     DEFAULT_SCOPES = [
         'https://outlook.office.com/IMAP.AccessAsUser.All',  # Outlook IMAP access
         'https://outlook.office.com/User.Read',  # User profile
-        'offline_access',  # Required for refresh tokens
     ]
     
     def __init__(
@@ -92,10 +97,10 @@ class MicrosoftOAuthProvider(OAuthProvider):
         # Set scopes
         self.scopes = scopes or self.DEFAULT_SCOPES
         
-        # Ensure offline_access is included for refresh tokens
-        if 'offline_access' not in self.scopes:
-            self.scopes.append('offline_access')
-            logger.warning("Added 'offline_access' scope for refresh token support")
+        # Remove offline_access if present (MSAL reserved scope - handled automatically)
+        if 'offline_access' in self.scopes:
+            self.scopes = [s for s in self.scopes if s != 'offline_access']
+            logger.debug("Removed 'offline_access' from scopes (MSAL reserved scope)")
         
         # Initialize MSAL PublicClientApplication
         # Note: For public clients, client_secret is not used in the app initialization
@@ -121,11 +126,12 @@ class MicrosoftOAuthProvider(OAuthProvider):
         
         logger.debug(f"MicrosoftOAuthProvider initialized with client_id: {self.client_id[:10]}...")
     
-    def get_auth_url(self, state: str) -> str:
+    def get_auth_url(self, state: str, login_hint: Optional[str] = None) -> str:
         """Generate Microsoft OAuth 2.0 authorization URL.
         
         Args:
             state: Cryptographically secure state parameter for CSRF protection
+            login_hint: Optional email address to pre-fill or guide account selection
         
         Returns:
             Complete authorization URL with all required parameters
@@ -134,25 +140,47 @@ class MicrosoftOAuthProvider(OAuthProvider):
             MicrosoftOAuthError: If URL generation fails
         """
         try:
-            # Store state for validation
-            self._state = state
+            # Prepare additional parameters for account selection
+            # Use prompt='select_account' to force account picker (prevents auto-login)
+            # Use login_hint to pre-fill the email field if provided
+            flow_kwargs = {
+                'scopes': self.scopes,
+                'redirect_uri': self.redirect_uri,
+                'state': state,  # Pass our state to MSAL
+                'prompt': 'select_account',  # Force account picker to show
+            }
+            
+            # Add login_hint if provided (pre-fills email field)
+            if login_hint:
+                flow_kwargs['login_hint'] = login_hint
+                logger.debug(f"Using login_hint: {login_hint}")
             
             # Initiate authorization code flow
-            # This returns a dictionary with 'auth_uri' and other flow data
-            flow = self.app.initiate_auth_code_flow(
-                scopes=self.scopes,
-                redirect_uri=self.redirect_uri,
-            )
+            # MSAL manages the state parameter internally and includes it in the flow
+            # We pass our state to MSAL, but must use the state from the flow for validation
+            flow = self.app.initiate_auth_code_flow(**flow_kwargs)
             
             # Store flow for callback validation
             self._flow = flow
+            
+            # Extract state from flow - this is the state that will be in the callback URL
+            # MSAL may encode/transform the state, so we must use what's in the flow
+            flow_state = flow.get('state')
+            if flow_state:
+                # Use MSAL's state from the flow (this matches what will be in the callback)
+                self._state = flow_state
+                logger.debug(f"Using MSAL flow state: {flow_state[:16]}...")
+            else:
+                # Fallback to our state if MSAL doesn't provide one (shouldn't happen)
+                self._state = state
+                logger.warning("MSAL flow did not contain state, using provided state")
             
             # Extract authorization URL from flow
             auth_url = flow.get('auth_uri')
             if not auth_url:
                 raise MicrosoftOAuthError("Failed to generate authorization URL: missing auth_uri in flow")
             
-            logger.info(f"Generated Microsoft OAuth authorization URL with state: {state[:16]}...")
+            logger.info(f"Generated Microsoft OAuth authorization URL with state: {self._state[:16]}...")
             return auth_url
             
         except Exception as e:

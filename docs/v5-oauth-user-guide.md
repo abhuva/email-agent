@@ -101,7 +101,9 @@ GOOGLE_CLIENT_SECRET=your_client_secret_here
 3. **Register Your Application**
    - **Name**: Email Agent (or your preferred name)
    - **Supported account types**: 
-     - Select "Accounts in any organizational directory and personal Microsoft accounts"
+     - **IMPORTANT**: Select "Accounts in any organizational directory and personal Microsoft accounts"
+     - This is required to support both organizational (Office 365) and personal (Outlook.com, Hotmail) accounts
+     - If you only select "Accounts in this organizational directory only", personal accounts will fail with error AADSTS500200
    - **Redirect URI**: 
      - Platform: "Public client/native (mobile & desktop)"
      - Redirect URI: `http://localhost:8080/callback`

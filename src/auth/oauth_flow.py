@@ -186,6 +186,7 @@ class OAuthFlow:
         token_manager: TokenManager,
         account_name: str,
         callback_port: Optional[int] = None,
+        login_hint: Optional[str] = None,
     ):
         """Initialize OAuth flow.
         
@@ -194,6 +195,7 @@ class OAuthFlow:
             token_manager: TokenManager instance for saving tokens
             account_name: Account name for token storage
             callback_port: Port for callback server (None = auto-detect, default: 8080)
+            login_hint: Optional email address to pre-fill or guide account selection (Microsoft only)
         
         Raises:
             OAuthError: If provider is invalid
@@ -205,6 +207,7 @@ class OAuthFlow:
         self.token_manager = token_manager
         self.account_name = account_name
         self.callback_port = callback_port or 8080
+        self.login_hint = login_hint
         
         # Server state
         self.server: Optional[ThreadingHTTPServer] = None
@@ -317,13 +320,19 @@ class OAuthFlow:
     def _run_server(self):
         """Run HTTP server in background thread.
         
-        Handles requests until shutdown is requested.
+        Uses serve_forever() which properly handles shutdown() calls.
         """
         try:
-            while not getattr(self, '_shutdown_requested', False):
-                self.server.handle_request()
+            # Initialize shutdown flag if not exists
+            if not hasattr(self, '_shutdown_requested'):
+                self._shutdown_requested = False
+            
+            # serve_forever() will exit when shutdown() is called
+            self.server.serve_forever()
         except Exception as e:
-            logger.error(f"Error in OAuth callback server: {e}", exc_info=True)
+            # Only log if not shutting down
+            if not getattr(self, '_shutdown_requested', False):
+                logger.error(f"Error in OAuth callback server: {e}", exc_info=True)
     
     def stop_local_server(self):
         """Stop the local HTTP server gracefully.
@@ -331,16 +340,25 @@ class OAuthFlow:
         Shuts down the server and waits for the thread to finish.
         """
         if self.server:
+            # Set shutdown flag first
             self._shutdown_requested = True
+            
             try:
-                # Shutdown server
+                # Shutdown server - this will cause serve_forever() to exit
                 self.server.shutdown()
                 logger.debug("OAuth callback server shut down")
+                
+                # Wait for server thread to finish (with timeout)
+                if self.server_thread and self.server_thread.is_alive():
+                    self.server_thread.join(timeout=2.0)
+                    if self.server_thread.is_alive():
+                        logger.warning("Server thread did not stop within timeout")
             except Exception as e:
                 logger.warning(f"Error shutting down server: {e}")
             finally:
                 self.server = None
                 self.server_thread = None
+                self._shutdown_requested = False
     
     def get_authorization_url(self) -> str:
         """Generate OAuth authorization URL with secure state parameter.
@@ -348,6 +366,9 @@ class OAuthFlow:
         Generates a cryptographically secure state parameter and constructs
         the authorization URL using the provider's get_auth_url() method.
         Updates the provider's redirect_uri to match the callback server port.
+        
+        For providers like MSAL that manage state internally, syncs the expected
+        state from the provider after URL generation.
         
         Returns:
             Complete authorization URL ready for browser
@@ -365,7 +386,26 @@ class OAuthFlow:
                 self.provider.redirect_uri = redirect_uri
             
             # Generate authorization URL
-            auth_url = self.provider.get_auth_url(self._state)
+            # Pass login_hint if available (for Microsoft to pre-fill email)
+            if hasattr(self.provider, 'get_auth_url'):
+                # Check if provider supports login_hint parameter (Microsoft)
+                import inspect
+                sig = inspect.signature(self.provider.get_auth_url)
+                if 'login_hint' in sig.parameters:
+                    auth_url = self.provider.get_auth_url(self._state, login_hint=self.login_hint)
+                else:
+                    auth_url = self.provider.get_auth_url(self._state)
+            else:
+                auth_url = self.provider.get_auth_url(self._state)
+            
+            # For providers that manage state internally (like MSAL), sync the expected state
+            # The provider's _state contains the state that will be in the callback
+            # Only sync if provider actually set a different state (e.g., MSAL flow state)
+            if hasattr(self.provider, '_state') and self.provider._state and self.provider._state != self._state:
+                # Use the provider's state (e.g., from MSAL's flow) for validation
+                original_state = self._state
+                self._state = self.provider._state
+                logger.debug(f"Synced state from provider: {original_state[:16]}... -> {self._state[:16]}...")
             
             logger.info(f"Generated authorization URL with state: {self._state[:16]}...")
             return auth_url

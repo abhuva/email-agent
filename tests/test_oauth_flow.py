@@ -191,11 +191,16 @@ class TestGetAuthorizationUrl:
         mock_generate_state.return_value = 'test_state_123'
         oauth_flow.callback_port = 8080
         
+        # Make mock provider return URL with the state that was passed to it
+        def get_auth_url_side_effect(state):
+            return f'https://example.com/auth?state={state}'
+        oauth_flow.provider.get_auth_url.side_effect = get_auth_url_side_effect
+        
         url = oauth_flow.get_authorization_url()
         
         assert url == 'https://example.com/auth?state=test_state_123'
         assert oauth_flow._state == 'test_state_123'
-        mock_provider.get_auth_url.assert_called_once_with('test_state_123')
+        oauth_flow.provider.get_auth_url.assert_called_once_with('test_state_123')
     
     def test_get_authorization_url_updates_redirect_uri(self, oauth_flow):
         """Test that redirect URI is updated with callback port."""

@@ -215,13 +215,43 @@ class OAuthAuthenticator:
             # Generate XOAUTH2 SASL string (base64-encoded bytes)
             sasl_bytes = generate_xoauth2_sasl(self.email, access_token)
             
-            # Convert to string for imaplib.authenticate() callback
-            # imaplib's authenticate() callback should return a string (not bytes)
-            sasl_string = sasl_bytes.decode('ascii')
+            # Debug: Log the email being used (without logging the full token)
+            logger.debug(f"Using email '{self.email}' for XOAUTH2 authentication")
             
             # Authenticate using XOAUTH2 mechanism
-            # The callback receives a challenge (typically empty for XOAUTH2) and returns the SASL string
-            auth_result = imap_connection.authenticate('XOAUTH2', lambda x: sasl_string)
+            # IMPORTANT: imaplib.authenticate() will base64-encode the callback's return value
+            # So we must return the RAW SASL string (not base64-encoded), and let imaplib encode it
+            # Decode the base64-encoded bytes back to the raw SASL string
+            import base64
+            raw_sasl_string = base64.b64decode(sasl_bytes).decode('utf-8')
+            
+            def auth_callback(challenge):
+                """XOAUTH2 authentication callback for IMAP.
+                
+                For XOAUTH2, the server typically sends an empty challenge (b'').
+                We respond with the raw SASL string (not base64-encoded) as bytes.
+                
+                According to Python imaplib documentation:
+                - The callback should return bytes
+                - imaplib will base64-encode the returned bytes automatically
+                - So we must return the RAW SASL string, not base64-encoded
+                
+                Args:
+                    challenge: The server's challenge (typically empty bytes for XOAUTH2)
+                
+                Returns:
+                    Raw SASL string as bytes (will be base64-encoded by imaplib)
+                """
+                # Log challenge for debugging (typically empty for XOAUTH2)
+                logger.debug(f"XOAUTH2 challenge received: {challenge!r}")
+                
+                # Return the raw SASL string as bytes
+                # imaplib will base64-encode this automatically
+                logger.debug(f"Returning raw SASL string (length: {len(raw_sasl_string)} chars)")
+                return raw_sasl_string.encode('utf-8')
+            
+            logger.debug(f"Attempting XOAUTH2 authentication for {self.email}")
+            auth_result = imap_connection.authenticate('XOAUTH2', auth_callback)
             
             if auth_result[0] == 'OK':
                 logger.info(
@@ -245,13 +275,32 @@ class OAuthAuthenticator:
             # Re-raise authentication and token errors as-is (they're already user-friendly)
             raise
         except imaplib.IMAP4.error as e:
-            error_msg = f"IMAP XOAUTH2 authentication failed for {self.email}: {e}"
-            logger.error(error_msg)
-            raise AuthenticationError(
-                f"OAuth authentication failed for {self.email}. "
-                "The access token may be invalid or expired. "
-                "Please run 'auth' command to re-authenticate."
-            ) from e
+            # Log the full error details for debugging
+            error_details = str(e)
+            logger.error(f"IMAP XOAUTH2 authentication failed for {self.email}: {error_details}")
+            logger.debug(f"Full IMAP error: {e!r}")
+            
+            # Check for specific Microsoft error patterns
+            error_str = error_details.lower()
+            if 'invalid' in error_str or 'expired' in error_str:
+                error_msg = (
+                    f"OAuth authentication failed for {self.email}. "
+                    "The access token may be invalid or expired. "
+                    "Please run 'auth' command to re-authenticate."
+                )
+            elif 'scope' in error_str or 'permission' in error_str:
+                error_msg = (
+                    f"OAuth authentication failed for {self.email}. "
+                    "The access token may not have the required IMAP permissions. "
+                    "Please run 'auth' command to re-authenticate with correct scopes."
+                )
+            else:
+                error_msg = (
+                    f"OAuth authentication failed for {self.email}: {error_details}. "
+                    "Please run 'auth' command to re-authenticate."
+                )
+            
+            raise AuthenticationError(error_msg) from e
         except Exception as e:
             error_msg = (
                 f"Unexpected error during OAuth authentication for {self.email}: {e}"
