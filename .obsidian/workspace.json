@@ -225,6 +225,7 @@
   },
   "active": "b4c7ae537e1c1920",
   "lastOpenFiles": [
+    "config/accounts/kontakts.eigenarts.yaml",
     "tests/__pycache__/test_e2e_oauth_backward_compat.cpython-313-pytest-8.3.5.pyc",
     "tests/__pycache__/test_e2e_oauth.cpython-313-pytest-8.3.5.pyc",
     "docs/v5-oauth-user-guide.md",
@@ -240,7 +241,6 @@
     "config/accounts/example-google-oauth.yaml",
     "docs/v5-oauth-troubleshooting.md",
     "tests/test_e2e_oauth_backward_compat.py",
-    "tests/test_e2e_oauth.py",
     "docs/v4-migration-guide.md",
     "docs/v3-backfill.md",
     "docs/v5-token-manager.md",

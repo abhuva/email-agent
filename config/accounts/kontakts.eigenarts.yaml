@@ -1,0 +1,7 @@
+imap:
+  server: imap.strato.de
+  port: 993
+  username: kontakt@eigenarts-halle.de
+  password_env: IMAP_PASSWORD_KONTAKT_EIGENARTS
+processing:
+  max_emails_per_run: 99999
