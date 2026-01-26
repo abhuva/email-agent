@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 import argparse
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass, field
 
 # V4 imports
@@ -142,7 +142,7 @@ class MasterOrchestrator:
     
     def __init__(
         self,
-        config_base_dir: Path | str = "config",
+        config_base_dir: Union[Path, str] = "config",
         logger: Optional[logging.Logger] = None
     ):
         """

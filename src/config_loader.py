@@ -26,7 +26,7 @@ Usage:
 import yaml
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from src.config_validator import ConfigSchemaValidator, ValidationResult
 from src.logging_helpers import log_config_overrides, log_config_merge
@@ -61,7 +61,7 @@ class ConfigLoader:
     
     def __init__(
         self,
-        base_dir: Path | str = "config",
+        base_dir: Union[Path, str] = "config",
         global_filename: str = "config.yaml",
         accounts_dirname: str = "accounts",
         enable_validation: bool = True
@@ -488,7 +488,7 @@ DEFAULT_BASE_DIR = Path("config")
 
 def load_merged_config(
     account_name: str,
-    base_dir: Path | str = DEFAULT_BASE_DIR,
+    base_dir: Union[Path, str] = DEFAULT_BASE_DIR,
     enable_validation: bool = True
 ) -> Dict:
     """

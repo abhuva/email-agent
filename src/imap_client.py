@@ -562,3 +562,7 @@ class ImapClient:
         else:
             # Get unprocessed emails
             return self.get_next_unprocessed_email(force_reprocess=force_reprocess)
+
+
+# Alias for backward compatibility with tests that use IMAPClient
+IMAPClient = ImapClient
