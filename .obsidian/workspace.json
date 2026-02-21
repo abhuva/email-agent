@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Merkzettel.md",
+                "file": "pdd_v6.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Merkzettel"
+              "title": "pdd_v6"
             }
           },
           {
@@ -92,7 +92,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "57eec9babc93e0d3",
@@ -120,13 +121,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Merkzettel.md",
+                "file": "pdd_v6.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von Merkzettel"
+              "title": "Gliederung von pdd_v6"
             }
           },
           {
@@ -196,7 +197,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 381.5
+    "width": 381.5,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -211,6 +213,8 @@
   },
   "active": "b4c7ae537e1c1920",
   "lastOpenFiles": [
+    "prd_v6.md",
+    "Merkzettel.md",
     "tests/test_auth_interfaces.py",
     "src/auth/strategies.py",
     "config/accounts/marc.bielert.eigenarts.yaml",
@@ -221,7 +225,6 @@
     "tests/test_token_manager.py",
     "tests/test_oauth_flow.py",
     "tests/test_microsoft_provider.py",
-    "tests/test_google_provider.py",
     "old pdd+prd/prd-v4.md",
     "old pdd+prd/pdd_V4.md",
     "docs/v5-token-manager.md",
@@ -242,7 +245,6 @@
     "docs/v4-unit-tests.md",
     "pdd_v5.md",
     "prd_v5.md",
-    "Merkzettel.md",
     "docs/v3-cli.md",
     "docs/ui-approach-comparison.md",
     "docs/v4-progress-bars.md",
